@@ -1,0 +1,22 @@
+{
+  "name": "energy",
+  "version": "1.0.0",
+  "description": "a music platform that let's you listen to your favorite music when you have no internet",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nmilien34/energy.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Nmilien34/energy/issues"
+  },
+  "homepage": "https://github.com/Nmilien34/energy#readme",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
