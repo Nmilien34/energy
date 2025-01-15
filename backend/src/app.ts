@@ -10,11 +10,13 @@ const app: Express = express.default();
 app.use(cors());
 app.use(express.json());
 
+// Health check route
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok', message: 'Server is running' });
+});
+
 // Routes
 app.use('/api', routes);
-app.use('/api/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok' });
-});
 
 // Error handling
 app.use(errorHandler);
