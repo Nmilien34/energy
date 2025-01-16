@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 const Welcome: React.FC = () => {
   const [serverStatus, setServerStatus] = useState<string>('');
   const apiUrl = process.env.NODE_ENV === 'production' 
-    ? process.env.REACT_APP_PROD_API_URL 
+    ? `https://${process.env.REACT_APP_PROD_API_URL}` 
     : process.env.REACT_APP_API_URL;
 
   useEffect(() => {
