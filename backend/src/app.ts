@@ -10,12 +10,16 @@ const app: Express = express.default();
 app.use(cors());
 app.use(express.json());
 
-// Health check route
+// Health check route - this should be BEFORE other routes
 app.get('/', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok', message: 'Server is running' });
+  res.status(200).json({ 
+    status: 'ok', 
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Routes
+// API routes
 app.use('/api', routes);
 
 // Error handling
