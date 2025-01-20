@@ -1,37 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
 
-export class AppError extends Error {
-  statusCode: number;
-  status: string;
-  isOperational: boolean;
-
-  constructor(message: string, statusCode: number) {
-    super(message);
-    this.statusCode = statusCode;
-    this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
-    this.isOperational = true;
-
-    Error.captureStackTrace(this, this.constructor);
-  }
+interface ErrorWithStatus extends Error {
+  status?: number;
 }
 
 export const errorHandler = (
-  err: Error | AppError,
+  err: ErrorWithStatus,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
-      status: err.status,
-      message: err.message
-    });
-  }
+  const status = err.status || 500;
+  const message = err.message || 'Internal Server Error';
 
-  // Programming or other unknown error
-  console.error('ERROR 💥', err);
-  return res.status(500).json({
-    status: 'error',
-    message: 'Something went wrong'
+  res.status(status).json({
+    error: {
+      message,
+      status,
+    },
   });
 }; 

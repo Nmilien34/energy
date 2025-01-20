@@ -1,17 +1,10 @@
-import * as express from 'express';
-import { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../services/auth.service';
+import express, { Request, Response } from 'express';
+const router = express.Router();
 
-const router = express.default.Router();
-
-router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { email, password } = req.body;
-    const result = await AuthService.login(email, password);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
+// Basic login route setup
+router.post('/login', (req: Request, res: Response) => {
+    // TODO: Implement login logic
+    res.json({ message: 'Login endpoint' });
 });
 
 export default router; 

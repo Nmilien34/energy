@@ -1,75 +1,86 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/User';
-import { config } from '../config/config';
-import { AppError } from '../middleware/errorHandler';
+import { User, IUser } from '../models/User';
 
-export class AuthService {
-  static async login(email: string, password: string) {
-    // Find user
-    const user = await User.findOne({ email });
-    if (!user) {
-      throw new AppError('Invalid credentials', 401);
-    }
+interface AuthResponse {
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    profilePicture: string | null;
+    createdAt: Date;
+    lastLogin: Date;
+  };
+  token: string;
+}
 
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      throw new AppError('Invalid credentials', 401);
-    }
-
-    // Generate token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || 'your_jwt_secret_here',
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || '24h'
-      }
-    );
-
-    return {
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name
-      }
-    };
-  }
-
-  static async register(userData: { email: string; password: string; name: string }) {
-    // Check if user exists
-    const existingUser = await User.findOne({ email: userData.email });
-    if (existingUser) {
-      throw new AppError('User already exists', 400);
-    }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(userData.password, salt);
-
-    // Create user
-    const user = await User.create({
-      ...userData,
-      password: hashedPassword
+class AuthService {
+  async register(email: string, password: string, username: string): Promise<AuthResponse> {
+    const existingUser = await User.findOne({
+      $or: [{ email }, { username }]
     });
 
-    // Generate token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || 'your_jwt_secret_here',
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || '24h'
-      }
-    );
+    if (existingUser) {
+      throw new Error('User already exists with this email or username');
+    }
+
+    const user = await User.create({
+      email,
+      password,
+      username
+    });
+
+    const token = this.generateToken(user._id.toString());
 
     return {
-      token,
       user: {
-        id: user._id,
+        id: user._id.toString(),
         email: user.email,
-        name: user.name
-      }
+        username: user.username,
+        profilePicture: user.profilePicture,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin
+      },
+      token
     };
   }
-} 
+
+  async login(email: string, password: string): Promise<AuthResponse> {
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error('Invalid credentials');
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      throw new Error('Invalid credentials');
+    }
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    const token = this.generateToken(user._id.toString());
+
+    return {
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        username: user.username,
+        profilePicture: user.profilePicture,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin
+      },
+      token
+    };
+  }
+
+  private generateToken(userId: string): string {
+    return jwt.sign(
+      { id: userId },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+  }
+}
+
+export const authService = new AuthService(); 
