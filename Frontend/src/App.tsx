@@ -1,20 +1,16 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Welcome from './views/Welcome';
-import MusicPlatform from './views/MusicPlatform';
-import { AuthProvider } from './contexts/AuthContext';
+import { BrowserRouter as Router } from 'react-router-dom';
+import AppRoutes from './routes/AppRoutes';
+import { ThemeProvider } from './contexts/ThemeContext';
 import './App.css';
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
+    <ThemeProvider>
       <Router>
-        <Routes>
-          <Route path="/" element={<Welcome />} />
-          <Route path="/platform" element={<MusicPlatform />} />
-        </Routes>
+        <AppRoutes />
       </Router>
-    </AuthProvider>
+    </ThemeProvider>
   );
 };
 

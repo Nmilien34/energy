@@ -1,0 +1,17 @@
+{
+  "name": "energy",
+  "version": "1.0.0",
+  "description": "NRGFLOW Music Platform",
+  "scripts": {
+    "start:frontend": "cd frontend && npm start",
+    "start:backend": "cd backend && npm run dev",
+    "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17"
+  }
+}

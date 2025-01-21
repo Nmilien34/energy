@@ -38,7 +38,7 @@ const MusicPlatform: React.FC = () => {
                 className="flex items-center space-x-2 text-zinc-300 hover:text-white"
               >
                 <User className="h-5 w-5" />
-                <span>Logout</span>
+                <span>{user.username}</span>
               </button>
             ) : (
               <button

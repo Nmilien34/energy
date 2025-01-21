@@ -1,11 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
-
-interface User {
-  id: string;
-  email: string;
-  username: string;
-}
+import { User } from '../types/models';
 
 interface AuthContextType {
   user: User | null;
@@ -24,13 +19,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
+        const token = localStorage.getItem('token');
+        if (token) {
+          const currentUser = await authService.getCurrentUser();
+          if (currentUser) {
+            setUser(currentUser);
+          } else {
+            localStorage.removeItem('token');
+          }
+        }
       } catch (err) {
         console.error('Failed to fetch user:', err);
+        localStorage.removeItem('token');
       } finally {
         setLoading(false);
       }
@@ -42,8 +46,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       setError(null);
-      const userData = await authService.login({ email, password });
-      setUser(userData.user);
+      const response = await authService.login({ email, password });
+      if (response.user) {
+        setUser(response.user);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to login');
       throw err;
@@ -53,8 +59,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string, username: string, password: string) => {
     try {
       setError(null);
-      const userData = await authService.register({ email, username, password });
-      setUser(userData.user);
+      const response = await authService.register({ email, username, password });
+      if (response.user) {
+        setUser(response.user);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to register');
       throw err;
@@ -65,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await authService.logout();
       setUser(null);
+      localStorage.removeItem('token');
     } catch (err: any) {
       setError(err.message || 'Failed to logout');
       throw err;
@@ -85,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearError,
       }}
     >
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
