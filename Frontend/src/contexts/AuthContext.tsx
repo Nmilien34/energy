@@ -47,10 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       const response = await authService.login({ email, password });
-      if (response.user) {
-        setUser(response.user);
+      
+      if (!response.user) {
+        throw new Error('No user data received');
       }
+      
+      setUser(response.user);
     } catch (err: any) {
+      console.error('Login error in context:', err);
       setError(err.message || 'Failed to login');
       throw err;
     }
@@ -60,10 +64,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       const response = await authService.register({ email, username, password });
-      if (response.user) {
-        setUser(response.user);
+      
+      if (!response.user) {
+        throw new Error('No user data received');
       }
+      
+      setUser(response.user);
     } catch (err: any) {
+      console.error('Register error in context:', err);
       setError(err.message || 'Failed to register');
       throw err;
     }

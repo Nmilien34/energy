@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Search, User } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
+import UserMenu from '../components/UserMenu';
 import { useAuth } from '../contexts/AuthContext';
 
 const MusicPlatform: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -33,13 +34,7 @@ const MusicPlatform: React.FC = () => {
           
           <div className="ml-4">
             {user ? (
-              <button
-                onClick={logout}
-                className="flex items-center space-x-2 text-zinc-300 hover:text-white"
-              >
-                <User className="h-5 w-5" />
-                <span>{user.username}</span>
-              </button>
+              <UserMenu />
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}

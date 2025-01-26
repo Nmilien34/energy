@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { User } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
 import ThemeSwitcher from '../components/ThemeSwitcher';
+import UserMenu from '../components/UserMenu';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Welcome: React.FC = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { theme } = useTheme();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -22,13 +23,7 @@ const Welcome: React.FC = () => {
           <div className="flex items-center gap-4">
             <ThemeSwitcher />
             {user ? (
-              <button
-                onClick={logout}
-                className="flex items-center space-x-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-              >
-                <User className="h-5 w-5" />
-                <span>{user.username}</span>
-              </button>
+              <UserMenu />
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}

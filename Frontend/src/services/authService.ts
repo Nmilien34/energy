@@ -1,28 +1,74 @@
 import api from './api';
-import { User, LoginCredentials, RegisterCredentials, AuthResponse } from '../types/models';
+import { User, LoginCredentials, RegisterCredentials, AuthResponse, ApiResponse } from '../types/models';
 
 class AuthService {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      const response = await api.post<{ success: boolean; data: AuthResponse }>('/api/auth/login', credentials);
-      if (response.data.success && response.data.data.token) {
-        localStorage.setItem('token', response.data.data.token);
+      const response = await api.post<ApiResponse<User & { token: string }>>('/api/auth/login', credentials);
+      
+      // Check if we have a response
+      if (!response.data) {
+        throw new Error('No response received from server');
       }
-      return response.data.data;
+
+      // Check success flag
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Login failed');
+      }
+
+      // Check if we have the data object
+      if (!response.data.data) {
+        throw new Error('No data received from server');
+      }
+
+      const userData = response.data.data;
+      const { token, ...user } = userData;
+      
+      // Validate user and token
+      if (!user || !token) {
+        throw new Error('Invalid response structure from server');
+      }
+
+      localStorage.setItem('token', token);
+      return { user, token };
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Login failed');
+      console.error('Login error:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || error.message || 'Login failed');
     }
   }
 
   async register(credentials: RegisterCredentials): Promise<AuthResponse> {
     try {
-      const response = await api.post<{ success: boolean; data: AuthResponse }>('/api/auth/register', credentials);
-      if (response.data.success && response.data.data.token) {
-        localStorage.setItem('token', response.data.data.token);
+      const response = await api.post<ApiResponse<User & { token: string }>>('/api/auth/register', credentials);
+      
+      // Check if we have a response
+      if (!response.data) {
+        throw new Error('No response received from server');
       }
-      return response.data.data;
+
+      // Check success flag
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Registration failed');
+      }
+
+      // Check if we have the data object
+      if (!response.data.data) {
+        throw new Error('No data received from server');
+      }
+
+      const userData = response.data.data;
+      const { token, ...user } = userData;
+      
+      // Validate user and token
+      if (!user || !token) {
+        throw new Error('Invalid response structure from server');
+      }
+
+      localStorage.setItem('token', token);
+      return { user, token };
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Registration failed');
+      console.error('Register error:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || error.message || 'Registration failed');
     }
   }
 

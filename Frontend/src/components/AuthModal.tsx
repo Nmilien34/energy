@@ -26,7 +26,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTab = 'lo
     setTimeout(() => {
       setSuccessMessage(null);
       onClose();
-    }, 2000);
+    }, 1000);
   };
 
   return (

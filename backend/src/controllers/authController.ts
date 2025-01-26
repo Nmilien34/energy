@@ -135,4 +135,10 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
       error: 'Error fetching user'
     });
   }
-}; 
+};
+
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+} 

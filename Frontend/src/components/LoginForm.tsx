@@ -29,6 +29,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
 
     try {
       await login(formData.email, formData.password);
+      // Small delay to ensure state updates
+      await new Promise(resolve => setTimeout(resolve, 100));
       onSuccess();
     } catch (error: any) {
       onError(error);
