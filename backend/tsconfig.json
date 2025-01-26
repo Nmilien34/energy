@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "es2018",
     "module": "commonjs",
     "outDir": "./dist",
     "rootDir": "./src",
@@ -12,10 +12,8 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "*": ["node_modules/@types/*", "src/types/*"]
-    },
-    "typeRoots": ["./node_modules/@types", "./src/types"],
-    "types": ["node"]
+      "*": ["node_modules/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

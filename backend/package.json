@@ -3,11 +3,15 @@
   "version": "1.0.0",
   "description": "Backend for the Music Platform application",
   "main": "dist/index.js",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
-    "build": "tsc",
-    "test": "jest"
+    "build": "rm -rf dist && tsc",
+    "test": "jest",
+    "start:prod": "npm run build && node dist/index.js"
   },
   "dependencies": {
     "@types/mongoose": "^5.11.96",

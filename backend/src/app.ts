@@ -15,8 +15,20 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/nrgflow')
   .catch(err => console.error('MongoDB connection error:', err));
 
 // CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://www.yfhnrg.com',
+  'https://yfhnrg.com'
+];
+
 const corsOptions = {
-  origin: 'http://localhost:3000',
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: ['Authorization'],
