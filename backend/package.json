@@ -2,19 +2,21 @@
   "name": "music-platform-backend",
   "version": "1.0.0",
   "description": "Backend for the Music Platform application",
-  "main": "dist/index.js",
+  "main": "dist/server.js",
   "engines": {
     "node": "18.x"
   },
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node dist/server.js",
     "dev": "nodemon src/index.ts",
     "build": "rm -rf dist && tsc",
     "test": "jest",
-    "start:prod": "npm run build && node dist/index.js"
+    "start:prod": "npm run build && node dist/server.js"
   },
   "dependencies": {
     "@types/mongoose": "^5.11.96",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "^2.0.16",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -23,8 +25,11 @@
     "express-rate-limit": "^8.1.0",
     "googleapis": "^159.0.0",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.19.0",
     "mongoose": "^8.0.3",
     "morgan": "^1.10.0",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "play-dl": "^1.9.7",
     "ytdl-core": "^4.11.5",
     "zod": "^3.24.1"

@@ -19,6 +19,24 @@ export const validateRequest = (schema: z.ZodSchema) => {
   };
 };
 
+export const validateQuery = (schema: z.ZodSchema) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await schema.parseAsync(req.query);
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: error.errors.map((e: z.ZodIssue) => e.message).join(', ')
+        });
+      } else {
+        next(error);
+      }
+    }
+  };
+};
+
 // Validation schemas
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address'),

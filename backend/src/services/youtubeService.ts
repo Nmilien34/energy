@@ -138,7 +138,7 @@ class YouTubeService {
       if (audioStream) {
         return {
           url: audioStream.url || '',
-          quality: (audioStream as any).quality || 'medium',
+          quality: audioStream.quality || 'medium',
           container: (audioStream as any).container || 'webm',
           audioEncoding: (audioStream as any).audio_codec || 'opus',
           expires: new Date(Date.now() + 6 * 60 * 60 * 1000)

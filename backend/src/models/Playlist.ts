@@ -6,6 +6,7 @@ export interface IPlaylist extends Document {
   name: string;
   description?: string;
   coverImage?: string;
+  thumbnail?: string;
   owner: Types.ObjectId | IUser;
   songs: (Types.ObjectId | ISong)[];
   isPublic: boolean;
@@ -16,6 +17,9 @@ export interface IPlaylist extends Document {
   playCount: number;
   lastPlayed?: Date;
   shareToken?: string; // for sharing playlists via link
+  youtubePlaylistId?: string; // YouTube playlist ID for syncing
+  importedAt?: Date; // when playlist was imported from YouTube
+  lastSyncedAt?: Date; // last time playlist was synced with YouTube
   createdAt: Date;
   updatedAt: Date;
   addSong(songId: Types.ObjectId): Promise<IPlaylist>;
@@ -40,6 +44,10 @@ const playlistSchema = new Schema<IPlaylist>({
     maxlength: 500
   },
   coverImage: {
+    type: String,
+    default: null
+  },
+  thumbnail: {
     type: String,
     default: null
   },
@@ -85,6 +93,17 @@ const playlistSchema = new Schema<IPlaylist>({
     type: String,
     unique: true,
     sparse: true
+  },
+  youtubePlaylistId: {
+    type: String,
+    sparse: true,
+    index: true
+  },
+  importedAt: {
+    type: Date
+  },
+  lastSyncedAt: {
+    type: Date
   }
 }, {
   timestamps: true,

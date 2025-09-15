@@ -1,17 +1,29 @@
 services:
   - type: web
-    name: nrgflow-backend
-    env: node
-    nodeVersion: 18
-    buildCommand: npm ci && npm run build
-    startCommand: npm run start
+    name: energy-backend
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: free
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
-    buildFilter:
-      paths:
-        - src/**/*.ts
-        - package*.json
-        - tsconfig.json 
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: FRONTEND_URL
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: YOUTUBE_CLIENT_ID
+        sync: false
+      - key: YOUTUBE_CLIENT_SECRET
+        sync: false
+      - key: REDIS_URL
+        sync: false

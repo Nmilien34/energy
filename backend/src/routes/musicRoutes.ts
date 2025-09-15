@@ -14,7 +14,7 @@ import {
   recordPlay
 } from '../controllers/musicController';
 import { auth } from '../middleware/auth';
-import { validateRequest } from '../middleware/validation';
+import { validateRequest, validateQuery } from '../middleware/validation';
 import { searchRateLimit, streamRateLimit } from '../middleware/rateLimiting';
 import { z } from 'zod';
 
@@ -23,7 +23,7 @@ const router = express.Router();
 // Validation schemas
 const searchSchema = z.object({
   q: z.string().min(1).max(200),
-  limit: z.number().min(1).max(50).optional(),
+  limit: z.string().transform(Number).pipe(z.number().min(1).max(50)).optional(),
   type: z.enum(['song', 'artist', 'all']).optional()
 });
 
@@ -38,7 +38,7 @@ const favoriteSchema = z.object({
 });
 
 // Public routes - no authentication required
-router.get('/search', searchRateLimit, validateRequest(searchSchema), searchMusic);
+router.get('/search', searchRateLimit, validateQuery(searchSchema), searchMusic);
 router.get('/trending', getTrendingMusic);
 router.get('/recent', getRecentlyAdded);
 router.get('/popular', getPopularSongs);

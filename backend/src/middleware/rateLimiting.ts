@@ -26,12 +26,7 @@ export const streamRateLimit = rateLimit({
   statusCode: STATUS_CODES.TOO_MANY_REQUESTS,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Rate limit by IP and optionally by user ID if authenticated
-    const baseKey = req.ip || 'unknown';
-    const userId = (req as any).user?._id;
-    return userId ? `${baseKey}:${userId}` : baseKey;
-  }
+  // Use default IP-based key generation to handle IPv6 properly
 });
 
 export const playlistRateLimit = rateLimit({

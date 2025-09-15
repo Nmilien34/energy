@@ -7,6 +7,10 @@ export interface IUser extends Document {
   password: string;
   username: string;
   profilePicture: string | null;
+  googleId?: string;
+  youtubeAccessToken?: string;
+  youtubeRefreshToken?: string;
+  youtubeChannelId?: string;
   createdAt: Date;
   lastLogin: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -49,12 +53,28 @@ const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>({
   lastLogin: {
     type: Date,
     default: Date.now
+  },
+  googleId: {
+    type: String,
+    sparse: true,
+    unique: true
+  },
+  youtubeAccessToken: {
+    type: String
+  },
+  youtubeRefreshToken: {
+    type: String
+  },
+  youtubeChannelId: {
+    type: String
   }
 }, {
   timestamps: true,
   toJSON: {
     transform: (_, ret) => {
       delete ret.password;
+      delete ret.youtubeAccessToken;
+      delete ret.youtubeRefreshToken;
       return ret;
     }
   }
