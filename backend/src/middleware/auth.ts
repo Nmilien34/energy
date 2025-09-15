@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User, IUser } from '../models/User';
+import { config } from '../utils/config';
 
 interface JwtPayload {
   id: string;
@@ -17,7 +18,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as JwtPayload;
+    const decoded = jwt.verify(token, config.jwt.secret) as JwtPayload;
     const user = await User.findById(decoded.id);
 
     if (!user) {
@@ -38,7 +39,7 @@ export const auth = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 export const generateToken = (userId: string): string => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET || 'your-secret-key', {
-    expiresIn: '7d'
+  return jwt.sign({ id: userId }, config.jwt.secret, {
+    expiresIn: config.jwt.expiresIn
   });
 }; 

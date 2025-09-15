@@ -1,14 +1,15 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { User, IUser } from '../models/User';
+import { config } from '../utils/config';
 
 interface JwtPayload {
   id: string;
 }
 
 const generateToken = (userId: string): string => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET || 'your-secret-key', {
-    expiresIn: '7d'
+  return jwt.sign({ id: userId }, config.jwt.secret, {
+    expiresIn: config.jwt.expiresIn
   });
 };
 
@@ -137,8 +138,4 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
   }
 };
 
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-} 
+ 

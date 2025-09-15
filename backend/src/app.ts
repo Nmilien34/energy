@@ -5,6 +5,8 @@ import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
+import musicRoutes from './routes/musicRoutes';
+import playlistRoutes from './routes/playlistRoutes';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -45,6 +47,8 @@ app.use(morgan('dev'));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/music', musicRoutes);
+app.use('/api/playlists', playlistRoutes);
 
 // Health check
 app.get('/api/health', (_, res) => {

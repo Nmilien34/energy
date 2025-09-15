@@ -2,12 +2,13 @@ import express from 'express';
 import { login, register, logout, getCurrentUser } from '../controllers/authController';
 import { validateLogin, validateRegister } from '../middleware/validation';
 import { auth } from '../middleware/auth';
+import { authRateLimit } from '../middleware/rateLimiting';
 
 const router = express.Router();
 
 // Public routes
-router.post('/register', validateRegister, register);
-router.post('/login', validateLogin, login);
+router.post('/register', authRateLimit, validateRegister, register);
+router.post('/login', authRateLimit, validateLogin, login);
 
 // Protected routes
 router.post('/logout', auth, logout);
