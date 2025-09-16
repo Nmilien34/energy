@@ -28,11 +28,13 @@ class AudioService {
       let song = await Song.findOne({ youtubeId: songId });
 
       if (song && !song.needsAudioRefresh()) {
+        // Check if cached URL is an embed URL
+        const isEmbedUrl = song.audioUrl?.includes('youtube.com/embed');
         return {
           url: song.audioUrl!,
           expires: song.audioUrlExpiry!,
           quality: options.quality || 'medium',
-          format: 'stream'
+          format: isEmbedUrl ? 'embed' : 'stream'
         };
       }
 
@@ -50,7 +52,7 @@ class AudioService {
         url: streamInfo.url,
         expires: streamInfo.expires,
         quality: streamInfo.quality,
-        format: streamInfo.container,
+        format: streamInfo.container, // This should be 'embed' when using fallback
         headers: this.getStreamHeaders(options.mobile || false)
       };
     } catch (error) {

@@ -1,19 +1,10 @@
 import { Request, Response } from 'express';
 import { User, IUser } from '../models/User';
+import { UserLibrary } from '../models/UserLibrary';
 import { generateToken } from '../middleware/auth';
+import { STATUS_CODES, ERROR_MESSAGES } from '../utils/constants';
 
-// Extend Request type to include user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: IUser;
-    }
-  }
-}
 
-interface AuthRequest extends Request {
-  user?: IUser;
-}
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -85,9 +76,9 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const getProfile = async (req: AuthRequest, res: Response) => {
+export const getProfile = async (req: Request, res: Response) => {
   try {
-    const user = await User.findById(req.user?._id);
+    const user = await User.findById((req as any).user?._id);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -108,14 +99,14 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const updateProfile = async (req: AuthRequest, res: Response) => {
+export const updateProfile = async (req: Request, res: Response) => {
   try {
     const { username, email } = req.body;
     const updates: Partial<IUser> = {};
 
     if (username) {
       // Check if username is already taken
-      const existingUser = await User.findOne({ username, _id: { $ne: req.user?._id } });
+      const existingUser = await User.findOne({ username, _id: { $ne: (req as any).user?._id } });
       if (existingUser) {
         return res.status(400).json({
           success: false,
@@ -127,7 +118,7 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
     if (email) {
       // Check if email is already taken
-      const existingUser = await User.findOne({ email, _id: { $ne: req.user?._id } });
+      const existingUser = await User.findOne({ email, _id: { $ne: (req as any).user?._id } });
       if (existingUser) {
         return res.status(400).json({
           success: false,
@@ -138,7 +129,7 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     }
 
     const user = await User.findByIdAndUpdate(
-      req.user?._id,
+      (req as any).user?._id,
       { $set: updates },
       { new: true, runValidators: true }
     );
@@ -159,6 +150,271 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Error updating profile'
+    });
+  }
+};
+
+// Get user library
+export const getUserLibrary = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    if (!userId) {
+      return res.status(STATUS_CODES.UNAUTHORIZED).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    let library = await UserLibrary.findOne({ user: userId })
+      .populate('favoriteSongs')
+      .populate('favoritePlaylists')
+      .populate('recentlyPlayed.song')
+      .populate('listeningHistory.song');
+
+    // Create library if it doesn't exist
+    if (!library) {
+      library = new UserLibrary({
+        user: userId,
+        favoriteSongs: [],
+        favoritePlaylists: [],
+        recentlyPlayed: [],
+        listeningHistory: [],
+        preferences: {
+          autoplay: true,
+          shuffle: false,
+          repeat: 'none',
+          volume: 80,
+          quality: 'medium',
+          crossfade: 0
+        },
+        followedArtists: [],
+        blockedSongs: []
+      });
+      await library.save();
+
+      // Populate after saving
+      library = await UserLibrary.findById(library._id)
+        .populate('favoriteSongs')
+        .populate('favoritePlaylists')
+        .populate('recentlyPlayed.song')
+        .populate('listeningHistory.song');
+    }
+
+    res.json({
+      success: true,
+      data: { library }
+    });
+
+  } catch (error) {
+    console.error('Get user library error:', error);
+    res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: ERROR_MESSAGES.INTERNAL_ERROR
+    });
+  }
+};
+
+// Get recently played songs
+export const getRecentlyPlayed = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    if (!userId) {
+      return res.status(STATUS_CODES.UNAUTHORIZED).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    const library = await UserLibrary.findOne({ user: userId })
+      .populate('recentlyPlayed.song')
+      .select('recentlyPlayed');
+
+    if (!library) {
+      return res.json({
+        success: true,
+        data: { recentlyPlayed: [] }
+      });
+    }
+
+    // Sort by playedAt in descending order and limit to recent items
+    const recentlyPlayed = library.recentlyPlayed
+      .sort((a: any, b: any) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime())
+      .slice(0, 20);
+
+    res.json({
+      success: true,
+      data: { recentlyPlayed }
+    });
+
+  } catch (error) {
+    console.error('Get recently played error:', error);
+    res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: ERROR_MESSAGES.INTERNAL_ERROR
+    });
+  }
+};
+
+// Get favorite songs
+export const getFavoriteSongs = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    if (!userId) {
+      return res.status(STATUS_CODES.UNAUTHORIZED).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    const library = await UserLibrary.findOne({ user: userId })
+      .populate('favoriteSongs')
+      .select('favoriteSongs');
+
+    if (!library) {
+      return res.json({
+        success: true,
+        data: { favoriteSongs: [] }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { favoriteSongs: library.favoriteSongs }
+    });
+
+  } catch (error) {
+    console.error('Get favorite songs error:', error);
+    res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: ERROR_MESSAGES.INTERNAL_ERROR
+    });
+  }
+};
+
+// Add song to favorites
+export const addToFavorites = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const { songId } = req.body;
+
+    if (!userId) {
+      return res.status(STATUS_CODES.UNAUTHORIZED).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    if (!songId) {
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        error: 'Song ID is required'
+      });
+    }
+
+    let library = await UserLibrary.findOne({ user: userId });
+    if (!library) {
+      library = new UserLibrary({ user: userId });
+      await library.save();
+    }
+
+    await library.addToFavorites(songId);
+
+    res.json({
+      success: true,
+      message: 'Song added to favorites'
+    });
+
+  } catch (error) {
+    console.error('Add to favorites error:', error);
+    res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: ERROR_MESSAGES.INTERNAL_ERROR
+    });
+  }
+};
+
+// Remove song from favorites
+export const removeFromFavorites = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const { songId } = req.body;
+
+    if (!userId) {
+      return res.status(STATUS_CODES.UNAUTHORIZED).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    if (!songId) {
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        error: 'Song ID is required'
+      });
+    }
+
+    const library = await UserLibrary.findOne({ user: userId });
+    if (!library) {
+      return res.status(STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        error: 'User library not found'
+      });
+    }
+
+    await library.removeFromFavorites(songId);
+
+    res.json({
+      success: true,
+      message: 'Song removed from favorites'
+    });
+
+  } catch (error) {
+    console.error('Remove from favorites error:', error);
+    res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: ERROR_MESSAGES.INTERNAL_ERROR
+    });
+  }
+};
+
+// Add song to recently played
+export const addToRecentlyPlayed = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const { songId } = req.body;
+
+    if (!userId) {
+      return res.status(STATUS_CODES.UNAUTHORIZED).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    if (!songId) {
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        error: 'Song ID is required'
+      });
+    }
+
+    let library = await UserLibrary.findOne({ user: userId });
+    if (!library) {
+      library = new UserLibrary({ user: userId });
+      await library.save();
+    }
+
+    await library.addToRecentlyPlayed(songId);
+
+    res.json({
+      success: true,
+      message: 'Song added to recently played'
+    });
+
+  } catch (error) {
+    console.error('Add to recently played error:', error);
+    res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: ERROR_MESSAGES.INTERNAL_ERROR
     });
   }
 }; 

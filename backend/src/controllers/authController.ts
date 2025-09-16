@@ -56,23 +56,45 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
+    console.log('Login attempt for email:', email);
+
+    // Debug: Check all users in database
+    const allUsers = await User.find({}).select('email username');
+    console.log('All users in database:', allUsers.map(u => ({ email: u.email, username: u.username })));
+
     // Find user by email
     const user = await User.findOne({ email }) as IUser | null;
     if (!user) {
+      console.log('User not found for email:', email);
+      console.log('Searching for user with exact query...');
+
+      // Try case-insensitive search
+      const userCaseInsensitive = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } }) as IUser | null;
+      if (userCaseInsensitive) {
+        console.log('Found user with case-insensitive search:', userCaseInsensitive.email);
+      } else {
+        console.log('No user found even with case-insensitive search');
+      }
+
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
       });
     }
 
+    console.log('User found, checking password for:', email);
+
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      console.log('Password mismatch for email:', email);
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
       });
     }
+
+    console.log('Login successful for email:', email);
 
     // Update last login
     user.lastLogin = new Date();
@@ -111,13 +133,9 @@ export const logout = async (_: Request, res: Response) => {
   }
 };
 
-interface AuthRequest extends Request {
-  user?: IUser;
-}
-
-export const getCurrentUser = async (req: AuthRequest, res: Response) => {
+export const getCurrentUser = async (req: Request, res: Response) => {
   try {
-    const user = await User.findById(req.user?._id);
+    const user = await User.findById((req as any).user?._id);
     if (!user) {
       return res.status(404).json({
         success: false,

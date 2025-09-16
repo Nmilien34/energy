@@ -162,7 +162,7 @@ export const RATE_LIMITS = {
   },
   AUTH: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5 // requests per window for failed attempts
+    max: 20 // requests per window for failed attempts (increased for development)
   }
 } as const;
 

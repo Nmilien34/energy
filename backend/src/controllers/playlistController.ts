@@ -5,14 +5,11 @@ import { UserLibrary } from '../models/UserLibrary';
 import { IUser } from '../models/User';
 import { Types } from 'mongoose';
 
-interface AuthRequest extends Request {
-  user?: IUser;
-}
 
-export const createPlaylist = async (req: AuthRequest, res: Response) => {
+export const createPlaylist = async (req: Request, res: Response) => {
   try {
     const { name, description, isPublic = false, isCollaborative = false } = req.body;
-    const userId = req.user?._id;
+    const userId = (req as any).user?._id;
 
     if (!userId) {
       return res.status(401).json({
@@ -55,9 +52,9 @@ export const createPlaylist = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getUserPlaylists = async (req: AuthRequest, res: Response) => {
+export const getUserPlaylists = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?._id;
+    const userId = (req as any).user?._id;
 
     if (!userId) {
       return res.status(401).json({
@@ -127,11 +124,11 @@ export const getPlaylist = async (req: Request, res: Response) => {
   }
 };
 
-export const updatePlaylist = async (req: AuthRequest, res: Response) => {
+export const updatePlaylist = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, description, isPublic, isCollaborative, tags } = req.body;
-    const userId = req.user?._id;
+    const userId = (req as any).user?._id;
 
     if (!userId) {
       return res.status(401).json({
@@ -185,10 +182,10 @@ export const updatePlaylist = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const deletePlaylist = async (req: AuthRequest, res: Response) => {
+export const deletePlaylist = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = req.user?._id;
+    const userId = (req as any).user?._id;
 
     if (!userId) {
       return res.status(401).json({
@@ -242,11 +239,11 @@ export const deletePlaylist = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const addSongToPlaylist = async (req: AuthRequest, res: Response) => {
+export const addSongToPlaylist = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { songId } = req.body;
-    const userId = req.user?._id;
+    const userId = (req as any).user?._id;
 
     if (!userId) {
       return res.status(401).json({
@@ -304,10 +301,10 @@ export const addSongToPlaylist = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const removeSongFromPlaylist = async (req: AuthRequest, res: Response) => {
+export const removeSongFromPlaylist = async (req: Request, res: Response) => {
   try {
     const { id, songId } = req.params;
-    const userId = req.user?._id;
+    const userId = (req as any).user?._id;
 
     if (!userId) {
       return res.status(401).json({
@@ -365,11 +362,11 @@ export const removeSongFromPlaylist = async (req: AuthRequest, res: Response) =>
   }
 };
 
-export const reorderPlaylistSongs = async (req: AuthRequest, res: Response) => {
+export const reorderPlaylistSongs = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { songIds } = req.body;
-    const userId = req.user?._id;
+    const userId = (req as any).user?._id;
 
     if (!userId) {
       return res.status(401).json({
@@ -468,10 +465,10 @@ export const getPublicPlaylists = async (req: Request, res: Response) => {
   }
 };
 
-export const followPlaylist = async (req: AuthRequest, res: Response) => {
+export const followPlaylist = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = req.user?._id;
+    const userId = (req as any).user?._id;
 
     if (!userId) {
       return res.status(401).json({
@@ -538,10 +535,10 @@ export const followPlaylist = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const generateShareToken = async (req: AuthRequest, res: Response) => {
+export const generateShareToken = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = req.user?._id;
+    const userId = (req as any).user?._id;
 
     if (!userId) {
       return res.status(401).json({

@@ -53,5 +53,9 @@ export const authRateLimit = rateLimit({
   statusCode: STATUS_CODES.TOO_MANY_REQUESTS,
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true // Only count failed auth attempts
+  skipSuccessfulRequests: true, // Only count failed auth attempts
+  skip: (_req) => {
+    // Skip rate limiting in development for easier testing
+    return process.env.NODE_ENV === 'development';
+  }
 });

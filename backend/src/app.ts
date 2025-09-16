@@ -9,6 +9,7 @@ import userRoutes from './routes/userRoutes';
 import musicRoutes from './routes/musicRoutes';
 import playlistRoutes from './routes/playlistRoutes';
 import oauthRoutes from './routes/oauthRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 import { errorHandler } from './middleware/errorHandler';
 
 // Initialize OAuth strategies
@@ -24,6 +25,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/nrgflow')
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:3001', // Added for development when port 3000 is busy
   'https://www.yfhnrg.com',
   'https://yfhnrg.com',
   // Add your Vercel deployment URLs here
@@ -78,6 +80,7 @@ app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/music', musicRoutes);
 app.use('/api/playlists', playlistRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (_, res) => {

@@ -51,6 +51,7 @@ router.get('/shared/:token', getSharedPlaylist);
 // Protected routes - authentication required
 router.post('/', playlistRateLimit, auth, validateRequest(createPlaylistSchema), createPlaylist);
 router.get('/my', auth, getUserPlaylists);
+router.get('/user', auth, getUserPlaylists); // Alternative endpoint for frontend compatibility
 router.get('/:id', getPlaylist); // Can be public or private
 router.put('/:id', playlistRateLimit, auth, validateRequest(updatePlaylistSchema), updatePlaylist);
 router.delete('/:id', playlistRateLimit, auth, deletePlaylist);

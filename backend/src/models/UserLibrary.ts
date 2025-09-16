@@ -48,8 +48,7 @@ const userLibrarySchema = new Schema<IUserLibrary>({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   favoriteSongs: [{
     type: Schema.Types.ObjectId,

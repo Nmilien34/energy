@@ -11,7 +11,11 @@ import {
   removeFromFavorites,
   getFavorites,
   getRecentlyPlayed,
-  recordPlay
+  recordPlay,
+  getYouTubeEmbedUrl,
+  getAudioStreamWithFallback,
+  streamAudioProxy,
+  getQuotaStatus
 } from '../controllers/musicController';
 import { auth } from '../middleware/auth';
 import { validateRequest, validateQuery } from '../middleware/validation';
@@ -44,7 +48,13 @@ router.get('/recent', getRecentlyAdded);
 router.get('/popular', getPopularSongs);
 router.get('/song/:id', getSong);
 router.get('/song/:id/related', searchRateLimit, getRelatedSongs);
-router.get('/stream/:id', streamRateLimit, getAudioStream);
+router.get('/songs/:id/stream', streamRateLimit, getAudioStream); // Frontend compatible endpoint
+router.get('/stream/:id', streamRateLimit, getAudioStream); // Alternative endpoint
+
+// New audio streaming endpoints with fallbacks
+router.get('/song/:id/embed', streamRateLimit, getYouTubeEmbedUrl); // YouTube IFrame Player API
+router.get('/song/:id/stream-with-fallback', streamRateLimit, getAudioStreamWithFallback); // Audio stream with YouTube embed fallback
+router.get('/song/:id/proxy', streamRateLimit, streamAudioProxy); // Audio streaming proxy with CORS handling
 
 // User-specific routes - authentication required
 router.post('/favorites', auth, validateRequest(favoriteSchema), addToFavorites);
@@ -52,5 +62,8 @@ router.delete('/favorites/:songId', auth, removeFromFavorites);
 router.get('/favorites', auth, getFavorites);
 router.get('/recently-played', auth, getRecentlyPlayed);
 router.post('/play', validateRequest(recordPlaySchema), recordPlay); // Optional auth
+
+// Admin/monitoring routes
+router.get('/quota-status', getQuotaStatus); // Monitor YouTube API quota usage
 
 export default router;
