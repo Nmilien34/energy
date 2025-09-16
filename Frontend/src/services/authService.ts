@@ -85,11 +85,36 @@ class AuthService {
     try {
       const token = localStorage.getItem('token');
       if (!token) return null;
-      
+
       const response = await api.get<{ success: boolean; data: User }>('/api/auth/me');
       return response.data.success ? response.data.data : null;
     } catch (error) {
       return null;
+    }
+  }
+
+  // Google OAuth methods
+  initiateGoogleLogin(): void {
+    // Redirect to Google OAuth endpoint
+    window.location.href = `${api.defaults.baseURL}/api/auth/oauth/google`;
+  }
+
+  async handleOAuthCallback(token: string): Promise<User | null> {
+    try {
+      if (!token) {
+        throw new Error('No token received from OAuth callback');
+      }
+
+      // Store the token
+      localStorage.setItem('token', token);
+
+      // Fetch user data
+      const user = await this.getCurrentUser();
+      return user;
+    } catch (error: any) {
+      console.error('OAuth callback error:', error);
+      localStorage.removeItem('token');
+      throw new Error('Failed to complete Google login');
     }
   }
 }

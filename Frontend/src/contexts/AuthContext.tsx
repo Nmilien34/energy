@@ -8,6 +8,8 @@ interface AuthContextType {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<void>;
+  loginWithGoogle: () => void;
+  handleOAuthCallback: (token: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
@@ -77,14 +79,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogle = () => {
+    try {
+      setError(null);
+      authService.initiateGoogleLogin();
+    } catch (err: any) {
+      setError(err.message || 'Failed to initiate Google login');
+      throw err;
+    }
+  };
+
+  const handleOAuthCallback = async (token: string) => {
+    try {
+      setError(null);
+      setLoading(true);
+      const user = await authService.handleOAuthCallback(token);
+      if (user) {
+        setUser(user);
+      } else {
+        throw new Error('Failed to get user data after OAuth login');
+      }
+    } catch (err: any) {
+      console.error('OAuth callback error in context:', err);
+      setError(err.message || 'Failed to complete Google login');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await authService.logout();
       setUser(null);
       localStorage.removeItem('token');
+      localStorage.clear(); // Clear all localStorage data
+      sessionStorage.clear(); // Clear all sessionStorage data
+
+      // Navigate to home page
+      window.location.href = '/';
     } catch (err: any) {
       setError(err.message || 'Failed to logout');
-      throw err;
+      // Even if logout fails, clear local data and redirect
+      setUser(null);
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/';
     }
   };
 
@@ -98,6 +138,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error,
         login,
         register,
+        loginWithGoogle,
+        handleOAuthCallback,
         logout,
         clearError,
       }}

@@ -45,7 +45,7 @@ const Welcome: React.FC = () => {
           <p className="text-xl text-[var(--text-secondary)] mb-12 max-w-2xl mx-auto">
             Your all-in-one music platform for discovering, converting, and managing your music collection
           </p>
-          
+
           <div className="flex justify-center gap-6">
             <button
               onClick={() => setIsAuthModalOpen(true)}

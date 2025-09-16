@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User } from 'lucide-react';
+import { User, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface UserMenuProps {
   className?: string;
+  onNavigateToSettings?: () => void;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ className = '' }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ className = '', onNavigateToSettings }) => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -35,15 +36,26 @@ const UserMenu: React.FC<UserMenuProps> = ({ className = '' }) => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-[var(--bg-secondary)] border border-[var(--border-color)] py-1">
+        <div className="absolute right-0 bottom-full mb-2 w-48 rounded-md shadow-lg bg-zinc-800 border border-zinc-700 py-1">
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              onNavigateToSettings?.();
+            }}
+            className="flex items-center space-x-2 w-full text-left px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-700 transition-colors"
+          >
+            <Settings className="h-4 w-4" />
+            <span>Settings</span>
+          </button>
           <button
             onClick={() => {
               logout();
               setIsOpen(false);
             }}
-            className="block w-full text-left px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+            className="flex items-center space-x-2 w-full text-left px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-700 transition-colors"
           >
-            Logout
+            <LogOut className="h-4 w-4" />
+            <span>Log Out</span>
           </button>
         </div>
       )}

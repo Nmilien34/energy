@@ -40,27 +40,20 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
 
 
   const loadDashboardData = async () => {
-    console.log('🏠 Dashboard loading data for user:', user?.email);
     if (!user) {
-      console.log('❌ No user logged in, skipping dashboard data load');
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      console.log('📊 Starting dashboard data load...');
 
       // Load recently played with error handling
       try {
-        console.log('🕐 Fetching recently played...');
         const recentResponse = await musicService.getRecentlyPlayed(8);
-        console.log('📀 Recent response:', recentResponse);
         if (recentResponse.success && recentResponse.data && Array.isArray(recentResponse.data)) {
-          console.log(`✅ Loaded ${recentResponse.data.length} recently played songs`);
           setRecentlyPlayed(recentResponse.data);
         } else {
-          console.log('⚠️ No recently played data available');
           setRecentlyPlayed([]);
         }
       } catch (error) {
@@ -83,14 +76,10 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
 
       // Load trending music with error handling
       try {
-        console.log('🔥 Fetching trending songs...');
         const trendingResponse = await musicService.getTrendingSongs(20);
-        console.log('📊 Trending response:', trendingResponse);
         if (trendingResponse.success && trendingResponse.data && Array.isArray(trendingResponse.data.songs)) {
-          console.log(`✅ Loaded ${trendingResponse.data.songs.length} trending songs`);
           setTrendingSongs(trendingResponse.data.songs.slice(0, 8));
         } else {
-          console.log('⚠️ No trending songs data available');
           setTrendingSongs([]);
         }
       } catch (error) {

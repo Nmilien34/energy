@@ -1,15 +1,16 @@
 import React from 'react';
-import { Sun, Moon, Sunset } from 'lucide-react';
+import { Sun, Moon, Sunset, Monitor } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 const ThemeSwitcher: React.FC = () => {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, loading } = useTheme();
 
   return (
     <div className="flex items-center gap-2 bg-zinc-800/50 p-1 rounded-lg">
       <button
         onClick={() => setTheme('light')}
-        className={`p-2 rounded-md transition-colors ${
+        disabled={loading}
+        className={`p-2 rounded-md transition-colors disabled:opacity-50 ${
           theme === 'light'
             ? 'bg-white text-black'
             : 'text-zinc-400 hover:text-white'
@@ -20,7 +21,8 @@ const ThemeSwitcher: React.FC = () => {
       </button>
       <button
         onClick={() => setTheme('dim')}
-        className={`p-2 rounded-md transition-colors ${
+        disabled={loading}
+        className={`p-2 rounded-md transition-colors disabled:opacity-50 ${
           theme === 'dim'
             ? 'bg-zinc-700 text-white'
             : 'text-zinc-400 hover:text-white'
@@ -31,7 +33,8 @@ const ThemeSwitcher: React.FC = () => {
       </button>
       <button
         onClick={() => setTheme('dark')}
-        className={`p-2 rounded-md transition-colors ${
+        disabled={loading}
+        className={`p-2 rounded-md transition-colors disabled:opacity-50 ${
           theme === 'dark'
             ? 'bg-zinc-900 text-white'
             : 'text-zinc-400 hover:text-white'
@@ -39,6 +42,18 @@ const ThemeSwitcher: React.FC = () => {
         title="Dark mode"
       >
         <Moon className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => setTheme('system')}
+        disabled={loading}
+        className={`p-2 rounded-md transition-colors disabled:opacity-50 ${
+          theme === 'system'
+            ? 'bg-blue-600 text-white'
+            : 'text-zinc-400 hover:text-white'
+        }`}
+        title="System preference"
+      >
+        <Monitor className="h-4 w-4" />
       </button>
     </div>
   );
