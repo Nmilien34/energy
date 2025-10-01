@@ -44,25 +44,31 @@ const reorderSongsSchema = z.object({
   songIds: z.array(z.string().min(1))
 });
 
-// Public routes
+// Public routes (specific paths first)
 router.get('/public', getPublicPlaylists);
 router.get('/shared/:token', getSharedPlaylist);
 
 // Protected routes - authentication required
+// IMPORTANT: Specific routes MUST come before generic /:id routes to avoid conflicts
 router.post('/', playlistRateLimit, auth, validateRequest(createPlaylistSchema), createPlaylist);
 router.get('/my', auth, getUserPlaylists);
-router.get('/user', auth, getUserPlaylists); // Alternative endpoint for frontend compatibility
-router.get('/:id', getPlaylist); // Can be public or private
-router.put('/:id', playlistRateLimit, auth, validateRequest(updatePlaylistSchema), updatePlaylist);
-router.delete('/:id', playlistRateLimit, auth, deletePlaylist);
+router.get('/user', auth, getUserPlaylists);
 
-// Song management in playlists
+// Song management in playlists (specific routes before /:id)
 router.post('/:id/songs', playlistRateLimit, auth, validateRequest(addSongSchema), addSongToPlaylist);
 router.delete('/:id/songs/:songId', playlistRateLimit, auth, removeSongFromPlaylist);
 router.put('/:id/reorder', playlistRateLimit, auth, validateRequest(reorderSongsSchema), reorderPlaylistSongs);
 
-// Social features
+// Social features (specific routes before /:id)
 router.post('/:id/follow', auth, followPlaylist);
 router.post('/:id/share', auth, generateShareToken);
+
+// Generic playlist ID routes (MUST be after specific routes)
+router.get('/:id', getPlaylist); // Get specific playlist - can be public or private
+router.put('/:id', playlistRateLimit, auth, validateRequest(updatePlaylistSchema), updatePlaylist);
+router.delete('/:id', playlistRateLimit, auth, deletePlaylist);
+
+// Get user playlists (MUST be absolute last to avoid matching everything)
+router.get('/', auth, getUserPlaylists); // GET /api/playlists returns user's playlists
 
 export default router;

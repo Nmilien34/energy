@@ -8,10 +8,14 @@ import {
   VolumeX,
   Maximize2,
   X,
+  Heart,
+  ListPlus,
 } from 'lucide-react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import FallbackImage from './FallbackImage';
 import YouTubePlayer from './YouTubePlayer';
+import PlaylistPicker from './PlaylistPicker';
+import { musicService } from '../services/musicService';
 
 interface MiniPlayerProps {
   onExpand?: () => void;
@@ -32,6 +36,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
   } = useAudioPlayer();
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
   const youtubePlayerRef = useRef<HTMLDivElement>(null);
   const timeUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -179,6 +184,17 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleAddToFavorites = async () => {
+    if (!state.currentSong) return;
+    try {
+      await musicService.addToFavorites(state.currentSong.id);
+      // Could show success message here when backend is ready
+    } catch (err) {
+      console.warn('Add to favorites not available:', err);
+      // Silently fail for now since backend endpoint doesn't exist
+    }
+  };
+
   return (
     <div className={`fixed bottom-0 left-0 right-0 bg-zinc-800 border-t border-zinc-700 shadow-lg z-50 ${className}`}>
       {/* Progress Bar */}
@@ -287,6 +303,40 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
 
         {/* Action Buttons */}
         <div className="flex items-center space-x-2 ml-4">
+          <button
+            onClick={handleAddToFavorites}
+            className="p-1.5 hover:bg-zinc-700 rounded-full transition-colors"
+            title="Add to favorites"
+          >
+            <Heart className="h-4 w-4 text-zinc-400 hover:text-red-400" />
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowPlaylistPicker(!showPlaylistPicker)}
+              className="p-1.5 hover:bg-zinc-700 rounded-full transition-colors"
+              title="Add to playlist"
+            >
+              <ListPlus className="h-4 w-4 text-zinc-400 hover:text-white" />
+            </button>
+            {showPlaylistPicker && state.currentSong && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowPlaylistPicker(false)}
+                />
+                <PlaylistPicker
+                  song={state.currentSong}
+                  onClose={() => setShowPlaylistPicker(false)}
+                  onSuccess={() => {
+                    // Optional: Show a success message
+                  }}
+                  className="absolute right-0 bottom-full mb-2"
+                />
+              </>
+            )}
+          </div>
+
           {onExpand && (
             <button
               onClick={onExpand}

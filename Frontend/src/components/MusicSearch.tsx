@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Music, Clock, Eye, Plus, Play, Heart, MoreVertical } from 'lucide-react';
+import { Search, Music, Clock, Eye, Play, Heart, MoreVertical, ListPlus } from 'lucide-react';
 import { Song } from '../types/models';
 import { musicService } from '../services/musicService';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import FallbackImage from './FallbackImage';
+import PlaylistPicker from './PlaylistPicker';
 
 interface MusicSearchProps {
   onSongSelect?: (song: Song) => void;
@@ -176,6 +177,7 @@ const SongItem: React.FC<SongItemProps> = ({
   onAddToFavorites,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
 
   const formatDuration = (seconds: number | undefined | null) => {
     if (!seconds || isNaN(seconds)) return '0:00';
@@ -238,7 +240,7 @@ const SongItem: React.FC<SongItemProps> = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={onAddToFavorites}
           className="p-2 hover:bg-zinc-600 rounded-full transition-colors"
@@ -246,13 +248,31 @@ const SongItem: React.FC<SongItemProps> = ({
         >
           <Heart className="h-4 w-4 text-zinc-400 hover:text-red-400" />
         </button>
-        <button
-          onClick={onAddToQueue}
-          className="p-2 hover:bg-zinc-600 rounded-full transition-colors"
-          title="Add to queue"
-        >
-          <Plus className="h-4 w-4 text-zinc-400 hover:text-white" />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowPlaylistPicker(!showPlaylistPicker)}
+            className="p-2 hover:bg-zinc-600 rounded-full transition-colors"
+            title="Add to playlist"
+          >
+            <ListPlus className="h-4 w-4 text-zinc-400 hover:text-white" />
+          </button>
+          {showPlaylistPicker && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowPlaylistPicker(false)}
+              />
+              <PlaylistPicker
+                song={song}
+                onClose={() => setShowPlaylistPicker(false)}
+                onSuccess={() => {
+                  // Optional: Show a success message
+                }}
+                className="absolute right-0 top-full mt-2"
+              />
+            </>
+          )}
+        </div>
         <button
           onClick={() => setShowMenu(!showMenu)}
           className="p-2 hover:bg-zinc-600 rounded-full transition-colors relative"
