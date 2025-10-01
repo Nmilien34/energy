@@ -27,10 +27,58 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
     next,
     previous,
     setVolume,
+    updateCurrentTime,
+    updateDuration,
   } = useAudioPlayer();
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const youtubePlayerRef = useRef<HTMLDivElement>(null);
+  const timeUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Effect to update progress from YouTube player
+  useEffect(() => {
+    if (!state.youtubeMode?.isYoutube) {
+      // Clear interval if not in YouTube mode
+      if (timeUpdateIntervalRef.current) {
+        clearInterval(timeUpdateIntervalRef.current);
+        timeUpdateIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Start interval to update time from YouTube player
+    if (!timeUpdateIntervalRef.current) {
+      timeUpdateIntervalRef.current = setInterval(() => {
+        const wrapper = youtubePlayerRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
+        const container = youtubePlayerRef.current?.querySelector('[data-yt-container="true"]') as any;
+        const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
+
+        if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function' && typeof ytPlayer.getDuration === 'function') {
+          try {
+            const currentTime = ytPlayer.getCurrentTime();
+            const duration = ytPlayer.getDuration();
+
+            // Update context with current time and duration
+            if (duration > 0 && currentTime >= 0) {
+              updateCurrentTime(currentTime);
+              if (state.duration !== duration) {
+                updateDuration(duration);
+              }
+            }
+          } catch (err) {
+            // Ignore errors when player isn't ready
+          }
+        }
+      }, 250); // Update 4 times per second
+    }
+
+    return () => {
+      if (timeUpdateIntervalRef.current) {
+        clearInterval(timeUpdateIntervalRef.current);
+        timeUpdateIntervalRef.current = null;
+      }
+    };
+  }, [state.youtubeMode?.isYoutube, state.duration, updateCurrentTime, updateDuration]);
 
   // Effect to sync YouTube player with state
   useEffect(() => {

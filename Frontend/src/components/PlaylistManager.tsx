@@ -43,7 +43,9 @@ const PlaylistManager: React.FC<PlaylistManagerProps> = ({ onPlaylistSelect, cla
       setError(null);
       const response = await musicService.getUserPlaylists();
       if (response.success && response.data) {
-        setPlaylists(response.data);
+        // Ensure data is an array
+        const playlistsData = Array.isArray(response.data) ? response.data : [];
+        setPlaylists(playlistsData);
       } else {
         // Set empty playlists instead of error for missing backend
         setPlaylists([]);
@@ -94,7 +96,9 @@ const PlaylistManager: React.FC<PlaylistManagerProps> = ({ onPlaylistSelect, cla
     }
   };
 
-  const filteredPlaylists = playlists.filter(playlist =>
+  // Ensure playlists is always an array before filtering
+  const playlistsArray = Array.isArray(playlists) ? playlists : [];
+  const filteredPlaylists = playlistsArray.filter(playlist =>
     playlist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     playlist.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );

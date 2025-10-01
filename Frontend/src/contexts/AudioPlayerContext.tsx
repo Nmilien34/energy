@@ -18,6 +18,8 @@ interface AudioPlayerContextType {
   clearQueue: () => void;
   setQueue: (songs: Song[], startIndex?: number) => void;
   playPlaylist: (songs: Song[], startIndex?: number) => void;
+  updateCurrentTime: (time: number) => void;
+  updateDuration: (duration: number) => void;
 }
 
 type AudioPlayerAction =
@@ -498,6 +500,14 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     setQueue(shuffledSongs, startIndex);
   };
 
+  const updateCurrentTime = (time: number) => {
+    dispatch({ type: 'SET_CURRENT_TIME', payload: time });
+  };
+
+  const updateDuration = (duration: number) => {
+    dispatch({ type: 'SET_DURATION', payload: duration });
+  };
+
   const contextValue: AudioPlayerContextType = {
     state,
     play,
@@ -514,6 +524,8 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     clearQueue,
     setQueue,
     playPlaylist,
+    updateCurrentTime,
+    updateDuration,
   };
 
   return (
