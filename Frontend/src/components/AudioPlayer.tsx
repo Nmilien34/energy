@@ -37,7 +37,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
   } = useAudioPlayer();
 
   const [isMuted, setIsMuted] = useState(false);
-  const [previousVolume, setPreviousVolume] = useState(0.8);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isExpanded, setIsExpanded] = useState(variant === 'full');
   const [isFavorite, setIsFavorite] = useState(false);
@@ -83,16 +82,18 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
     }
   };
 
-  const handleMuteToggle = () => {
-    if (isMuted) {
-      setVolume(previousVolume);
-      setIsMuted(false);
-    } else {
-      setPreviousVolume(state.volume);
-      setVolume(0);
-      setIsMuted(true);
-    }
-  };
+  // Removed unused handleMuteToggle function
+  // Volume is now controlled directly through handleVolumeClick
+  // const handleMuteToggle = () => {
+  //   if (isMuted) {
+  //     setVolume(previousVolume);
+  //     setIsMuted(false);
+  //   } else {
+  //     setPreviousVolume(state.volume);
+  //     setVolume(0);
+  //     setIsMuted(true);
+  //   }
+  // };
 
   const handleRepeatToggle = () => {
     const modes: Array<'none' | 'one' | 'all'> = ['none', 'one', 'all'];

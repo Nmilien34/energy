@@ -208,6 +208,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       audio.removeEventListener('error', handleError);
       stopTimeUpdateInterval();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update current song when queue or index changes
@@ -220,6 +221,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       shouldAutoplayNextLoad.current = false;
       loadSong(currentSong, autoplay);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.queue, state.currentIndex]);
 
   // Update audio volume when state changes

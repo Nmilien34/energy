@@ -36,19 +36,36 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
   useEffect(() => {
     if (!state.youtubeMode?.isYoutube || !youtubePlayerRef.current) return;
 
-    // Wait a bit for DOM to be ready
-    const timeoutId = setTimeout(() => {
-      const container = youtubePlayerRef.current?.querySelector('div') as any;
-      const ytPlayer = container?._ytPlayer;
+    // Wait a bit for DOM to be ready and retry if player methods aren't available
+    const syncPlayer = (retryCount = 0) => {
+      // Try wrapper first, then container
+      const wrapper = youtubePlayerRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
+      const container = youtubePlayerRef.current?.querySelector('[data-yt-container="true"]') as any;
+      const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
 
-      console.log('YouTube sync effect:', {
+      console.log('YouTube sync effect (attempt', retryCount + 1, '):', {
         hasPlayer: !!ytPlayer,
+        hasPlayMethod: !!(ytPlayer?.playVideo),
+        hasPauseMethod: !!(ytPlayer?.pauseVideo),
+        hasGetStateMethod: !!(ytPlayer?.getPlayerState),
         isPlaying: state.isPlaying,
         youtubeId: state.youtubeMode?.youtubeId
       });
 
-      if (!ytPlayer || !ytPlayer.getPlayerState) {
-        console.log('YouTube player not ready yet');
+      if (!ytPlayer) {
+        console.log('YouTube player not found');
+        if (retryCount < 10) {
+          setTimeout(() => syncPlayer(retryCount + 1), 200);
+        }
+        return;
+      }
+
+      // Check if essential methods are available
+      if (!ytPlayer.getPlayerState || !ytPlayer.playVideo || !ytPlayer.pauseVideo) {
+        console.log('YouTube player methods not ready yet');
+        if (retryCount < 10) {
+          setTimeout(() => syncPlayer(retryCount + 1), 200);
+        }
         return;
       }
 
@@ -56,24 +73,42 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
         const playerState = ytPlayer.getPlayerState();
         console.log('Current YouTube player state:', playerState);
 
-        // Only sync if player is ready (state !== -1) and not unstarted (state !== 5)
-        if (playerState !== -1 && playerState !== 5) {
-          if (state.isPlaying && playerState !== 1) {
+        // Only sync if player is ready (state !== -1)
+        if (playerState !== -1) {
+          if (state.isPlaying && playerState !== 1) { // 1 = playing
             console.log('Starting YouTube playback');
-            // Ensure player is unmuted when user initiates play
-            ytPlayer.unMute?.();
-            ytPlayer.playVideo?.();
+            // Start playback first
+            if (typeof ytPlayer.playVideo === 'function') {
+              ytPlayer.playVideo();
+            }
+            // Unmute after starting (YouTube requires muted autoplay, but we unmute immediately after)
+            setTimeout(() => {
+              if (typeof ytPlayer.unMute === 'function') {
+                console.log('Unmuting YouTube player in sync effect');
+                ytPlayer.unMute();
+                if (typeof ytPlayer.setVolume === 'function') {
+                  ytPlayer.setVolume(100);
+                }
+              }
+            }, 100);
           } else if (!state.isPlaying && playerState === 1) {
             console.log('Pausing YouTube playback');
-            ytPlayer.pauseVideo?.();
+            if (typeof ytPlayer.pauseVideo === 'function') {
+              ytPlayer.pauseVideo();
+            }
+          }
+        } else {
+          console.log('Player not ready yet, state:', playerState);
+          if (retryCount < 5) {
+            setTimeout(() => syncPlayer(retryCount + 1), 500);
           }
         }
       } catch (error) {
         console.warn('Failed to sync YouTube player state:', error);
       }
-    }, 100);
+    };
 
-    return () => clearTimeout(timeoutId);
+    syncPlayer();
   }, [state.isPlaying, state.youtubeMode?.isYoutube, state.youtubeMode?.youtubeId]);
 
   if (!state.currentSong) return null;
@@ -226,30 +261,71 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
         </div>
       </div>
 
-      {/* Hidden YouTube Player for audio-only playback */}
+      {/* Visually hidden YouTube Player for audio-only playback */}
+      {/* Using visibility instead of display:none to allow audio playback */}
       {state.youtubeMode?.isYoutube && state.youtubeMode.youtubeId && (
-        <div className="hidden" ref={youtubePlayerRef}>
+        <div
+          ref={youtubePlayerRef}
+          style={{
+            position: 'absolute',
+            top: '-9999px',
+            left: '-9999px',
+            width: '1px',
+            height: '1px',
+            opacity: 0,
+            pointerEvents: 'none'
+          }}
+        >
           <YouTubePlayer
             videoId={state.youtubeMode.youtubeId}
-            autoplay={false} // We'll handle play/pause through sync effect
+            autoplay={state.isPlaying} // Auto-play if music should be playing
             width={1}
             height={1}
             onReady={() => {
               console.log('YouTube player ready in MiniPlayer, isPlaying:', state.isPlaying);
-              // Player is ready, sync with current state
-              if (state.isPlaying) {
-                console.log('Player is ready and should be playing, starting playback');
-                const container = youtubePlayerRef.current?.querySelector('div') as any;
-                const ytPlayer = container?._ytPlayer;
-                if (ytPlayer?.playVideo) {
-                  ytPlayer.unMute?.();
-                  ytPlayer.playVideo();
-                } else {
-                  console.warn('YouTube player methods not available');
+
+              // Wait a moment for methods to be fully available, then sync state
+              setTimeout(() => {
+                // Try wrapper first, then container
+                const wrapper = youtubePlayerRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
+                const container = youtubePlayerRef.current?.querySelector('[data-yt-container="true"]') as any;
+                const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
+
+                console.log('Player ready - checking methods:', {
+                  hasPlayer: !!ytPlayer,
+                  playVideo: typeof ytPlayer?.playVideo,
+                  pauseVideo: typeof ytPlayer?.pauseVideo,
+                  unMute: typeof ytPlayer?.unMute,
+                  getPlayerState: typeof ytPlayer?.getPlayerState
+                });
+
+                if (state.isPlaying && ytPlayer) {
+                  console.log('Player is ready and should be playing, starting playback');
+                  if (typeof ytPlayer.unMute === 'function') {
+                    ytPlayer.unMute();
+                  }
+                  if (typeof ytPlayer.playVideo === 'function') {
+                    ytPlayer.playVideo();
+                  }
                 }
-              }
+              }, 150);
             }}
             onPlay={() => {
+              console.log('YouTube player onPlay event fired');
+              // Unmute the player as soon as it starts playing
+              const wrapper = youtubePlayerRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
+              const container = youtubePlayerRef.current?.querySelector('[data-yt-container="true"]') as any;
+              const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
+
+              if (ytPlayer && typeof ytPlayer.unMute === 'function') {
+                console.log('Unmuting YouTube player');
+                ytPlayer.unMute();
+                // Also set volume to ensure it's audible
+                if (typeof ytPlayer.setVolume === 'function') {
+                  ytPlayer.setVolume(100);
+                }
+              }
+
               // Sync state when YouTube player starts playing
               if (!state.isPlaying) {
                 play();

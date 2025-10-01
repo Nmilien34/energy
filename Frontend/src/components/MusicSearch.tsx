@@ -72,22 +72,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
     }
   };
 
-  const formatDuration = (seconds: number | undefined | null) => {
-    if (!seconds || isNaN(seconds)) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatViewCount = (count: number | undefined | null) => {
-    if (!count || isNaN(count)) return '0';
-    if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M`;
-    } else if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}K`;
-    }
-    return count.toString();
-  };
+  // Removed duplicate utility functions - already defined in SearchResults component
 
   return (
     <div className={`relative ${className}`}>

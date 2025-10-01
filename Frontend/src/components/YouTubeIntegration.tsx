@@ -15,7 +15,6 @@ import {
   YouTubeProfile,
   YouTubePlaylist,
   YouTubeVideo,
-  Playlist,
 } from '../types/models';
 import { musicService } from '../services/musicService';
 
@@ -27,7 +26,6 @@ const YouTubeIntegration: React.FC<YouTubeIntegrationProps> = ({ className = '' 
   const [profile, setProfile] = useState<YouTubeProfile | null>(null);
   const [playlists, setPlaylists] = useState<YouTubePlaylist[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState<YouTubePlaylist | null>(null);
   const [playlistVideos, setPlaylistVideos] = useState<YouTubeVideo[]>([]);
@@ -35,6 +33,7 @@ const YouTubeIntegration: React.FC<YouTubeIntegrationProps> = ({ className = '' 
 
   useEffect(() => {
     checkConnectionStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkConnectionStatus = async () => {
@@ -129,15 +128,16 @@ const YouTubeIntegration: React.FC<YouTubeIntegrationProps> = ({ className = '' 
     }
   };
 
-  const handleSyncPlaylist = async (playlistId: string) => {
-    try {
-      await musicService.syncYouTubePlaylist(playlistId);
-      alert('Playlist synced successfully!');
-    } catch (err) {
-      console.warn('YouTube playlist sync not available:', err);
-      alert('Failed to sync playlist. Please try again.');
-    }
-  };
+  // Removed unused handleSyncPlaylist function
+  // const handleSyncPlaylist = async (playlistId: string) => {
+  //   try {
+  //     await musicService.syncYouTubePlaylist(playlistId);
+  //     alert('Playlist synced successfully!');
+  //   } catch (err) {
+  //     console.warn('YouTube playlist sync not available:', err);
+  //     alert('Failed to sync playlist. Please try again.');
+  //   }
+  // };
 
   if (loading) {
     return (
@@ -282,14 +282,7 @@ const YouTubeIntegration: React.FC<YouTubeIntegrationProps> = ({ className = '' 
         />
       )}
 
-      {error && (
-        <div className="mt-4 p-4 bg-red-900 bg-opacity-50 border border-red-500 rounded-lg">
-          <div className="flex items-center space-x-2 text-red-400">
-            <AlertCircle className="h-5 w-5" />
-            <span>{error}</span>
-          </div>
-        </div>
-      )}
+      {/* Error display removed - error state variable was removed */}
     </div>
   );
 };

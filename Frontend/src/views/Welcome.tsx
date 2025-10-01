@@ -5,12 +5,10 @@ import AuthModal from '../components/AuthModal';
 import ThemeSwitcher from '../components/ThemeSwitcher';
 import UserMenu from '../components/UserMenu';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 
 const Welcome: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { theme } = useTheme();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   return (

@@ -26,6 +26,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/nrgflow')
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001', // Added for development when port 3000 is busy
+  'http://localhost:3002', // Added for development when ports 3000/3001 are busy
   'https://www.yfhnrg.com',
   'https://yfhnrg.com',
   // Add your Vercel deployment URLs here

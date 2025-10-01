@@ -1,19 +1,10 @@
 import { Request, Response } from 'express';
-import { Song, ISong } from '../models/Song';
+import { Song } from '../models/Song';
 import { UserLibrary } from '../models/UserLibrary';
 import { youtubeService } from '../services/youtubeService';
-import { config } from '../utils/config';
 import { trendingService } from '../services/trendingService';
 import { audioService } from '../services/audioService';
-import { IUser } from '../models/User';
 import { Types } from 'mongoose';
-
-
-interface SearchQuery {
-  q: string;
-  limit?: number;
-  type?: 'song' | 'artist' | 'all';
-}
 
 export const searchMusic = async (req: Request, res: Response) => {
   try {

@@ -228,12 +228,16 @@ class YouTubeService {
    */
   async getAudioStream(videoId: string): Promise<AudioStreamInfo> {
     try {
+      console.log(`[AudioStream] Attempting to extract audio for video: ${videoId}`);
+
       // Try play-dl first (more reliable with recent YouTube updates)
       try {
+        console.log(`[AudioStream] Trying play-dl extraction...`);
         const playInfo = await playdl.video_info(`https://www.youtube.com/watch?v=${videoId}`);
         const audioStream = playInfo.format.find(f => (f as any).audio_codec && !(f as any).video_codec);
 
         if (audioStream) {
+          console.log(`[AudioStream] ✓ play-dl successful - Quality: ${audioStream.quality}, Container: ${(audioStream as any).container}`);
           return {
             url: audioStream.url || '',
             quality: audioStream.quality || 'medium',
@@ -241,13 +245,16 @@ class YouTubeService {
             audioEncoding: (audioStream as any).audio_codec || 'opus',
             expires: new Date(Date.now() + 6 * 60 * 60 * 1000)
           };
+        } else {
+          console.warn(`[AudioStream] play-dl found no audio-only format for ${videoId}`);
         }
-      } catch (playError) {
-        console.warn(`play-dl failed for ${videoId}, trying ytdl-core:`, playError);
+      } catch (playError: any) {
+        console.error(`[AudioStream] ✗ play-dl failed for ${videoId}:`, playError?.message || playError);
       }
 
       // Fallback to ytdl-core
       try {
+        console.log(`[AudioStream] Trying ytdl-core extraction...`);
         const info = await ytdl.getInfo(videoId, {
           requestOptions: {
             headers: {
@@ -266,6 +273,7 @@ class YouTubeService {
             return currentBitrate > bestBitrate ? current : best;
           });
 
+          console.log(`[AudioStream] ✓ ytdl-core successful - Quality: ${bestAudio.audioQuality}, Bitrate: ${bestAudio.audioBitrate}, Container: ${bestAudio.container}`);
           return {
             url: bestAudio.url,
             quality: bestAudio.audioQuality || 'medium',
@@ -273,22 +281,26 @@ class YouTubeService {
             audioEncoding: bestAudio.audioCodec || 'opus',
             expires: new Date(Date.now() + 6 * 60 * 60 * 1000) // 6 hours
           };
+        } else {
+          console.warn(`[AudioStream] ytdl-core found no audio-only formats for ${videoId}`);
         }
-      } catch (ytdlError) {
-        console.warn(`ytdl-core also failed for ${videoId}:`, ytdlError);
+      } catch (ytdlError: any) {
+        console.error(`[AudioStream] ✗ ytdl-core failed for ${videoId}:`, ytdlError?.message || ytdlError);
       }
 
       // Last resort: return YouTube embed URL as a fallback
-      console.warn(`All audio extraction methods failed for ${videoId}, using embed fallback`);
+      console.warn(`[AudioStream] ⚠ All audio extraction methods failed for ${videoId}, using YouTube IFrame embed fallback`);
+      console.log(`[AudioStream] Frontend should display this as a background video player (hidden by default, expandable on demand)`);
+
       // Don't set origin parameter to avoid CORS issues - let frontend handle it
       const params = [
-        'autoplay=1',
-        'mute=1', // comply with browser autoplay policies
+        'autoplay=0', // Don't autoplay initially, let frontend control
         'controls=0',
         'enablejsapi=1',
         'playsinline=1',
         'rel=0',
-        'modestbranding=1'
+        'modestbranding=1',
+        'iv_load_policy=3'
       ].join('&');
       return {
         url: `https://www.youtube.com/embed/${videoId}?${params}`,
@@ -297,8 +309,8 @@ class YouTubeService {
         audioEncoding: 'youtube_embed',
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
       };
-    } catch (error) {
-      console.error(`Error getting audio stream for ${videoId}:`, error);
+    } catch (error: any) {
+      console.error(`[AudioStream] Critical error getting audio stream for ${videoId}:`, error?.message || error);
       throw new Error('Failed to get audio stream');
     }
   }

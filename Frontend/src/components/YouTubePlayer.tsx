@@ -62,15 +62,31 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
 }) => {
   const playerRef = useRef<YouTubePlayerApi | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const currentVideoIdRef = useRef<string | null>(null);
   const [isAPIReady, setIsAPIReady] = useState(false);
 
   // Load YouTube API
   useEffect(() => {
-    if (window.YT && window.YT.Player) {
+    if (window.YT && window.YT.Player && window.YT.PlayerState) {
+      console.log('YouTube API already loaded');
       setIsAPIReady(true);
       return;
     }
 
+    // Check if script is already being loaded
+    const existingScript = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+    if (existingScript) {
+      console.log('YouTube API script already loading, waiting...');
+      // Script exists, just wait for the callback
+      window.onYouTubeIframeAPIReady = () => {
+        console.log('YouTube API ready callback fired');
+        setIsAPIReady(true);
+      };
+      return;
+    }
+
+    console.log('Loading YouTube API script...');
     // Load YouTube API script
     const script = document.createElement('script');
     script.src = 'https://www.youtube.com/iframe_api';
@@ -79,6 +95,7 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
 
     // Set global callback
     window.onYouTubeIframeAPIReady = () => {
+      console.log('YouTube API loaded and ready');
       setIsAPIReady(true);
     };
 
@@ -91,15 +108,22 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
 
   // Initialize player once when API is ready
   useEffect(() => {
-    if (!isAPIReady || !containerRef.current || !videoId) return;
-
-    // Avoid creating multiple players on the same container
-    if ((containerRef.current as any)._ytPlayer) {
+    const container = containerRef.current;
+    const wrapper = wrapperRef.current;
+    if (!isAPIReady || !container || !videoId) {
+      console.log('Player init skipped:', { isAPIReady, hasContainer: !!container, videoId });
       return;
     }
 
+    // Avoid creating multiple players on the same container
+    if ((container as any)._ytPlayer) {
+      console.log('Player already exists for container, skipping');
+      return;
+    }
+
+    console.log('Creating YouTube player for video:', videoId);
     try {
-      const player = new window.YT.Player(containerRef.current, {
+      new window.YT.Player(containerRef.current, {
         height,
         width,
         videoId,
@@ -121,23 +145,46 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         events: {
           onReady: (event: any) => {
             console.log('YouTube player onReady called for video:', videoId);
-            playerRef.current = event.target;
-            // Expose instance on container for external control
-            (containerRef.current as any)._ytPlayer = playerRef.current;
+            const playerInstance = event.target;
+            playerRef.current = playerInstance;
+            currentVideoIdRef.current = videoId; // Track the initial video
 
-            try {
-              // Set initial volume and mute state
-              if (autoplay) {
-                console.log('YouTube autoplay enabled, starting muted playback');
-                // YouTube requires muted autoplay
-                playerRef.current?.mute?.();
-                playerRef.current?.playVideo?.();
-              }
-            } catch (error) {
-              console.warn('Error in YouTube player onReady:', error);
+            // Expose instance on wrapper (parent) for external control since container gets replaced by iframe
+            if (wrapper) {
+              (wrapper as any)._ytPlayer = playerInstance;
+            }
+            // Also store on container in case it still exists
+            if (container) {
+              (container as any)._ytPlayer = playerInstance;
             }
 
-            onReady?.();
+            // Wait a moment for player methods to be fully available
+            setTimeout(() => {
+              try {
+                console.log('Player methods available:', {
+                  playVideo: typeof playerInstance.playVideo,
+                  pauseVideo: typeof playerInstance.pauseVideo,
+                  mute: typeof playerInstance.mute,
+                  unMute: typeof playerInstance.unMute
+                });
+
+                // Set initial volume and mute state
+                if (autoplay) {
+                  console.log('YouTube autoplay enabled, starting muted playback');
+                  // YouTube requires muted autoplay
+                  if (typeof playerInstance.mute === 'function') {
+                    playerInstance.mute();
+                  }
+                  if (typeof playerInstance.playVideo === 'function') {
+                    playerInstance.playVideo();
+                  }
+                }
+              } catch (error) {
+                console.warn('Error in YouTube player onReady:', error);
+              }
+
+              onReady?.();
+            }, 100);
           },
           onStateChange: (event: any) => {
             const state = event.data;
@@ -178,9 +225,12 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     }
 
     return () => {
-      // Clean up player reference
-      if (containerRef.current) {
-        (containerRef.current as any)._ytPlayer = null;
+      // Clean up player reference using the captured variables
+      if (container) {
+        (container as any)._ytPlayer = null;
+      }
+      if (wrapper) {
+        (wrapper as any)._ytPlayer = null;
       }
       if (playerRef.current) {
         try {
@@ -200,9 +250,15 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAPIReady]);
 
-  // When videoId or autoplay changes, cue or load the new video without recreating the player
+  // When videoId changes, cue or load the new video without recreating the player
   useEffect(() => {
     if (!playerRef.current || !videoId) return;
+
+    // Only switch videos if the videoId actually changed
+    if (currentVideoIdRef.current === videoId) {
+      console.log('Same video, not switching:', videoId);
+      return;
+    }
 
     const player = playerRef.current as any;
 
@@ -211,14 +267,20 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
       try {
         if (!player.getPlayerState || player.getPlayerState() === -1) {
           // Player not ready yet, skip this update
+          console.log('Skipping video update, player not ready');
           return;
         }
+
+        console.log('Switching to video:', videoId, 'autoplay:', autoplay);
+        currentVideoIdRef.current = videoId;
 
         // Ensure player is muted for autoplay compliance
         if (autoplay) {
           player.mute?.();
+          console.log('Loading and playing video:', videoId);
           player.loadVideoById?.({ videoId });
         } else {
+          console.log('Cueing video (not autoplaying):', videoId);
           player.cueVideoById?.({ videoId });
         }
       } catch (err) {
@@ -247,13 +309,14 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     } else {
       tryUpdateVideo();
     }
-  }, [videoId, autoplay]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoId]); // Only depend on videoId, not autoplay to prevent double-switching
 
   // No separate effect needed; we set _ytPlayer on onReady
 
   return (
-    <div className={className}>
-      <div ref={containerRef} />
+    <div className={className} ref={wrapperRef} data-yt-wrapper="true">
+      <div ref={containerRef} data-yt-container="true" />
     </div>
   );
 };
