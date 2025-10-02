@@ -67,6 +67,7 @@ const corsOptions = {
 };
 
 // Middleware
+app.set('trust proxy', 1); // Trust first proxy (for Render, Heroku, etc.)
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
