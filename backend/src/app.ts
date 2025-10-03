@@ -17,10 +17,16 @@ import './controllers/oauthController';
 
 const app = express();
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/nrgflow')
+// Connect to MongoDB with timeout options
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/nrgflow', {
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of hanging
+  socketTimeoutMS: 45000,
+})
   .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    console.error('MONGODB_URI exists:', !!process.env.MONGODB_URI);
+  });
 
 // CORS configuration
 const allowedOrigins = [
