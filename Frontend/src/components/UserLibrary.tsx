@@ -45,7 +45,12 @@ const UserLibrary: React.FC<UserLibraryProps> = ({ className = '' }) => {
       setError(null);
       const response = await musicService.getUserLibrary();
       if (response.success && response.data) {
-        setLibrary(response.data);
+        // Ensure all required fields exist with defaults
+        setLibrary({
+          favorites: response.data.favorites || [],
+          recentlyPlayed: response.data.recentlyPlayed || [],
+          playlists: response.data.playlists || []
+        });
       } else {
         // Set empty library instead of error for missing backend
         setLibrary({
@@ -213,7 +218,7 @@ const UserLibrary: React.FC<UserLibraryProps> = ({ className = '' }) => {
                 <Heart className="h-4 w-4" />
                 <span>Favorites</span>
                 <span className="bg-zinc-700 text-xs px-2 py-1 rounded-full">
-                  {library.favorites.length}
+                  {library.favorites?.length || 0}
                 </span>
               </div>
             </button>
@@ -229,7 +234,7 @@ const UserLibrary: React.FC<UserLibraryProps> = ({ className = '' }) => {
                 <Clock className="h-4 w-4" />
                 <span>Recently Played</span>
                 <span className="bg-zinc-700 text-xs px-2 py-1 rounded-full">
-                  {library.recentlyPlayed.length}
+                  {library.recentlyPlayed?.length || 0}
                 </span>
               </div>
             </button>
