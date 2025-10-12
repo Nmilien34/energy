@@ -200,9 +200,27 @@ export const getUserLibrary = async (req: Request, res: Response) => {
         .populate('listeningHistory.song');
     }
 
+    // Transform library data to match frontend expectations
+    if (!library) {
+      return res.json({
+        success: true,
+        data: {
+          favorites: [],
+          recentlyPlayed: [],
+          playlists: []
+        }
+      });
+    }
+
+    const transformedLibrary = {
+      favorites: library.favoriteSongs || [],
+      recentlyPlayed: (library.recentlyPlayed || []).map((item: any) => item.song).filter(Boolean),
+      playlists: library.favoritePlaylists || []
+    };
+
     res.json({
       success: true,
-      data: { library }
+      data: transformedLibrary
     });
 
   } catch (error) {
