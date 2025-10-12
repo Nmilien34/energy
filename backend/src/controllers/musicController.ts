@@ -1,10 +1,18 @@
 import { Request, Response } from 'express';
-import { Song } from '../models/Song';
+import { Song, ISong } from '../models/Song';
 import { UserLibrary } from '../models/UserLibrary';
 import { youtubeService } from '../services/youtubeService';
 import { trendingService } from '../services/trendingService';
 import { audioService } from '../services/audioService';
+import { IUser } from '../models/User';
 import { Types } from 'mongoose';
+
+
+interface SearchQuery {
+  q: string;
+  limit?: number;
+  type?: 'song' | 'artist' | 'all';
+}
 
 export const searchMusic = async (req: Request, res: Response) => {
   try {
@@ -283,21 +291,13 @@ export const getAudioStream = async (req: Request, res: Response) => {
     }
 
     // Map to frontend expected shape
-    const isEmbed = (audioResponse.format as any) === 'embed';
-    let audioUrl = audioResponse.url;
-    if (isEmbed) {
-      // Don't modify the URL if it's already an embed - let the frontend handle origin
-      // The YouTube service already provides a proper embed URL
-      audioUrl = audioResponse.url;
-    }
-
     res.json({
       success: true,
       data: {
-        audioUrl,
+        audioUrl: audioResponse.url,
         expiresAt: audioResponse.expires?.toISOString?.() || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         format: audioResponse.format as any,
-        isEmbed,
+        isEmbed: (audioResponse.format as any) === 'embed',
         youtubeId
       }
     });
@@ -699,7 +699,7 @@ export const getYouTubeEmbedUrl = async (req: Request, res: Response) => {
     }
 
     // Generate YouTube embed URL with proper parameters
-    const embedUrl = `https://www.youtube.com/embed/${youtubeId}?autoplay=0&controls=1&modestbranding=1&rel=0&showinfo=0&enablejsapi=1`;
+    const embedUrl = `https://www.youtube.com/embed/${youtubeId}?autoplay=0&controls=1&modestbranding=1&rel=0&showinfo=0&enablejsapi=1&origin=${encodeURIComponent(process.env.FRONTEND_URL || 'http://localhost:3000')}`;
 
     // Increment play count
     await song.incrementPlayCount();

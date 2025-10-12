@@ -74,10 +74,7 @@ export const getUserPlaylists = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: {
-        playlists,
-        total: playlists.length
-      }
+      data: playlists
     });
   } catch (error) {
     console.error('Get user playlists error:', error);
