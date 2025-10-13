@@ -87,6 +87,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/music', musicRoutes);
+// Debug: Log all requests to playlists routes
+app.use('/api/playlists', (req, res, next) => {
+  console.log(`📨 Playlist Route: ${req.method} ${req.path}`);
+  next();
+});
+
 app.use('/api/playlists', playlistRoutes);
 app.use('/api/settings', settingsRoutes);
 

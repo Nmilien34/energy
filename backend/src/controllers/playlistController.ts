@@ -271,7 +271,18 @@ export const addSongToPlaylist = async (req: Request, res: Response) => {
       });
     }
 
-    const song = await Song.findOne({ youtubeId: songId });
+    // Try to find song by youtubeId first, then by _id if it looks like an ObjectId
+    let song;
+    if (Types.ObjectId.isValid(songId)) {
+      // Try finding by MongoDB _id first
+      song = await Song.findById(songId);
+    }
+
+    // If not found by _id, try by youtubeId
+    if (!song) {
+      song = await Song.findOne({ youtubeId: songId });
+    }
+
     if (!song) {
       return res.status(404).json({
         success: false,
@@ -280,6 +291,12 @@ export const addSongToPlaylist = async (req: Request, res: Response) => {
     }
 
     await playlist.addSong(song._id as Types.ObjectId);
+
+    // Update playlist thumbnail to use the last added song's thumbnail
+    if (song.thumbnail) {
+      playlist.thumbnail = song.thumbnail;
+      await playlist.save();
+    }
 
     res.json({
       success: true,
@@ -341,6 +358,21 @@ export const removeSongFromPlaylist = async (req: Request, res: Response) => {
     }
 
     await playlist.removeSong(song._id as Types.ObjectId);
+
+    // Update playlist thumbnail to the last song if songs remain
+    await playlist.populate('songs');
+    const songs = playlist.songs as any[];
+    if (songs.length > 0) {
+      const lastSong = songs[songs.length - 1];
+      if (lastSong.thumbnail) {
+        playlist.thumbnail = lastSong.thumbnail;
+        await playlist.save();
+      }
+    } else {
+      // No songs left, clear the thumbnail
+      playlist.thumbnail = undefined;
+      await playlist.save();
+    }
 
     res.json({
       success: true,

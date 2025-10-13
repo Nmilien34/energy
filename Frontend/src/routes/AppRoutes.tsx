@@ -3,12 +3,14 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Welcome from '../views/Welcome';
 import MusicPlatform from '../views/MusicPlatform';
+import PlaylistDetail from '../components/PlaylistDetail';
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<Welcome />} />
       <Route path="/platform" element={<MusicPlatform />} />
+      <Route path="/playlist/:id" element={<PlaylistDetail />} />
       <Route path="/auth/success" element={<AuthSuccess />} />
     </Routes>
   );

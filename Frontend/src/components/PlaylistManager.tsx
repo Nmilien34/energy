@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
   Music,
-  Clock,
   Play,
   MoreVertical,
   Edit,
   Trash2,
   Share,
   Eye,
-  EyeOff,
-  Users,
 } from 'lucide-react';
 import { Playlist, CreatePlaylistRequest, Song } from '../types/models';
 import { musicService } from '../services/musicService';
@@ -23,6 +21,7 @@ interface PlaylistManagerProps {
 }
 
 const PlaylistManager: React.FC<PlaylistManagerProps> = ({ onPlaylistSelect, className = '' }) => {
+  const navigate = useNavigate();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,17 +41,20 @@ const PlaylistManager: React.FC<PlaylistManagerProps> = ({ onPlaylistSelect, cla
       setLoading(true);
       setError(null);
       const response = await musicService.getUserPlaylists();
+      console.log('📋 Playlists response:', response);
+
       if (response.success && response.data) {
         // Ensure data is an array
         const playlistsData = Array.isArray(response.data) ? response.data : [];
+        console.log('✅ Loaded playlists:', playlistsData.length, 'playlists');
+        console.log('Playlists data:', playlistsData);
         setPlaylists(playlistsData);
       } else {
-        // Set empty playlists instead of error for missing backend
+        console.warn('⚠️ No playlist data in response');
         setPlaylists([]);
       }
     } catch (err) {
-      console.warn('User playlists not available:', err);
-      // Set empty playlists instead of showing error
+      console.error('❌ Error loading playlists:', err);
       setPlaylists([]);
     } finally {
       setLoading(false);
@@ -63,13 +65,20 @@ const PlaylistManager: React.FC<PlaylistManagerProps> = ({ onPlaylistSelect, cla
     try {
       const response = await musicService.createPlaylist(data);
       if (response.success && response.data) {
+        // Add the new playlist to the top of the list
         setPlaylists([response.data, ...playlists]);
         setShowCreateModal(false);
+
+        // Show success message
+        console.log('✅ Playlist created successfully:', response.data.name);
+
+        // Optionally reload to ensure we have the latest data
+        setTimeout(() => loadUserPlaylists(), 500);
       } else {
         throw new Error(response.error || 'Failed to create playlist');
       }
     } catch (err) {
-      console.warn('Playlist creation not available:', err);
+      console.error('Playlist creation error:', err);
       alert('Failed to create playlist. Please try again.');
     }
   };
@@ -102,6 +111,14 @@ const PlaylistManager: React.FC<PlaylistManagerProps> = ({ onPlaylistSelect, cla
     playlist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     playlist.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  console.log('🔍 Render state:', {
+    loading,
+    error,
+    totalPlaylists: playlistsArray.length,
+    filteredPlaylists: filteredPlaylists.length,
+    searchQuery
+  });
 
   if (loading) {
     return (
@@ -186,7 +203,7 @@ const PlaylistManager: React.FC<PlaylistManagerProps> = ({ onPlaylistSelect, cla
 
       {/* Playlists Grid */}
       {!loading && !error && filteredPlaylists.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
           {filteredPlaylists.map((playlist) => (
             <PlaylistCard
               key={playlist.id}
@@ -197,7 +214,7 @@ const PlaylistManager: React.FC<PlaylistManagerProps> = ({ onPlaylistSelect, cla
                 setShowPlaylistModal(true);
               }}
               onDelete={() => handleDeletePlaylist(playlist.id)}
-              onSelect={() => onPlaylistSelect?.(playlist)}
+              onSelect={() => navigate(`/playlist/${playlist.id}`)}
             />
           ))}
         </div>
@@ -246,31 +263,20 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
 }) => {
   const [showMenu, setShowMenu] = useState(false);
 
-  const formatDuration = (songs: Song[]) => {
-    const totalSeconds = songs.reduce((acc, song) => acc + song.duration, 0);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m`;
-  };
-
   return (
-    <div className="bg-zinc-800 rounded-lg p-4 hover:bg-zinc-750 transition-colors group cursor-pointer">
+    <div className="bg-zinc-800 rounded-lg p-2.5 hover:bg-zinc-750 transition-colors group cursor-pointer w-full max-w-[200px] mx-auto">
       <div onClick={onSelect}>
         {/* Playlist Thumbnail */}
-        <div className="relative mb-4">
+        <div className="relative mb-2">
           {playlist.thumbnail ? (
             <img
               src={playlist.thumbnail}
               alt={playlist.name}
-              className="w-full aspect-square rounded-lg object-cover"
+              className="w-full aspect-square rounded-md object-cover"
             />
           ) : (
-            <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-              <Music className="h-12 w-12 text-white" />
+            <div className="w-full aspect-square rounded-md bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+              <Music className="h-7 w-7 text-white" />
             </div>
           )}
 
@@ -280,25 +286,37 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
               e.stopPropagation();
               onPlay();
             }}
-            className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute inset-0 bg-black bg-opacity-50 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
           >
-            <Play className="h-12 w-12 text-white fill-white" />
+            <Play className="h-7 w-7 text-white fill-white" />
           </button>
         </div>
 
         {/* Playlist Info */}
-        <div className="space-y-2">
-          <div className="flex items-start justify-between">
-            <h3 className="font-semibold text-white truncate flex-1 mr-2">{playlist.name}</h3>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-              className="p-1 hover:bg-zinc-700 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-            >
-              <MoreVertical className="h-4 w-4 text-zinc-400" />
-            </button>
+        <div className="space-y-1">
+          <div className="flex items-start justify-between gap-1">
+            <h3 className="text-xs font-semibold text-white truncate flex-1 leading-tight">{playlist.name}</h3>
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="p-0.5 hover:bg-red-600 rounded transition-colors"
+                title="Delete playlist"
+              >
+                <Trash2 className="h-3 w-3 text-red-400 hover:text-white" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
+                className="p-0.5 hover:bg-zinc-700 rounded transition-colors"
+              >
+                <MoreVertical className="h-3 w-3 text-zinc-400" />
+              </button>
+            </div>
 
             {/* Context Menu */}
             {showMenu && (
@@ -359,37 +377,17 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({
           </div>
 
           {playlist.description && (
-            <p className="text-sm text-zinc-400 line-clamp-2">{playlist.description}</p>
+            <p className="text-xs text-zinc-400 line-clamp-1">{playlist.description}</p>
           )}
 
-          <div className="flex items-center space-x-4 text-xs text-zinc-500">
-            <span className="flex items-center">
-              <Music className="h-3 w-3 mr-1" />
-              {playlist.songs.length} songs
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <span className="flex items-center gap-0.5">
+              <Music className="h-3 w-3" />
+              {playlist.songs.length}
             </span>
-            {playlist.songs.length > 0 && (
-              <span className="flex items-center">
-                <Clock className="h-3 w-3 mr-1" />
-                {formatDuration(playlist.songs)}
-              </span>
-            )}
-            <span className="flex items-center">
-              {playlist.isPublic ? (
-                <>
-                  <Eye className="h-3 w-3 mr-1" />
-                  Public
-                </>
-              ) : (
-                <>
-                  <EyeOff className="h-3 w-3 mr-1" />
-                  Private
-                </>
-              )}
-            </span>
-            {playlist.isCollaborative && (
-              <span className="flex items-center">
-                <Users className="h-3 w-3 mr-1" />
-                Collaborative
+            {playlist.isPublic && (
+              <span className="flex items-center gap-0.5">
+                <Eye className="h-3 w-3" />
               </span>
             )}
           </div>
@@ -515,7 +513,7 @@ interface PlaylistDetailModalProps {
   onUpdate: (playlist: Playlist) => void;
 }
 
-const PlaylistDetailModal: React.FC<PlaylistDetailModalProps> = ({ playlist, onClose, onUpdate }) => {
+const PlaylistDetailModal: React.FC<PlaylistDetailModalProps> = ({ playlist, onClose }) => {
   // This will be implemented as a detailed playlist view/editor
   // For now, just close the modal
   return (

@@ -391,7 +391,7 @@ interface SongGridProps {
 
 const SongGrid: React.FC<SongGridProps> = ({ songs, onPlay, onAddToQueue, onRemoveFromFavorites }) => {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
       {songs.map((song) => (
         <SongCard
           key={song.id}
@@ -440,8 +440,8 @@ const SongCard: React.FC<SongCardProps> = ({ song, onPlay, onAddToQueue, onRemov
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <div className="bg-zinc-800 rounded-lg p-4 hover:bg-zinc-750 transition-colors group">
-      <div className="relative mb-3">
+    <div className="bg-zinc-800 rounded-lg p-2.5 hover:bg-zinc-750 transition-colors group w-full max-w-[200px] mx-auto">
+      <div className="relative mb-2">
         <img
           src={song.thumbnail}
           alt={song.title}
@@ -451,19 +451,19 @@ const SongCard: React.FC<SongCardProps> = ({ song, onPlay, onAddToQueue, onRemov
           onClick={onPlay}
           className="absolute inset-0 bg-black bg-opacity-50 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <Play className="h-8 w-8 text-white fill-white" />
+          <Play className="h-7 w-7 text-white fill-white" />
         </button>
       </div>
 
       <div className="space-y-1">
-        <h4 className="font-medium text-white truncate text-sm">{song.title}</h4>
+        <h4 className="text-xs font-semibold text-white truncate leading-tight">{song.title}</h4>
         <p className="text-zinc-400 truncate text-xs">{song.artist}</p>
         <div className="flex items-center justify-between text-xs text-zinc-500">
           <span>{musicService.formatDuration(song.duration)}</span>
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-1 hover:bg-zinc-700 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+              className="p-0.5 hover:bg-zinc-700 rounded transition-colors opacity-0 group-hover:opacity-100"
             >
               <MoreVertical className="h-3 w-3" />
             </button>

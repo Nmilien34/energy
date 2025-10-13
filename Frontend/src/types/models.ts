@@ -67,12 +67,12 @@ export interface Playlist {
   name: string;
   description?: string;
   thumbnail?: string;
-  owner: User;
+  owner: User | string; // Can be a User object or just an ID
   songs: Song[];
   isPublic: boolean;
   isCollaborative: boolean;
-  collaborators: User[];
-  followers: User[];
+  collaborators: (User | string)[]; // Can be User objects or IDs
+  followers: (User | string)[]; // Can be User objects or IDs
   tags: string[];
   playCount: number;
   lastPlayed?: string;

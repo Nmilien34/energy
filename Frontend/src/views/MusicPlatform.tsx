@@ -18,23 +18,18 @@ import MusicSearch from '../components/MusicSearch';
 import UserLibrary from '../components/UserLibrary';
 import PlaylistManager from '../components/PlaylistManager';
 import YouTubeIntegration from '../components/YouTubeIntegration';
-import AudioPlayer from '../components/AudioPlayer';
-import MiniPlayer from '../components/MiniPlayer';
 import Settings from '../components/Settings';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
-import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 
 type ActiveView = 'dashboard' | 'search' | 'library' | 'playlists' | 'youtube' | 'settings';
 
 const MusicPlatform: React.FC = () => {
   const { user } = useAuth();
-  const { state } = useAudioPlayer();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showFullPlayer, setShowFullPlayer] = useState(false);
 
   const sidebarItems = [
     { id: 'dashboard' as ActiveView, icon: Home, label: 'Home', requiresAuth: false },
@@ -182,23 +177,6 @@ const MusicPlatform: React.FC = () => {
             {renderActiveView()}
           </ErrorBoundary>
         </div>
-
-        {/* Audio Player */}
-        {state.currentSong && (
-          <>
-            {showFullPlayer ? (
-              <AudioPlayer
-                variant="full"
-                className="border-t border-zinc-700"
-              />
-            ) : (
-              <MiniPlayer
-                onExpand={() => setShowFullPlayer(true)}
-                onClose={() => setShowFullPlayer(false)}
-              />
-            )}
-          </>
-        )}
       </main>
 
       {/* Sidebar Overlay for Mobile */}

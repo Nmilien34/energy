@@ -55,7 +55,34 @@ router.get('/my', auth, getUserPlaylists);
 router.get('/user', auth, getUserPlaylists);
 
 // Song management in playlists (specific routes before /:id)
-router.post('/:id/songs', playlistRateLimit, auth, validateRequest(addSongSchema), addSongToPlaylist);
+router.post('/:id/songs',
+  (req, res, next) => {
+    console.log('🎯 Matched route /:id/songs');
+    console.log('  Playlist ID:', req.params.id);
+    console.log('  Body:', req.body);
+    next();
+  },
+  (req, res, next) => {
+    console.log('✅ Passed rate limit');
+    next();
+  },
+  playlistRateLimit,
+  (req, res, next) => {
+    console.log('✅ Passed auth');
+    next();
+  },
+  auth,
+  (req, res, next) => {
+    console.log('✅ About to validate');
+    next();
+  },
+  validateRequest(addSongSchema),
+  (req, res, next) => {
+    console.log('✅ Passed validation, calling controller');
+    next();
+  },
+  addSongToPlaylist
+);
 router.delete('/:id/songs/:songId', playlistRateLimit, auth, removeSongFromPlaylist);
 router.put('/:id/reorder', playlistRateLimit, auth, validateRequest(reorderSongsSchema), reorderPlaylistSongs);
 

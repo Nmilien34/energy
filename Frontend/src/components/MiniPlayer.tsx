@@ -7,9 +7,13 @@ import {
   Volume2,
   VolumeX,
   Maximize2,
+  Minimize2,
   X,
   Heart,
   ListPlus,
+  Shuffle,
+  Repeat,
+  Repeat1,
 } from 'lucide-react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import FallbackImage from './FallbackImage';
@@ -19,11 +23,13 @@ import { musicService } from '../services/musicService';
 
 interface MiniPlayerProps {
   onExpand?: () => void;
+  onCollapse?: () => void;
   onClose?: () => void;
+  isExpanded?: boolean;
   className?: string;
 }
 
-const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = '' }) => {
+const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, isExpanded = false, className = '' }) => {
   const {
     state,
     play,
@@ -31,6 +37,8 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
     next,
     previous,
     setVolume,
+    toggleShuffle,
+    setRepeatMode,
     updateCurrentTime,
     updateDuration,
   } = useAudioPlayer();
@@ -195,8 +203,204 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
     }
   };
 
+  const handleRepeatToggle = () => {
+    const modes: Array<'none' | 'one' | 'all'> = ['none', 'one', 'all'];
+    const currentIndex = modes.indexOf(state.repeatMode);
+    const nextMode = modes[(currentIndex + 1) % modes.length];
+    setRepeatMode(nextMode);
+  };
+
   return (
-    <div className={`fixed bottom-0 left-0 right-0 bg-zinc-800 border-t border-zinc-700 shadow-lg z-50 ${className}`}>
+    <>
+      {/* Fullscreen overlay view */}
+      {isExpanded && (
+        <div className="fixed inset-0 bg-zinc-900 z-50 flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-zinc-800">
+            <h2 className="text-lg font-semibold text-white">Now Playing</h2>
+            <button
+              onClick={onCollapse}
+              className="p-2 hover:bg-zinc-800 rounded-full transition-colors"
+            >
+              <Minimize2 className="h-6 w-6 text-zinc-400 hover:text-white" />
+            </button>
+          </div>
+
+          {/* Main Content - Centered Album Art */}
+          <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8">
+            {/* Large Album Cover */}
+            <div className="w-full max-w-md aspect-square">
+              <FallbackImage
+                src={state.currentSong.thumbnailHd || state.currentSong.thumbnail}
+                alt={state.currentSong.title}
+                className="w-full h-full rounded-2xl object-cover shadow-2xl"
+              />
+            </div>
+
+            {/* Song Info */}
+            <div className="text-center space-y-2 max-w-md">
+              <h1 className="text-3xl font-bold text-white">{state.currentSong.title}</h1>
+              <p className="text-xl text-zinc-400">{state.currentSong.artist}</p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full max-w-md space-y-2">
+              <div className="w-full h-2 bg-zinc-800 rounded-full cursor-pointer">
+                <div
+                  className="h-full bg-blue-500 rounded-full transition-all"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-sm text-zinc-400">
+                <span>{formatTime(state.currentTime)}</span>
+                <span>{formatTime(state.duration)}</span>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center justify-center space-x-8">
+              {/* Shuffle */}
+              <button
+                onClick={toggleShuffle}
+                className={`p-3 rounded-full transition-colors ${
+                  state.isShuffled
+                    ? 'bg-blue-600 text-white'
+                    : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Shuffle className="h-5 w-5" />
+              </button>
+
+              {/* Previous */}
+              <button
+                onClick={previous}
+                className="p-3 hover:bg-zinc-800 rounded-full transition-colors"
+                disabled={state.queue.length <= 1}
+              >
+                <SkipBack className="h-7 w-7 text-zinc-400 hover:text-white" />
+              </button>
+
+              {/* Play/Pause */}
+              <button
+                onClick={handlePlayPause}
+                className="p-6 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
+                disabled={state.isLoading}
+              >
+                {state.isLoading ? (
+                  <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : state.isPlaying ? (
+                  <Pause className="h-8 w-8 text-white" />
+                ) : (
+                  <Play className="h-8 w-8 text-white fill-white" />
+                )}
+              </button>
+
+              {/* Next */}
+              <button
+                onClick={next}
+                className="p-3 hover:bg-zinc-800 rounded-full transition-colors"
+                disabled={state.queue.length <= 1}
+              >
+                <SkipForward className="h-7 w-7 text-zinc-400 hover:text-white" />
+              </button>
+
+              {/* Repeat */}
+              <button
+                onClick={handleRepeatToggle}
+                className={`p-3 rounded-full transition-colors ${
+                  state.repeatMode !== 'none'
+                    ? 'bg-blue-600 text-white'
+                    : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                {state.repeatMode === 'one' ? (
+                  <Repeat1 className="h-5 w-5" />
+                ) : (
+                  <Repeat className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleAddToFavorites}
+                className="p-3 hover:bg-zinc-800 rounded-full transition-colors"
+                title="Add to favorites"
+              >
+                <Heart className="h-6 w-6 text-zinc-400 hover:text-red-400" />
+              </button>
+
+              <div className="relative">
+                <button
+                  onClick={() => setShowPlaylistPicker(!showPlaylistPicker)}
+                  className="p-3 hover:bg-zinc-800 rounded-full transition-colors"
+                  title="Add to playlist"
+                >
+                  <ListPlus className="h-6 w-6 text-zinc-400 hover:text-white" />
+                </button>
+                {showPlaylistPicker && state.currentSong && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowPlaylistPicker(false)}
+                    />
+                    <PlaylistPicker
+                      song={state.currentSong}
+                      onClose={() => setShowPlaylistPicker(false)}
+                      onSuccess={() => {
+                        // Optional: Show a success message
+                      }}
+                      className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2"
+                    />
+                  </>
+                )}
+              </div>
+
+              <div className="relative">
+                <button
+                  onClick={() => setShowVolumeSlider(!showVolumeSlider)}
+                  className="p-3 hover:bg-zinc-800 rounded-full transition-colors"
+                >
+                  {state.volume === 0 ? (
+                    <VolumeX className="h-6 w-6 text-zinc-400 hover:text-white" />
+                  ) : (
+                    <Volume2 className="h-6 w-6 text-zinc-400 hover:text-white" />
+                  )}
+                </button>
+
+                {showVolumeSlider && (
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-zinc-800 rounded-lg p-3 shadow-lg"
+                    onMouseLeave={() => setShowVolumeSlider(false)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <VolumeX className="h-4 w-4 text-zinc-400" />
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={state.volume}
+                        onChange={(e) => setVolume(parseFloat(e.target.value))}
+                        className="w-24 accent-blue-500"
+                      />
+                      <Volume2 className="h-4 w-4 text-zinc-400" />
+                    </div>
+                    <div className="text-xs text-zinc-400 text-center mt-1">
+                      {Math.round(state.volume * 100)}%
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mini player view (bottom bar) - hidden when expanded */}
+      {!isExpanded && (
+        <div className={`fixed bottom-0 left-0 right-0 bg-zinc-800 border-t border-zinc-700 shadow-lg z-50 ${className}`}>
       {/* Progress Bar */}
       <div className="w-full h-1 bg-zinc-700">
         <div
@@ -358,8 +562,10 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
           )}
         </div>
       </div>
+    </div>
+      )}
 
-      {/* Visually hidden YouTube Player for audio-only playback */}
+      {/* Visually hidden YouTube Player - persists across both mini and fullscreen views */}
       {/* Using visibility instead of display:none to allow audio playback */}
       {state.youtubeMode?.isYoutube && state.youtubeMode.youtubeId && (
         <div
@@ -447,7 +653,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onClose, className = 
           />
         </div>
       )}
-    </div>
+    </>
   );
 };
 
