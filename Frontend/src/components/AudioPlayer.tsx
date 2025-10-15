@@ -40,6 +40,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isExpanded, setIsExpanded] = useState(variant === 'full');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragTime, setDragTime] = useState(0);
 
   const progressRef = useRef<HTMLDivElement>(null);
   const volumeRef = useRef<HTMLDivElement>(null);
@@ -58,16 +60,74 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
     }
   };
 
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressRef.current || state.duration === 0) return;
+  const seekToTime = (time: number) => {
+    if (!state.duration || state.duration === 0) return;
+
+    // For YouTube videos, we need to seek using the YouTube player API
+    if (state.youtubeMode?.isYoutube) {
+      // Find the YouTube player in the MiniPlayer component
+      const miniPlayer = document.querySelector('[data-mini-player="true"]');
+      const wrapper = miniPlayer?.querySelector('[data-yt-wrapper="true"]') as any;
+      const container = miniPlayer?.querySelector('[data-yt-container="true"]') as any;
+      const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
+
+      if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
+        try {
+          console.log('Seeking YouTube video to:', time);
+          ytPlayer.seekTo(time, true); // true = allowSeekAhead
+        } catch (error) {
+          console.warn('Failed to seek YouTube video:', error);
+        }
+      }
+    } else {
+      // For regular audio, use the context seek function
+      seek(time);
+    }
+  };
+
+  const getTimeFromEvent = (e: React.MouseEvent<HTMLDivElement> | MouseEvent) => {
+    if (!progressRef.current || !state.duration) return 0;
 
     const rect = progressRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
-    const percentage = clickX / rect.width;
-    const newTime = percentage * state.duration;
-
-    seek(newTime);
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+    return percentage * state.duration;
   };
+
+  const handleProgressMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!state.duration || state.duration === 0) return;
+
+    setIsDragging(true);
+    const newTime = getTimeFromEvent(e);
+    setDragTime(newTime);
+    seekToTime(newTime);
+  };
+
+  const handleProgressMouseMove = (e: MouseEvent) => {
+    if (!isDragging || !state.duration) return;
+
+    const newTime = getTimeFromEvent(e);
+    setDragTime(newTime);
+  };
+
+  const handleProgressMouseUp = () => {
+    if (!isDragging) return;
+
+    setIsDragging(false);
+    seekToTime(dragTime);
+  };
+
+  // Add global mouse event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleProgressMouseMove);
+      document.addEventListener('mouseup', handleProgressMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleProgressMouseMove);
+        document.removeEventListener('mouseup', handleProgressMouseUp);
+      };
+    }
+  }, [isDragging, dragTime, state.duration]);
 
   const handleVolumeClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!volumeRef.current) return;
@@ -124,7 +184,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const progressPercentage = state.duration > 0 ? (state.currentTime / state.duration) * 100 : 0;
+  const currentTime = isDragging ? dragTime : state.currentTime;
+  const progressPercentage = state.duration > 0 ? (currentTime / state.duration) * 100 : 0;
 
   if (!state.currentSong) {
     return variant === 'mini' ? null : (
@@ -193,8 +254,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
         <div className="mt-2">
           <div
             ref={progressRef}
-            onClick={handleProgressClick}
-            className="w-full h-1 bg-zinc-700 rounded-full cursor-pointer"
+            onMouseDown={handleProgressMouseDown}
+            className="w-full h-1 bg-zinc-700 rounded-full cursor-pointer select-none"
           >
             <div
               className="h-full bg-blue-500 rounded-full transition-all"
@@ -256,11 +317,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
         {/* Progress Bar */}
         <div className="mb-4">
           <div className="flex items-center space-x-3 text-sm text-zinc-400 mb-2">
-            <span>{formatTime(state.currentTime)}</span>
+            <span>{formatTime(currentTime)}</span>
             <div
               ref={progressRef}
-              onClick={handleProgressClick}
-              className="flex-1 h-2 bg-zinc-700 rounded-full cursor-pointer relative group"
+              onMouseDown={handleProgressMouseDown}
+              className="flex-1 h-2 bg-zinc-700 rounded-full cursor-pointer relative group select-none"
             >
               <div
                 className="h-full bg-blue-500 rounded-full transition-all"

@@ -2,4 +2,6 @@
 export * from './User';
 export * from './Song';
 export * from './Playlist';
-export * from './UserLibrary'; 
+export * from './UserLibrary';
+export * from './Share';
+export * from './AnonymousSession'; 

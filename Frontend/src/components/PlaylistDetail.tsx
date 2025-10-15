@@ -3,14 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Play,
   Music,
-  Clock,
   Plus,
   MoreVertical,
   Shuffle,
   ArrowLeft,
   Trash2,
-  Heart,
-  Share2,
   Home,
   Search,
   Library,
@@ -26,12 +23,14 @@ import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import { useAuth } from '../contexts/AuthContext';
 import UserMenu from './UserMenu';
 import AuthModal from './AuthModal';
+import Logo from './Logo';
+import ShareButton from './ShareButton';
 
 const PlaylistDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { play, playPlaylist, addToQueue } = useAudioPlayer();
+  const { play, playPlaylist, playShuffleMode, addToQueue } = useAudioPlayer();
 
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,8 +70,7 @@ const PlaylistDetail: React.FC = () => {
 
   const handleShufflePlay = () => {
     if (playlist && playlist.songs.length > 0) {
-      const shuffled = [...playlist.songs].sort(() => Math.random() - 0.5);
-      playPlaylist(shuffled);
+      playShuffleMode(playlist.songs);
     }
   };
 
@@ -154,8 +152,8 @@ const PlaylistDetail: React.FC = () => {
             onClick={() => navigate('/')}
             className="flex items-center space-x-2 hover:opacity-80 transition-all duration-200 group"
           >
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Music className="h-5 w-5 text-white" />
+            <div className="group-hover:scale-105 transition-transform">
+              <Logo size="md" />
             </div>
             <span className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">NRG Flow</span>
           </button>
@@ -218,8 +216,8 @@ const PlaylistDetail: React.FC = () => {
               onClick={() => navigate('/')}
               className="flex items-center space-x-2 hover:opacity-80 transition-all duration-200 group"
             >
-              <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-purple-600 rounded flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Music className="h-4 w-4 text-white" />
+              <div className="group-hover:scale-105 transition-transform">
+                <Logo size="sm" />
               </div>
               <span className="font-bold text-white group-hover:text-blue-400 transition-colors">NRG Flow</span>
             </button>
@@ -305,6 +303,9 @@ const PlaylistDetail: React.FC = () => {
           <Shuffle className="h-5 w-5" />
           <span>Shuffle</span>
         </button>
+        {user && playlist.songs.length > 0 && (
+          <ShareButton type="playlist" id={playlist.id} />
+        )}
       </div>
 
       {/* Songs List */}
@@ -370,6 +371,7 @@ interface SongRowProps {
 
 const SongRow: React.FC<SongRowProps> = ({ song, index, onPlay, onAddToQueue, onRemove }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const { user } = useAuth();
 
   return (
     <div className="grid grid-cols-[auto,1fr,auto,auto] gap-4 px-4 py-3 hover:bg-zinc-800 rounded-lg transition-colors group items-center">
@@ -440,16 +442,14 @@ const SongRow: React.FC<SongRowProps> = ({ song, index, onPlay, onAddToQueue, on
                   <Plus className="h-4 w-4" />
                   <span>Add to queue</span>
                 </button>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(window.location.origin + `/song/${song.id}`);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-white hover:bg-zinc-600 transition-colors flex items-center space-x-2"
-                >
-                  <Share2 className="h-4 w-4" />
-                  <span>Share</span>
-                </button>
+{user && (
+                  <div
+                    onClick={() => setShowMenu(false)}
+                    className="px-2 py-1"
+                  >
+                    <ShareButton type="song" id={song.id} className="w-full justify-start" />
+                  </div>
+                )}
                 <div className="border-t border-zinc-600 my-1" />
                 <button
                   onClick={() => {

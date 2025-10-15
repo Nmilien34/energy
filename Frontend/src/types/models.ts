@@ -152,7 +152,51 @@ export interface PlayerState {
   currentTime: number;
   isShuffled: boolean;
   repeatMode: 'none' | 'one' | 'all';
+  shuffleSource: Song[];
   youtubeMode?: YouTubeMode;
+}
+
+// Share types
+export interface Share {
+  id: string;
+  shareId: string;
+  type: 'playlist' | 'song';
+  owner: {
+    id: string;
+    username: string;
+    profilePicture?: string;
+  };
+  playlist?: string;
+  song?: string;
+  title: string;
+  description?: string;
+  thumbnail?: string;
+  viewCount: number;
+  playCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShareContent {
+  share: Share;
+  type: 'playlist' | 'song';
+  content: Playlist | Song;
+}
+
+export interface AnonymousSession {
+  sessionId: string;
+  playCount: number;
+  canPlayMore: boolean;
+  hasReachedLimit: boolean;
+  remainingPlays?: number;
+  songsPlayed?: string[];
+}
+
+export interface CreateShareResponse {
+  shareId: string;
+  shareUrl: string;
+  share: Share;
 }
 
 // API response wrapper
@@ -160,4 +204,5 @@ export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
+  requiresAuth?: boolean;
 } 

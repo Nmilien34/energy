@@ -6,7 +6,6 @@ import {
   Clock,
   Heart,
   Play,
-  Shuffle,
   ChevronRight,
   Video,
   Headphones,
@@ -32,7 +31,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
   const [loading, setLoading] = useState(true);
 
   const { user } = useAuth();
-  const { play, playPlaylist, state } = useAudioPlayer();
+  const { play, state } = useAudioPlayer();
   const navigate = useNavigate();
 
   useEffect(() => {

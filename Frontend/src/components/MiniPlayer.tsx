@@ -36,6 +36,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     pause,
     next,
     previous,
+    seek,
     setVolume,
     toggleShuffle,
     setRepeatMode,
@@ -45,8 +46,13 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragTime, setDragTime] = useState(0);
+  const [activeProgressBar, setActiveProgressBar] = useState<React.RefObject<HTMLDivElement> | null>(null);
   const youtubePlayerRef = useRef<HTMLDivElement>(null);
   const timeUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const miniProgressBarRef = useRef<HTMLDivElement>(null);
 
   // Effect to update progress from YouTube player
   useEffect(() => {
@@ -172,6 +178,18 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     syncPlayer();
   }, [state.isPlaying, state.youtubeMode?.isYoutube, state.youtubeMode?.youtubeId]);
 
+  // Add global mouse event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleProgressMouseMove);
+      document.addEventListener('mouseup', handleProgressMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleProgressMouseMove);
+        document.removeEventListener('mouseup', handleProgressMouseUp);
+      };
+    }
+  }, [isDragging, dragTime, state.duration]);
+
   if (!state.currentSong) return null;
 
   const handlePlayPause = () => {
@@ -183,13 +201,72 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     }
   };
 
-  const progressPercentage = state.duration > 0 ? (state.currentTime / state.duration) * 100 : 0;
+  const currentTime = isDragging ? dragTime : state.currentTime;
+  const progressPercentage = state.duration > 0 ? (currentTime / state.duration) * 100 : 0;
 
   const formatTime = (seconds: number) => {
     if (!isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const seekToTime = (time: number) => {
+    if (!state.duration || state.duration === 0) return;
+
+    // For YouTube videos, we need to seek using the YouTube player API
+    if (state.youtubeMode?.isYoutube) {
+      const wrapper = youtubePlayerRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
+      const container = youtubePlayerRef.current?.querySelector('[data-yt-container="true"]') as any;
+      const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
+
+      if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
+        try {
+          console.log('Seeking YouTube video to:', time);
+          ytPlayer.seekTo(time, true); // true = allowSeekAhead
+        } catch (error) {
+          console.warn('Failed to seek YouTube video:', error);
+        }
+      }
+    } else {
+      // For regular audio, use the context seek function
+      seek(time);
+    }
+  };
+
+  const getTimeFromEvent = (e: React.MouseEvent<HTMLDivElement> | MouseEvent, targetRef?: React.RefObject<HTMLDivElement>) => {
+    const ref = targetRef || progressBarRef;
+    if (!ref.current || !state.duration) return 0;
+
+    const rect = ref.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+    return percentage * state.duration;
+  };
+
+  const handleProgressMouseDown = (e: React.MouseEvent<HTMLDivElement>, targetRef?: React.RefObject<HTMLDivElement>) => {
+    if (!state.duration || state.duration === 0) return;
+
+    setIsDragging(true);
+    setActiveProgressBar(targetRef || progressBarRef);
+    const newTime = getTimeFromEvent(e, targetRef);
+    setDragTime(newTime);
+    seekToTime(newTime);
+  };
+
+  const handleProgressMouseMove = (e: MouseEvent) => {
+    if (!isDragging || !state.duration || !activeProgressBar) return;
+
+    const newTime = getTimeFromEvent(e, activeProgressBar);
+    setDragTime(newTime);
+  };
+
+  const handleProgressMouseUp = () => {
+    if (!isDragging) return;
+
+    setIsDragging(false);
+    setActiveProgressBar(null);
+    seekToTime(dragTime);
   };
 
   const handleAddToFavorites = async () => {
@@ -245,14 +322,18 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
             {/* Progress Bar */}
             <div className="w-full max-w-md space-y-2">
-              <div className="w-full h-2 bg-zinc-800 rounded-full cursor-pointer">
+              <div 
+                ref={progressBarRef}
+                className="w-full h-2 bg-zinc-800 rounded-full cursor-pointer select-none"
+                onMouseDown={handleProgressMouseDown}
+              >
                 <div
                   className="h-full bg-blue-500 rounded-full transition-all"
                   style={{ width: `${progressPercentage}%` }}
                 />
               </div>
               <div className="flex justify-between text-sm text-zinc-400">
-                <span>{formatTime(state.currentTime)}</span>
+                <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(state.duration)}</span>
               </div>
             </div>
@@ -402,7 +483,11 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
       {!isExpanded && (
         <div className={`fixed bottom-0 left-0 right-0 bg-zinc-800 border-t border-zinc-700 shadow-lg z-50 ${className}`}>
       {/* Progress Bar */}
-      <div className="w-full h-1 bg-zinc-700">
+      <div 
+        ref={miniProgressBarRef}
+        className="w-full h-1 bg-zinc-700 cursor-pointer select-none"
+        onMouseDown={(e) => handleProgressMouseDown(e, miniProgressBarRef)}
+      >
         <div
           className="h-full bg-blue-500 transition-all duration-300"
           style={{ width: `${progressPercentage}%` }}
@@ -570,6 +655,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
       {state.youtubeMode?.isYoutube && state.youtubeMode.youtubeId && (
         <div
           ref={youtubePlayerRef}
+          data-mini-player="true"
           style={{
             position: 'absolute',
             top: '-9999px',

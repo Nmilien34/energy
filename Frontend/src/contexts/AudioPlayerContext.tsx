@@ -18,6 +18,7 @@ interface AudioPlayerContextType {
   clearQueue: () => void;
   setQueue: (songs: Song[], startIndex?: number) => void;
   playPlaylist: (songs: Song[], startIndex?: number) => void;
+  playShuffleMode: (songs: Song[]) => void;
   updateCurrentTime: (time: number) => void;
   updateDuration: (duration: number) => void;
 }
@@ -39,7 +40,8 @@ type AudioPlayerAction =
   | { type: 'CLEAR_QUEUE' }
   | { type: 'NEXT_SONG' }
   | { type: 'PREVIOUS_SONG' }
-  | { type: 'SET_YOUTUBE_MODE'; payload: YouTubeMode };
+  | { type: 'SET_YOUTUBE_MODE'; payload: YouTubeMode }
+  | { type: 'SET_SHUFFLE_SOURCE'; payload: Song[] };
 
 const initialState: PlayerState = {
   currentSong: null,
@@ -53,6 +55,7 @@ const initialState: PlayerState = {
   currentTime: 0,
   isShuffled: false,
   repeatMode: 'none',
+  shuffleSource: [],
   youtubeMode: { isYoutube: false },
 };
 
@@ -106,6 +109,8 @@ function audioPlayerReducer(state: PlayerState, action: AudioPlayerAction): Play
       return { ...state, currentIndex: prevIndex };
     case 'SET_YOUTUBE_MODE':
       return { ...state, youtubeMode: action.payload };
+    case 'SET_SHUFFLE_SOURCE':
+      return { ...state, shuffleSource: action.payload };
     default:
       return state;
   }
@@ -133,11 +138,17 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   const youtubeModeRef = useRef<{ isYoutube: boolean } | null>(null);
   const retryCount = useRef<number>(0);
   const maxRetries = 3;
+  const shuffleSourceRef = useRef<Song[]>([]);
 
   // Keep a ref of latest YouTube mode for event handlers
   useEffect(() => {
     youtubeModeRef.current = state.youtubeMode || { isYoutube: false };
   }, [state.youtubeMode]);
+
+  // Keep a ref of shuffle source for continuous shuffle
+  useEffect(() => {
+    shuffleSourceRef.current = state.shuffleSource;
+  }, [state.shuffleSource]);
 
   // Initialize audio element
   useEffect(() => {
@@ -423,9 +434,30 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     if (state.queue.length === 0) return;
 
     let nextIndex = state.currentIndex + 1;
+    
+    // If we're approaching the end of the queue and have shuffle source, add more songs
+    if (nextIndex >= state.queue.length - 1 && shuffleSourceRef.current.length > 0) {
+      // Add a random song from the shuffle source to the end of the queue
+      const availableSongs = shuffleSourceRef.current.filter(
+        song => !state.queue.some(queueSong => queueSong.id === song.id)
+      );
+      
+      if (availableSongs.length > 0) {
+        const randomSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
+        dispatch({ type: 'ADD_TO_QUEUE', payload: randomSong });
+      } else {
+        // If all songs have been played, reset the played songs and pick a random one
+        const randomSong = shuffleSourceRef.current[Math.floor(Math.random() * shuffleSourceRef.current.length)];
+        dispatch({ type: 'ADD_TO_QUEUE', payload: randomSong });
+      }
+    }
+    
     if (nextIndex >= state.queue.length) {
       if (state.repeatMode === 'all') {
         nextIndex = 0;
+      } else if (shuffleSourceRef.current.length > 0) {
+        // In shuffle mode, we should have added a song above, so continue
+        nextIndex = state.currentIndex + 1;
       } else {
         return; // Don't advance if we're at the end and not repeating
       }
@@ -500,6 +532,25 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     setQueue(shuffledSongs, startIndex);
   };
 
+  const playShuffleMode = (songs: Song[]) => {
+    if (songs.length === 0) return;
+
+    // Set the shuffle source for continuous shuffle
+    dispatch({ type: 'SET_SHUFFLE_SOURCE', payload: songs });
+    
+    // Start with a random song from the source
+    const randomSong = songs[Math.floor(Math.random() * songs.length)];
+    const initialQueue = [randomSong];
+    
+    setQueue(initialQueue, 0);
+    
+    // Signal that we want to autoplay when the song loads
+    shouldAutoplayNextLoad.current = true;
+    
+    // Also set playing state immediately for YouTube player
+    dispatch({ type: 'SET_PLAYING', payload: true });
+  };
+
   const updateCurrentTime = (time: number) => {
     dispatch({ type: 'SET_CURRENT_TIME', payload: time });
   };
@@ -524,6 +575,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     clearQueue,
     setQueue,
     playPlaylist,
+    playShuffleMode,
     updateCurrentTime,
     updateDuration,
   };

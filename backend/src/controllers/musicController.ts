@@ -232,7 +232,15 @@ export const getSong = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    let song = await Song.findOne({ youtubeId: id });
+    // Check if the ID is a MongoDB ObjectId (24 characters, hexadecimal)
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(id);
+
+    let song;
+    if (isMongoId) {
+      song = await Song.findById(id);
+    } else {
+      song = await Song.findOne({ youtubeId: id });
+    }
 
     if (!song) {
       return res.status(404).json({

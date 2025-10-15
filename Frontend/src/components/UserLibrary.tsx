@@ -33,7 +33,7 @@ const UserLibrary: React.FC<UserLibraryProps> = ({ className = '' }) => {
   const [sortBy, setSortBy] = useState<'name' | 'artist' | 'dateAdded' | 'playCount'>('dateAdded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const { play, playPlaylist, addToQueue } = useAudioPlayer();
+  const { play, playPlaylist, playShuffleMode, addToQueue } = useAudioPlayer();
 
   useEffect(() => {
     loadUserLibrary();
@@ -151,8 +151,7 @@ const UserLibrary: React.FC<UserLibraryProps> = ({ className = '' }) => {
   const handleShufflePlay = () => {
     const songs = getCurrentSongs();
     if (songs.length > 0) {
-      const shuffled = [...songs].sort(() => Math.random() - 0.5);
-      playPlaylist(shuffled);
+      playShuffleMode(songs);
     }
   };
 

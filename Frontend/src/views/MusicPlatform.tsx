@@ -20,6 +20,7 @@ import PlaylistManager from '../components/PlaylistManager';
 import YouTubeIntegration from '../components/YouTubeIntegration';
 import Settings from '../components/Settings';
 import ErrorBoundary from '../components/ErrorBoundary';
+import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
 
 type ActiveView = 'dashboard' | 'search' | 'library' | 'playlists' | 'youtube' | 'settings';
@@ -86,8 +87,8 @@ const MusicPlatform: React.FC = () => {
             onClick={() => navigate('/')}
             className="flex items-center space-x-2 hover:opacity-80 transition-all duration-200 group"
           >
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Music className="h-5 w-5 text-white" />
+            <div className="group-hover:scale-105 transition-transform">
+              <Logo size="md" />
             </div>
             <span className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">NRG Flow</span>
           </button>
@@ -153,8 +154,8 @@ const MusicPlatform: React.FC = () => {
               onClick={() => navigate('/')}
               className="flex items-center space-x-2 hover:opacity-80 transition-all duration-200 group"
             >
-              <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-purple-600 rounded flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Music className="h-4 w-4 text-white" />
+              <div className="group-hover:scale-105 transition-transform">
+                <Logo size="sm" />
               </div>
               <span className="font-bold text-white group-hover:text-blue-400 transition-colors">NRG Flow</span>
             </button>

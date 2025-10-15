@@ -10,6 +10,7 @@ import musicRoutes from './routes/musicRoutes';
 import playlistRoutes from './routes/playlistRoutes';
 import oauthRoutes from './routes/oauthRoutes';
 import settingsRoutes from './routes/settingsRoutes';
+import shareRoutes from './routes/shareRoutes';
 import { errorHandler } from './middleware/errorHandler';
 
 // Initialize OAuth strategies
@@ -95,6 +96,7 @@ app.use('/api/playlists', (req, res, next) => {
 
 app.use('/api/playlists', playlistRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/share', shareRoutes);
 
 // Health check
 app.get('/api/health', (_, res) => {
