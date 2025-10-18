@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 
 interface YouTubePlayerProps {
   videoId: string;
@@ -11,6 +11,14 @@ interface YouTubePlayerProps {
   height?: number;
   width?: number;
   className?: string;
+}
+
+export interface YouTubePlayerHandle {
+  playVideo: () => void;
+  pauseVideo: () => void;
+  unMute: () => void;
+  mute: () => void;
+  setVolume: (volume: number) => void;
 }
 
 interface YouTubePlayerApi {
@@ -48,7 +56,7 @@ declare global {
   }
 }
 
-const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
+const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(({
   videoId,
   onReady,
   onPlay,
@@ -59,12 +67,41 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   height = 200,
   width = 300,
   className = ''
-}) => {
+}, ref) => {
   const playerRef = useRef<YouTubePlayerApi | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const currentVideoIdRef = useRef<string | null>(null);
   const [isAPIReady, setIsAPIReady] = useState(false);
+
+  // Expose player controls to parent via ref
+  useImperativeHandle(ref, () => ({
+    playVideo: () => {
+      if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+        playerRef.current.playVideo();
+      }
+    },
+    pauseVideo: () => {
+      if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+        playerRef.current.pauseVideo();
+      }
+    },
+    unMute: () => {
+      if (playerRef.current && typeof playerRef.current.unMute === 'function') {
+        playerRef.current.unMute();
+      }
+    },
+    mute: () => {
+      if (playerRef.current && typeof playerRef.current.mute === 'function') {
+        playerRef.current.mute();
+      }
+    },
+    setVolume: (volume: number) => {
+      if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+        playerRef.current.setVolume(volume);
+      }
+    }
+  }), []);
 
   // Load YouTube API
   useEffect(() => {
@@ -319,6 +356,8 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
       <div ref={containerRef} data-yt-container="true" />
     </div>
   );
-};
+});
+
+YouTubePlayer.displayName = 'YouTubePlayer';
 
 export default YouTubePlayer;

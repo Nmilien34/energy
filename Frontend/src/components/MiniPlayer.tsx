@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import FallbackImage from './FallbackImage';
-import YouTubePlayer from './YouTubePlayer';
+import YouTubePlayer, { YouTubePlayerHandle } from './YouTubePlayer';
 import PlaylistPicker from './PlaylistPicker';
 import { musicService } from '../services/musicService';
 
@@ -49,7 +49,8 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
   const [isDragging, setIsDragging] = useState(false);
   const [dragTime, setDragTime] = useState(0);
   const [activeProgressBar, setActiveProgressBar] = useState<React.RefObject<HTMLDivElement> | null>(null);
-  const youtubePlayerRef = useRef<HTMLDivElement>(null);
+  const youtubePlayerRef = useRef<YouTubePlayerHandle>(null); // Direct player control ref
+  const youtubeWrapperRef = useRef<HTMLDivElement>(null); // Wrapper div for DOM queries
   const timeUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const miniProgressBarRef = useRef<HTMLDivElement>(null);
@@ -68,8 +69,8 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     // Start interval to update time from YouTube player
     if (!timeUpdateIntervalRef.current) {
       timeUpdateIntervalRef.current = setInterval(() => {
-        const wrapper = youtubePlayerRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
-        const container = youtubePlayerRef.current?.querySelector('[data-yt-container="true"]') as any;
+        const wrapper = youtubeWrapperRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
+        const container = youtubeWrapperRef.current?.querySelector('[data-yt-container="true"]') as any;
         const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
 
         if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function' && typeof ytPlayer.getDuration === 'function') {
@@ -101,13 +102,13 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
   // Effect to sync YouTube player with state
   useEffect(() => {
-    if (!state.youtubeMode?.isYoutube || !youtubePlayerRef.current) return;
+    if (!state.youtubeMode?.isYoutube || !youtubeWrapperRef.current) return;
 
     // Wait a bit for DOM to be ready and retry if player methods aren't available
     const syncPlayer = (retryCount = 0) => {
       // Try wrapper first, then container
-      const wrapper = youtubePlayerRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
-      const container = youtubePlayerRef.current?.querySelector('[data-yt-container="true"]') as any;
+      const wrapper = youtubeWrapperRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
+      const container = youtubeWrapperRef.current?.querySelector('[data-yt-container="true"]') as any;
       const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
 
       console.log('YouTube sync effect (attempt', retryCount + 1, '):', {
@@ -193,7 +194,20 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
   if (!state.currentSong) return null;
 
   const handlePlayPause = () => {
-    // This will trigger the appropriate player via the context and useEffect
+    // CRITICAL for iOS Safari: Call YouTube player IMMEDIATELY (synchronous with user gesture)
+    // before ANY state updates or async operations
+    if (state.youtubeMode?.isYoutube && youtubePlayerRef.current) {
+      if (state.isPlaying) {
+        // Pause YouTube player synchronously
+        youtubePlayerRef.current.pauseVideo();
+      } else {
+        // Play YouTube player synchronously - this is the iOS Safari fix!
+        youtubePlayerRef.current.playVideo();
+        youtubePlayerRef.current.unMute();
+      }
+    }
+
+    // THEN update state (async is fine after synchronous player call)
     if (state.isPlaying) {
       pause();
     } else {
@@ -216,8 +230,8 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
     // For YouTube videos, we need to seek using the YouTube player API
     if (state.youtubeMode?.isYoutube) {
-      const wrapper = youtubePlayerRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
-      const container = youtubePlayerRef.current?.querySelector('[data-yt-container="true"]') as any;
+      const wrapper = youtubeWrapperRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
+      const container = youtubeWrapperRef.current?.querySelector('[data-yt-container="true"]') as any;
       const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
 
       if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
@@ -654,7 +668,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
       {/* iOS Safari requires visible players for autoplay to work */}
       {state.youtubeMode?.isYoutube && state.youtubeMode.youtubeId && (
         <div
-          ref={youtubePlayerRef}
+          ref={youtubeWrapperRef}
           data-mini-player="true"
           style={{
             position: 'fixed',
@@ -669,6 +683,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
           }}
         >
           <YouTubePlayer
+            ref={youtubePlayerRef}
             videoId={state.youtubeMode.youtubeId}
             autoplay={state.isPlaying} // Auto-play if music should be playing
             width={100}
@@ -679,8 +694,8 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
               // Wait a moment for methods to be fully available, then sync state
               setTimeout(() => {
                 // Try wrapper first, then container
-                const wrapper = youtubePlayerRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
-                const container = youtubePlayerRef.current?.querySelector('[data-yt-container="true"]') as any;
+                const wrapper = youtubeWrapperRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
+                const container = youtubeWrapperRef.current?.querySelector('[data-yt-container="true"]') as any;
                 const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
 
                 console.log('Player ready - checking methods:', {
@@ -705,8 +720,8 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
             onPlay={() => {
               console.log('YouTube player onPlay event fired');
               // Unmute the player as soon as it starts playing
-              const wrapper = youtubePlayerRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
-              const container = youtubePlayerRef.current?.querySelector('[data-yt-container="true"]') as any;
+              const wrapper = youtubeWrapperRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
+              const container = youtubeWrapperRef.current?.querySelector('[data-yt-container="true"]') as any;
               const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
 
               if (ytPlayer && typeof ytPlayer.unMute === 'function') {
