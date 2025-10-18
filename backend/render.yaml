@@ -6,7 +6,7 @@ services:
     startCommand: node dist/server.js
     plan: free
     healthCheckPath: /api/health
-    rootDir: ./
+    rootDir: ./backend
     envVars:
       - key: NODE_ENV
         value: production
