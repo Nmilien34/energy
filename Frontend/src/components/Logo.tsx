@@ -85,3 +85,4 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', className = '' }) => {
 };
 
 export default Logo;
+
