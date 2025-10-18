@@ -231,25 +231,39 @@ class YouTubeService {
       console.log(`[AudioStream] Attempting to extract audio for video: ${videoId}`);
 
       // Try play-dl first (more reliable with recent YouTube updates)
-      try {
-        console.log(`[AudioStream] Trying play-dl extraction...`);
-        const playInfo = await playdl.video_info(`https://www.youtube.com/watch?v=${videoId}`);
-        const audioStream = playInfo.format.find(f => (f as any).audio_codec && !(f as any).video_codec);
+      // Skip if we're hitting rate limits (429 errors are common on shared hosting)
+      const skipPlayDl = process.env.SKIP_PLAY_DL === 'true' || process.env.NODE_ENV === 'production';
 
-        if (audioStream) {
-          console.log(`[AudioStream] ✓ play-dl successful - Quality: ${audioStream.quality}, Container: ${(audioStream as any).container}`);
-          return {
-            url: audioStream.url || '',
-            quality: audioStream.quality || 'medium',
-            container: (audioStream as any).container || 'webm',
-            audioEncoding: (audioStream as any).audio_codec || 'opus',
-            expires: new Date(Date.now() + 6 * 60 * 60 * 1000)
-          };
-        } else {
-          console.warn(`[AudioStream] play-dl found no audio-only format for ${videoId}`);
+      if (!skipPlayDl) {
+        try {
+          console.log(`[AudioStream] Trying play-dl extraction...`);
+          const playInfo = await playdl.video_info(`https://www.youtube.com/watch?v=${videoId}`);
+          const audioStream = playInfo.format.find(f => (f as any).audio_codec && !(f as any).video_codec);
+
+          if (audioStream) {
+            console.log(`[AudioStream] ✓ play-dl successful - Quality: ${audioStream.quality}, Container: ${(audioStream as any).container}`);
+            return {
+              url: audioStream.url || '',
+              quality: audioStream.quality || 'medium',
+              container: (audioStream as any).container || 'webm',
+              audioEncoding: (audioStream as any).audio_codec || 'opus',
+              expires: new Date(Date.now() + 6 * 60 * 60 * 1000)
+            };
+          } else {
+            console.warn(`[AudioStream] play-dl found no audio-only format for ${videoId}`);
+          }
+        } catch (playError: any) {
+          const errorMessage = playError?.message || String(playError);
+          console.error(`[AudioStream] ✗ play-dl failed for ${videoId}:`, errorMessage);
+
+          // If we hit rate limits, skip play-dl for future requests
+          if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
+            console.warn('[AudioStream] Detected rate limiting, skipping play-dl for future requests');
+            process.env.SKIP_PLAY_DL = 'true';
+          }
         }
-      } catch (playError: any) {
-        console.error(`[AudioStream] ✗ play-dl failed for ${videoId}:`, playError?.message || playError);
+      } else {
+        console.log(`[AudioStream] Skipping play-dl (disabled in production or due to rate limits)`);
       }
 
       // Fallback to ytdl-core
