@@ -650,27 +650,29 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     </div>
       )}
 
-      {/* Visually hidden YouTube Player - persists across both mini and fullscreen views */}
-      {/* Using visibility instead of display:none to allow audio playback */}
+      {/* YouTube Player - small but visible for iOS compatibility */}
+      {/* iOS Safari requires visible players for autoplay to work */}
       {state.youtubeMode?.isYoutube && state.youtubeMode.youtubeId && (
         <div
           ref={youtubePlayerRef}
           data-mini-player="true"
           style={{
-            position: 'absolute',
-            top: '-9999px',
-            left: '-9999px',
-            width: '1px',
-            height: '1px',
-            opacity: 0,
-            pointerEvents: 'none'
+            position: 'fixed',
+            bottom: isExpanded ? '20px' : '80px',
+            right: '20px',
+            width: '100px',
+            height: '56px',
+            zIndex: 40,
+            borderRadius: '8px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
           }}
         >
           <YouTubePlayer
             videoId={state.youtubeMode.youtubeId}
             autoplay={state.isPlaying} // Auto-play if music should be playing
-            width={1}
-            height={1}
+            width={100}
+            height={56}
             onReady={() => {
               console.log('YouTube player ready in MiniPlayer, isPlaying:', state.isPlaying);
 
