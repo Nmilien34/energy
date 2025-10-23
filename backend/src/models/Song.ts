@@ -17,12 +17,17 @@ export interface ISong extends Document {
   category?: string;
   playCount: number;
   lastPlayed?: Date;
-  audioUrl?: string; // cached audio stream URL
+  audioUrl?: string; // cached audio stream URL (YouTube CDN or S3)
   audioUrlExpiry?: Date; // when the audio URL expires
+  audioSource?: 's3' | 'youtube' | 'cache'; // where the audio is stored
+  s3AudioKey?: string; // S3 key if stored in S3
+  s3AudioFormat?: string; // audio format in S3 (webm, mp4, etc)
+  s3UploadedAt?: Date; // when audio was uploaded to S3
   createdAt: Date;
   updatedAt: Date;
   needsAudioRefresh(): boolean;
   incrementPlayCount(): Promise<ISong>;
+  hasS3Audio(): boolean;
 }
 
 const songSchema = new Schema<ISong>({
@@ -99,6 +104,21 @@ const songSchema = new Schema<ISong>({
   },
   audioUrlExpiry: {
     type: Date
+  },
+  audioSource: {
+    type: String,
+    enum: ['s3', 'youtube', 'cache'],
+    default: 'youtube'
+  },
+  s3AudioKey: {
+    type: String
+  },
+  s3AudioFormat: {
+    type: String,
+    default: 'webm'
+  },
+  s3UploadedAt: {
+    type: Date
   }
 }, {
   timestamps: true,
@@ -129,6 +149,11 @@ songSchema.methods.incrementPlayCount = function() {
   this.playCount += 1;
   this.lastPlayed = new Date();
   return this.save();
+};
+
+// Method to check if song has S3 audio
+songSchema.methods.hasS3Audio = function(): boolean {
+  return this.audioSource === 's3' && !!this.s3AudioKey;
 };
 
 export const Song = mongoose.model<ISong>('Song', songSchema);

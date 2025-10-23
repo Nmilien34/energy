@@ -1,9 +1,12 @@
 import { Request, Response } from 'express';
 import { Song, ISong } from '../models/Song';
 import { UserLibrary } from '../models/UserLibrary';
+import { SearchCache } from '../models/SearchCache';
 import { youtubeService } from '../services/youtubeService';
 import { trendingService } from '../services/trendingService';
 import { audioService } from '../services/audioService';
+import { redisService } from '../services/redisService';
+import { s3Service } from '../services/s3Service';
 import { IUser } from '../models/User';
 import { Types } from 'mongoose';
 
@@ -25,30 +28,140 @@ export const searchMusic = async (req: Request, res: Response) => {
       });
     }
 
+    const limitNum = parseInt(limit);
     let results;
+    let cacheSource = 'none';
 
-    try {
-      switch (type) {
-        case 'artist':
-          results = await youtubeService.searchArtist(q, parseInt(limit));
-          break;
-        case 'song':
-        default:
-          results = await youtubeService.searchSongs(q, parseInt(limit));
-          break;
-      }
-    } catch (error: any) {
-      // If YouTube API quota is exceeded, try to get real trending data as fallback
-      if (error.message?.includes('quota exceeded') || error.message?.includes('quotaExceeded')) {
-        console.warn('YouTube API quota exceeded, trying trending music fallback');
-        results = await getTrendingMusicFallback(parseInt(limit));
-      } else {
-        console.warn('YouTube API error, trying trending music fallback:', error.message);
-        results = await getTrendingMusicFallback(parseInt(limit));
+    // LAYER 1: Check Redis cache first (fastest)
+    if (redisService.isAvailable()) {
+      const cachedResults = await redisService.getCachedSearchResults(q);
+      if (cachedResults && cachedResults.length > 0) {
+        console.log(`✓ Cache hit: Redis for query "${q}"`);
+        results = cachedResults.slice(0, limitNum);
+        cacheSource = 'redis';
+
+        // Track popular search in background
+        redisService.trackPopularSearch(q).catch(err =>
+          console.error('Failed to track popular search:', err)
+        );
       }
     }
 
-    // Save new songs to database
+    // LAYER 2: Check database SearchCache (if Redis missed)
+    if (!results) {
+      const dbCache = await (SearchCache as any).findValidCache(q, type);
+      if (dbCache && dbCache.youtubeIds.length > 0) {
+        console.log(`✓ Cache hit: Database for query "${q}"`);
+
+        // Fetch songs from database by YouTube IDs
+        const songs = await Song.find({ youtubeId: { $in: dbCache.youtubeIds.slice(0, limitNum) } });
+
+        if (songs.length > 0) {
+          results = songs.map(song => ({
+            id: song.youtubeId,
+            title: song.title,
+            artist: song.artist,
+            duration: song.duration,
+            thumbnail: song.thumbnail,
+            thumbnailHd: song.thumbnailHd,
+            viewCount: song.viewCount,
+            publishedAt: song.publishedAt?.toISOString(),
+            channelTitle: song.channelTitle,
+            channelId: song.channelId,
+            description: song.description
+          }));
+          cacheSource = 'database';
+
+          // Record cache hit
+          await dbCache.recordHit();
+
+          // Update Redis cache in background
+          if (redisService.isAvailable()) {
+            redisService.cacheSearchResults(q, results).catch(err =>
+              console.error('Failed to update Redis cache:', err)
+            );
+          }
+        }
+      }
+    }
+
+    // LAYER 3: Search existing songs in MongoDB (if caches missed)
+    if (!results) {
+      const existingSongs = await Song.find({
+        $or: [
+          { title: { $regex: q, $options: 'i' } },
+          { artist: { $regex: q, $options: 'i' } },
+          { channelTitle: { $regex: q, $options: 'i' } }
+        ]
+      })
+      .sort({ playCount: -1, viewCount: -1 })
+      .limit(limitNum);
+
+      if (existingSongs.length >= 5) {
+        console.log(`✓ Found ${existingSongs.length} songs in database for query "${q}"`);
+        results = existingSongs.map(song => ({
+          id: song.youtubeId,
+          title: song.title,
+          artist: song.artist,
+          duration: song.duration,
+          thumbnail: song.thumbnail,
+          thumbnailHd: song.thumbnailHd,
+          viewCount: song.viewCount,
+          publishedAt: song.publishedAt?.toISOString(),
+          channelTitle: song.channelTitle,
+          channelId: song.channelId,
+          description: song.description
+        }));
+        cacheSource = 'database-search';
+
+        // Cache these results for future searches
+        const youtubeIds = results.map(r => r.id);
+        await Promise.all([
+          (SearchCache as any).upsertCache(q, youtubeIds, type, 1),
+          redisService.isAvailable() ? redisService.cacheSearchResults(q, results) : Promise.resolve()
+        ]);
+      }
+    }
+
+    // LAYER 4: Query YouTube API (last resort)
+    if (!results) {
+      console.log(`⚠ No cached results, querying YouTube API for "${q}"`);
+
+      try {
+        switch (type) {
+          case 'artist':
+            results = await youtubeService.searchArtist(q, limitNum);
+            break;
+          case 'song':
+          default:
+            results = await youtubeService.searchSongs(q, limitNum);
+            break;
+        }
+
+        cacheSource = 'youtube-api';
+
+        // Cache the fresh results in all layers
+        const youtubeIds = results.map(r => r.id);
+        await Promise.all([
+          (SearchCache as any).upsertCache(q, youtubeIds, type, 1),
+          redisService.isAvailable() ? redisService.cacheSearchResults(q, results) : Promise.resolve()
+        ]);
+
+      } catch (error: any) {
+        // If YouTube API quota is exceeded, try trending music fallback
+        if (error.message?.includes('quota exceeded') || error.message?.includes('quotaExceeded')) {
+          console.warn('YouTube API quota exceeded, using trending music fallback');
+          results = await getTrendingMusicFallback(limitNum);
+          cacheSource = 'fallback';
+        } else {
+          console.warn('YouTube API error, using trending music fallback:', error.message);
+          results = await getTrendingMusicFallback(limitNum);
+          cacheSource = 'fallback';
+        }
+      }
+    }
+
+    // Save new songs to database (upsert)
     const savedSongs = await Promise.all(
       results.map(async (result) => {
         let song = await Song.findOne({ youtubeId: result.id });
@@ -69,6 +182,12 @@ export const searchMusic = async (req: Request, res: Response) => {
           });
 
           await song.save();
+        } else {
+          // Update view count if it's higher
+          if (result.viewCount && result.viewCount > (song.viewCount || 0)) {
+            song.viewCount = result.viewCount;
+            await song.save();
+          }
         }
 
         return song;
@@ -82,6 +201,7 @@ export const searchMusic = async (req: Request, res: Response) => {
         total: savedSongs.length,
         query: q,
         type,
+        cacheSource,
         isMockData: results.length > 0 && results[0].id.startsWith('mock_')
       }
     });

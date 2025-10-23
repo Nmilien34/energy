@@ -1,5 +1,7 @@
 import { Song, ISong } from '../models/Song';
 import { youtubeService, AudioStreamInfo } from './youtubeService';
+import { redisService } from './redisService';
+import { s3Service } from './s3Service';
 
 export interface StreamOptions {
   quality: 'low' | 'medium' | 'high';
@@ -17,44 +19,89 @@ export interface AudioResponse {
 
 class AudioService {
   /**
-   * Get audio stream URL for a song with caching
+   * Get audio stream URL for a song with multi-layer caching
+   * Priority: S3 > Redis > Database > YouTube API
    */
   async getAudioUrl(
     songId: string,
     options: Partial<StreamOptions> = {}
   ): Promise<AudioResponse> {
     try {
-      // Check if song exists in database with valid cached URL
       let song = await Song.findOne({ youtubeId: songId });
 
-      if (song && !song.needsAudioRefresh()) {
-        // Check if cached URL is an embed URL
-        const isEmbedUrl = song.audioUrl?.includes('youtube.com/embed');
-        return {
-          url: song.audioUrl!,
-          expires: song.audioUrlExpiry!,
+      // LAYER 1: Check if song has S3 audio (highest priority)
+      if (song?.hasS3Audio() && s3Service.isAvailable()) {
+        console.log(`✓ Using S3 audio for ${songId}`);
+        const s3Url = await s3Service.getAudioSignedUrl(songId, song.s3AudioFormat || 'webm');
+
+        if (s3Url) {
+          return {
+            url: s3Url,
+            expires: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours
+            quality: options.quality || 'high',
+            format: song.s3AudioFormat || 'webm'
+          };
+        }
+      }
+
+      // LAYER 2: Check Redis cache for audio URL
+      if (redisService.isAvailable()) {
+        const cachedAudio = await redisService.getCachedAudioUrl(songId);
+        if (cachedAudio) {
+          console.log(`✓ Using cached audio URL from Redis for ${songId}`);
+          return cachedAudio;
+        }
+      }
+
+      // LAYER 3: Check database for valid cached URL
+      if (song && !song.needsAudioRefresh() && song.audioUrl) {
+        console.log(`✓ Using cached audio URL from database for ${songId}`);
+        const isEmbedUrl = song.audioUrl.includes('youtube.com/embed');
+        const audioResponse = {
+          url: song.audioUrl,
+          expires: song.audioUrlExpiry || new Date(Date.now() + 6 * 60 * 60 * 1000),
           quality: options.quality || 'medium',
           format: isEmbedUrl ? 'embed' : 'stream'
         };
+
+        // Update Redis cache in background
+        if (redisService.isAvailable()) {
+          redisService.cacheAudioUrl(songId, audioResponse).catch(err =>
+            console.error('Failed to cache audio URL in Redis:', err)
+          );
+        }
+
+        return audioResponse;
       }
 
-      // Get fresh audio stream from YouTube
+      // LAYER 4: Get fresh audio stream from YouTube API (last resort)
+      console.log(`⚠ Fetching fresh audio URL from YouTube for ${songId}`);
       const streamInfo = await youtubeService.getAudioStream(songId);
 
-      // Update or create song record with new audio URL
-      if (song) {
-        song.audioUrl = streamInfo.url;
-        song.audioUrlExpiry = streamInfo.expires;
-        await song.save();
-      }
-
-      return {
+      const audioResponse = {
         url: streamInfo.url,
         expires: streamInfo.expires,
         quality: streamInfo.quality,
-        format: streamInfo.container, // This should be 'embed' when using fallback
+        format: streamInfo.container,
         headers: this.getStreamHeaders(options.mobile || false)
       };
+
+      // Update database cache
+      if (song) {
+        song.audioUrl = streamInfo.url;
+        song.audioUrlExpiry = streamInfo.expires;
+        song.audioSource = 'youtube';
+        await song.save();
+      }
+
+      // Update Redis cache in background
+      if (redisService.isAvailable()) {
+        redisService.cacheAudioUrl(songId, audioResponse).catch(err =>
+          console.error('Failed to cache audio URL in Redis:', err)
+        );
+      }
+
+      return audioResponse;
     } catch (error) {
       console.error(`Error getting audio URL for ${songId}:`, error);
       throw new Error('Failed to get audio stream');
