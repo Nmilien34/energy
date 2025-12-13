@@ -36,6 +36,7 @@ const allowedOrigins = [
   'http://localhost:3002', // Added for development when ports 3000/3001 are busy
   'https://www.yfhnrg.com',
   'https://yfhnrg.com',
+  'https://enterprise.boltzman.ai',
   // Add your Vercel deployment URLs here
   process.env.FRONTEND_URL,
   // Allow all Vercel preview deployments during development
