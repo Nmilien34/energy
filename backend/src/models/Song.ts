@@ -145,10 +145,24 @@ songSchema.methods.needsAudioRefresh = function(): boolean {
 };
 
 // Method to increment play count
-songSchema.methods.incrementPlayCount = function() {
+songSchema.methods.incrementPlayCount = async function() {
   this.playCount += 1;
   this.lastPlayed = new Date();
-  return this.save();
+  await this.save();
+  
+  // Auto-sync to S3 if play count reaches threshold (in background, don't block)
+  if (!this.hasS3Audio() && this.playCount >= 10) {
+    // Import here to avoid circular dependency
+    import('../services/s3SyncService').then(({ s3SyncService }) => {
+      s3SyncService.checkAndSyncIfNeeded(this.youtubeId).catch(err => {
+        console.error(`Background S3 sync failed for ${this.youtubeId}:`, err);
+      });
+    }).catch(() => {
+      // Ignore import errors
+    });
+  }
+  
+  return this;
 };
 
 // Method to check if song has S3 audio

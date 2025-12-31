@@ -311,6 +311,53 @@ export const getS3Catalog = async (_req: Request, res: Response) => {
 };
 
 /**
+ * Cleanup unused songs from S3
+ */
+export const cleanupUnusedS3Songs = async (_req: Request, res: Response) => {
+  try {
+    const result = await s3SyncService.cleanupUnusedSongs();
+
+    res.json({
+      success: true,
+      data: {
+        message: 'S3 cleanup completed',
+        ...result
+      }
+    });
+  } catch (error) {
+    console.error('S3 cleanup error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to cleanup S3 songs'
+    });
+  }
+};
+
+/**
+ * Get S3 daily upload statistics
+ */
+export const getS3DailyStats = async (_req: Request, res: Response) => {
+  try {
+    const stats = s3SyncService.getDailyStats();
+    const s3SongCount = await Song.countDocuments({ audioSource: 's3' });
+
+    res.json({
+      success: true,
+      data: {
+        ...stats,
+        totalS3Songs: s3SongCount
+      }
+    });
+  } catch (error) {
+    console.error('Get S3 daily stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get S3 daily stats'
+    });
+  }
+};
+
+/**
  * YouTube API quota status
  */
 export const getYouTubeQuotaStatus = async (_req: Request, res: Response) => {

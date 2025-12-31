@@ -15,6 +15,8 @@ router.post('/s3/sync', adminController.syncPopularSongsToS3);
 router.post('/s3/sync/:youtubeId', adminController.syncSongToS3);
 router.get('/s3/sync/status', adminController.getS3SyncStatus);
 router.get('/s3/catalog', adminController.getS3Catalog);
+router.post('/s3/cleanup', adminController.cleanupUnusedS3Songs);
+router.get('/s3/stats', adminController.getS3DailyStats);
 
 // YouTube API quota monitoring
 router.get('/youtube/quota', adminController.getYouTubeQuotaStatus);

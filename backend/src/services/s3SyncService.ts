@@ -1,6 +1,7 @@
 import { Song } from '../models/Song';
 import { s3Service, S3AudioMetadata } from './s3Service';
 import { youtubeService } from './youtubeService';
+import { config } from '../utils/config';
 import { Readable } from 'stream';
 import fetch from 'node-fetch';
 
@@ -8,12 +9,15 @@ interface S3SyncOptions {
   minPlayCount?: number;
   batchSize?: number;
   delayBetweenSongs?: number;
+  checkRateLimit?: boolean;
 }
 
 class S3SyncService {
   private isRunning: boolean = false;
   private syncedCount: number = 0;
   private failedCount: number = 0;
+  private dailyUploadCount: number = 0;
+  private lastResetDate: string = new Date().toDateString();
 
   /**
    * Sync popular songs to S3 storage
@@ -42,13 +46,31 @@ class S3SyncService {
     let skippedCount = 0;
 
     try {
+      // Reset daily counter if it's a new day
+      const today = new Date().toDateString();
+      if (today !== this.lastResetDate) {
+        this.dailyUploadCount = 0;
+        this.lastResetDate = today;
+      }
+
+      // Use config values with option overrides
       const {
-        minPlayCount = 10, // Sync songs with at least 10 plays
-        batchSize = 20, // Process 20 songs per run
-        delayBetweenSongs = 2000 // 2 seconds between songs to avoid rate limiting
+        minPlayCount = config.s3.minPlayCountForSync,
+        batchSize = Math.min(config.s3.batchSize, config.s3.maxSongsPerDay - this.dailyUploadCount),
+        delayBetweenSongs = 2000, // 2 seconds between songs to avoid rate limiting
+        checkRateLimit = true
       } = options;
 
-      console.log(`Starting S3 sync for popular songs (minPlayCount: ${minPlayCount}, batchSize: ${batchSize})`);
+      // Check daily rate limit
+      if (checkRateLimit && this.dailyUploadCount >= config.s3.maxSongsPerDay) {
+        console.warn(`Daily upload limit reached (${config.s3.maxSongsPerDay}). Skipping sync.`);
+        return { synced: 0, failed: 0, skipped: 0, duration: 0 };
+      }
+
+      // Adjust batch size to respect daily limit
+      const effectiveBatchSize = Math.min(batchSize, config.s3.maxSongsPerDay - this.dailyUploadCount);
+
+      console.log(`Starting S3 sync for popular songs (minPlayCount: ${minPlayCount}, batchSize: ${effectiveBatchSize}, dailyUploads: ${this.dailyUploadCount}/${config.s3.maxSongsPerDay})`);
 
       // Find popular songs that aren't in S3 yet
       const popularSongs = await Song.find({
@@ -59,8 +81,8 @@ class S3SyncService {
           { s3AudioKey: { $exists: false } }
         ]
       })
-      .sort({ playCount: -1, viewCount: -1 })
-      .limit(batchSize);
+      .sort({ playCount: -1, viewCount: -1, lastPlayed: -1 }) // Prioritize recently played popular songs
+      .limit(effectiveBatchSize);
 
       console.log(`Found ${popularSongs.length} popular songs to sync to S3`);
 
@@ -129,7 +151,14 @@ class S3SyncService {
             await song.save();
 
             this.syncedCount++;
-            console.log(`✓ Synced ${song.title} to S3 (${this.syncedCount}/${popularSongs.length})`);
+            this.dailyUploadCount++;
+            console.log(`✓ Synced ${song.title} to S3 (${this.syncedCount}/${popularSongs.length}, daily: ${this.dailyUploadCount}/${config.s3.maxSongsPerDay})`);
+
+            // Check if we've hit the daily limit
+            if (checkRateLimit && this.dailyUploadCount >= config.s3.maxSongsPerDay) {
+              console.warn(`Daily upload limit reached. Stopping sync.`);
+              break;
+            }
           } else {
             this.failedCount++;
             console.error(`Failed to upload ${song.youtubeId} to S3`);
@@ -323,6 +352,143 @@ class S3SyncService {
       console.error(`Error syncing song ${youtubeId} to S3:`, error);
       return false;
     }
+  }
+
+  /**
+   * Cleanup old/unused songs from S3
+   * Removes songs that haven't been played in X days and have low play counts
+   */
+  async cleanupUnusedSongs(): Promise<{
+    deleted: number;
+    failed: number;
+    freedSpaceMB?: number;
+  }> {
+    if (!s3Service.isAvailable()) {
+      console.warn('S3 service not available, skipping cleanup');
+      return { deleted: 0, failed: 0 };
+    }
+
+    try {
+      const cleanupAfterDays = config.s3.cleanupAfterDays;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - cleanupAfterDays);
+
+      // Find songs in S3 that:
+      // 1. Haven't been played in X days
+      // 2. Have low play count (< 5 plays)
+      // 3. Were uploaded more than X days ago
+      const unusedSongs = await Song.find({
+        audioSource: 's3',
+        s3AudioKey: { $exists: true },
+        s3UploadedAt: { $lt: cutoffDate },
+        $or: [
+          { lastPlayed: { $lt: cutoffDate } },
+          { lastPlayed: { $exists: false } }
+        ],
+        playCount: { $lt: 5 } // Low play count threshold
+      }).limit(50); // Process in batches
+
+      console.log(`Found ${unusedSongs.length} unused songs to cleanup from S3`);
+
+      let deletedCount = 0;
+      let failedCount = 0;
+
+      for (const song of unusedSongs) {
+        try {
+          const deleted = await s3Service.deleteAudio(song.youtubeId, song.s3AudioFormat || 'webm');
+          if (deleted) {
+            // Remove S3 metadata from song
+            song.audioSource = 'youtube';
+            song.s3AudioKey = undefined;
+            song.s3AudioFormat = undefined;
+            song.s3UploadedAt = undefined;
+            await song.save();
+            deletedCount++;
+            console.log(`✓ Cleaned up unused song: ${song.title}`);
+          } else {
+            failedCount++;
+          }
+        } catch (error) {
+          console.error(`Failed to cleanup song ${song.youtubeId}:`, error);
+          failedCount++;
+        }
+      }
+
+      return { deleted: deletedCount, failed: failedCount };
+    } catch (error) {
+      console.error('Error in S3 cleanup:', error);
+      return { deleted: 0, failed: 0 };
+    }
+  }
+
+  /**
+   * Check if a song should be automatically synced to S3 based on play count
+   * This is called when a song's play count is incremented
+   */
+  async checkAndSyncIfNeeded(youtubeId: string): Promise<boolean> {
+    if (!s3Service.isAvailable()) {
+      return false;
+    }
+
+    // Check daily rate limit
+    const today = new Date().toDateString();
+    if (today !== this.lastResetDate) {
+      this.dailyUploadCount = 0;
+      this.lastResetDate = today;
+    }
+
+    if (this.dailyUploadCount >= config.s3.maxSongsPerDay) {
+      return false; // Daily limit reached
+    }
+
+    try {
+      const song = await Song.findOne({ youtubeId });
+      if (!song) {
+        return false;
+      }
+
+      // Check if already in S3
+      if (song.hasS3Audio()) {
+        return true;
+      }
+
+      // Check if song meets criteria for auto-sync
+      const minPlayCount = config.s3.minPlayCountForSync;
+      if (song.playCount >= minPlayCount) {
+        console.log(`Auto-syncing song to S3: ${song.title} (playCount: ${song.playCount})`);
+        const result = await this.syncSong(youtubeId);
+        if (result) {
+          this.dailyUploadCount++;
+        }
+        return result;
+      }
+
+      return false;
+    } catch (error) {
+      console.error(`Error checking auto-sync for ${youtubeId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Get daily upload statistics
+   */
+  getDailyStats(): {
+    uploadedToday: number;
+    maxPerDay: number;
+    remaining: number;
+  } {
+    const today = new Date().toDateString();
+    if (today !== this.lastResetDate) {
+      this.dailyUploadCount = 0;
+      this.lastResetDate = today;
+    }
+
+    return {
+      uploadedToday: this.dailyUploadCount,
+      maxPerDay: config.s3.maxSongsPerDay,
+      remaining: Math.max(0, config.s3.maxSongsPerDay - this.dailyUploadCount)
+    };
   }
 
   /**
