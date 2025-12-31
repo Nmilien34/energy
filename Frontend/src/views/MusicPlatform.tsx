@@ -90,7 +90,7 @@ const MusicPlatform: React.FC = () => {
             <div className="w-10 h-10 bg-gradient-to-br from-music-purple to-music-blue rounded-lg flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
               <Music className="h-6 w-6 text-white" />
             </div>
-            <span className="text-xl font-black tracking-tight">
+            <span className="text-xl font-black tracking-tight font-display">
               <span className="bg-gradient-to-r from-music-purple to-music-blue bg-clip-text text-transparent">NRG</span>
               <span className="text-white">FLOW</span>
             </span>
@@ -160,7 +160,7 @@ const MusicPlatform: React.FC = () => {
               <div className="w-8 h-8 bg-gradient-to-br from-music-purple to-music-blue rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Music className="h-5 w-5 text-white" />
               </div>
-              <span className="font-black text-white">
+              <span className="font-black text-white font-display">
                 <span className="bg-gradient-to-r from-music-purple to-music-blue bg-clip-text text-transparent">NRG</span>FLOW
               </span>
             </button>

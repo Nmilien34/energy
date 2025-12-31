@@ -159,7 +159,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
       {/* Dynamic Greeting Section */}
       <section className="space-y-8">
         <div className="space-y-3">
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight font-display">
             {getGreeting()}
           </h1>
           <p className="text-xl sm:text-2xl text-gray-400 font-medium">What would you like to play today?</p>
@@ -188,7 +188,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
         <section className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
             <div className="space-y-2">
-              <h2 className="text-3xl sm:text-4xl font-black text-white">
+              <h2 className="text-3xl sm:text-4xl font-black text-white font-display tracking-tight">
                 Made for {getFirstName()}
               </h2>
               <p className="text-gray-400 font-medium">Your personalized playlists</p>
@@ -217,7 +217,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
       {recentlyPlayed && recentlyPlayed.length > 0 && (
         <section className="space-y-6">
           <div className="space-y-2">
-            <h2 className="text-3xl sm:text-4xl font-black text-white">
+            <h2 className="text-3xl sm:text-4xl font-black text-white font-display tracking-tight">
               Recently Played
             </h2>
             <p className="text-gray-400 font-medium">Pick up where you left off</p>
@@ -240,7 +240,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
         <section className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
             <div className="space-y-2">
-              <h2 className="text-3xl sm:text-4xl font-black text-white">
+              <h2 className="text-3xl sm:text-4xl font-black text-white font-display tracking-tight">
                 Trending Right Now
               </h2>
               <p className="text-gray-400 font-medium">What's hot in music right now</p>
@@ -379,8 +379,8 @@ const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ item }) => {
           </div>
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <p className="font-bold text-white text-base truncate mb-1 group-hover:text-music-purple transition-colors">{item.label}</p>
-          <p className="text-gray-400 text-sm truncate mb-1">{item.subtitle}</p>
+          <p className="font-semibold text-white text-base truncate mb-1 group-hover:text-music-purple transition-colors">{item.label}</p>
+          <p className="text-gray-400 text-sm truncate mb-1 font-normal">{item.subtitle}</p>
           <div className="flex items-center space-x-2 text-xs text-gray-500">
             <item.icon className="h-3 w-3" />
             <span className="capitalize">{item.type}</span>
@@ -430,7 +430,7 @@ const EnhancedSongCard: React.FC<EnhancedSongCardProps> = ({ song, onPlay, isCur
       </div>
       <div>
         <div className="flex items-center space-x-1 mb-1">
-          <p className="text-white text-sm font-bold truncate group-hover:text-music-purple transition-colors">{song.title}</p>
+          <p className="text-white text-sm font-semibold truncate group-hover:text-music-purple transition-colors">{song.title}</p>
           {song.isCached && (
             <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
               <Cloud className="h-3.5 w-3.5 text-music-blue" />
@@ -474,7 +474,7 @@ const EnhancedPlaylistCard: React.FC<EnhancedPlaylistCardProps> = ({ playlist, o
         </div>
       </div>
       <div>
-        <p className="text-white text-sm font-bold truncate group-hover:text-music-purple transition-colors mb-1">{playlist.name}</p>
+        <p className="text-white text-sm font-semibold truncate group-hover:text-music-purple transition-colors mb-1">{playlist.name}</p>
         <p className="text-gray-400 text-xs truncate">
           {playlist.songs ? playlist.songs.length : 0} songs
         </p>

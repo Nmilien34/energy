@@ -27,7 +27,7 @@ const Welcome: React.FC = () => {
             <div className="w-10 h-10 bg-gradient-to-br from-music-purple to-music-blue rounded-lg flex items-center justify-center shadow-lg">
               <Music className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-2xl font-black tracking-tight">
+            <h1 className="text-2xl font-black tracking-tight font-display">
               <span className="bg-gradient-to-r from-music-purple to-music-blue bg-clip-text text-transparent">
                 NRG
               </span>
@@ -59,14 +59,14 @@ const Welcome: React.FC = () => {
             <span className="text-sm font-medium">Your Music, Your Way</span>
           </div>
           
-          <h1 className="text-7xl md:text-8xl font-black mb-6 leading-tight">
+          <h1 className="text-7xl md:text-8xl font-black mb-6 leading-tight font-display tracking-tight">
             <span className="block">Music for</span>
             <span className="block bg-gradient-to-r from-music-purple via-purple-400 to-music-blue bg-clip-text text-transparent">
               Everyone
             </span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
             Discover, convert, and manage your music collection. 
             <span className="text-white font-medium"> All in one place.</span>
           </p>
@@ -74,7 +74,7 @@ const Welcome: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-center gap-4 mb-20">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="group relative px-8 py-4 rounded-full bg-gradient-to-r from-music-purple to-music-blue text-white font-bold text-lg hover:scale-105 transition-all hover:from-music-purple-hover hover:to-music-blue-hover shadow-lg shadow-music-purple/30"
+              className="group relative px-8 py-4 rounded-full bg-gradient-to-r from-music-purple to-music-blue text-white font-bold text-lg hover:scale-105 transition-all hover:from-music-purple-hover hover:to-music-blue-hover shadow-lg shadow-music-purple/30 font-display"
             >
               <span className="relative z-10 flex items-center justify-center space-x-2">
                 <Play className="h-5 w-5 fill-white" />
@@ -83,7 +83,7 @@ const Welcome: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/platform')}
-              className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold text-lg hover:bg-white/20 transition-all hover:scale-105"
+              className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold text-lg hover:bg-white/20 transition-all hover:scale-105 font-display"
             >
               Explore Platform
             </button>
@@ -98,8 +98,8 @@ const Welcome: React.FC = () => {
               <div className="w-14 h-14 bg-gradient-to-br from-music-purple to-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Download className="h-7 w-7 text-white" />
               </div>
-              <h3 className="text-2xl font-bold mb-3 text-white">YouTube to MP3</h3>
-              <p className="text-gray-400 leading-relaxed">
+              <h3 className="text-2xl font-bold mb-3 text-white font-display">YouTube to MP3</h3>
+              <p className="text-gray-400 leading-relaxed font-normal">
                 Convert your favorite YouTube videos to high-quality MP3 files instantly. 
                 <span className="text-white font-medium"> No limits, no hassle.</span>
               </p>
@@ -112,8 +112,8 @@ const Welcome: React.FC = () => {
               <div className="w-14 h-14 bg-gradient-to-br from-music-blue to-blue-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Search className="h-7 w-7 text-white" />
               </div>
-              <h3 className="text-2xl font-bold mb-3 text-white">Song Recognition</h3>
-              <p className="text-gray-400 leading-relaxed">
+              <h3 className="text-2xl font-bold mb-3 text-white font-display">Song Recognition</h3>
+              <p className="text-gray-400 leading-relaxed font-normal">
                 Identify any song instantly by uploading a clip. 
                 <span className="text-white font-medium"> Powered by AI.</span>
               </p>
@@ -126,8 +126,8 @@ const Welcome: React.FC = () => {
               <div className="w-14 h-14 bg-gradient-to-br from-music-purple to-purple-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Heart className="h-7 w-7 text-white fill-white" />
               </div>
-              <h3 className="text-2xl font-bold mb-3 text-white">Personal Library</h3>
-              <p className="text-gray-400 leading-relaxed">
+              <h3 className="text-2xl font-bold mb-3 text-white font-display">Personal Library</h3>
+              <p className="text-gray-400 leading-relaxed font-normal">
                 Organize and manage your music collection with playlists, favorites, and more.
                 <span className="text-white font-medium"> Your music, organized.</span>
               </p>
