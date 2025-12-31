@@ -86,7 +86,10 @@ export const audioSettingsSchema = z.object({
 // Appearance Settings Validation
 export const appearanceSettingsSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']).optional(),
-  accentColor: z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid hex color').optional(),
+  accentColor: z.string().optional().refine(
+    (val) => !val || /^#[0-9A-F]{6}$/i.test(val),
+    { message: 'Invalid hex color format (must be #RRGGBB)' }
+  ),
   fontSize: z.enum(['small', 'medium', 'large']).optional(),
   compactMode: z.boolean().optional(),
   showAlbumArt: z.boolean().optional(),
@@ -96,7 +99,7 @@ export const appearanceSettingsSchema = z.object({
   language: z.string().min(2).max(5).optional(),
   dateFormat: z.string().optional(),
   timeFormat: z.enum(['12h', '24h']).optional()
-});
+}).passthrough(); // Allow additional fields to pass through
 
 // Playback Settings Validation
 export const playbackSettingsSchema = z.object({

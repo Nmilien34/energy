@@ -140,19 +140,46 @@ export const updateAudioSettings = async (req: Request, res: Response) => {
 export const updateAppearanceSettings = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user as IUser;
-    const validation = appearanceSettingsSchema.safeParse(req.body);
-
-    if (!validation.success) {
-      return res.status(STATUS_CODES.BAD_REQUEST).json({
+    
+    if (!user) {
+      return res.status(STATUS_CODES.UNAUTHORIZED).json({
         success: false,
-        error: 'Invalid appearance settings',
-        details: validation.error.errors
+        error: 'Authentication required'
       });
     }
 
+    // Validate request body
+    const validation = appearanceSettingsSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      console.error('Appearance settings validation failed:', validation.error.errors);
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        error: 'Invalid appearance settings',
+        details: validation.error.errors.map(err => ({
+          field: err.path.join('.'),
+          message: err.message
+        }))
+      });
+    }
+
+    // Only update fields that were provided
+    const updates: any = {};
+    if (validation.data.theme !== undefined) updates.theme = validation.data.theme;
+    if (validation.data.accentColor !== undefined) updates.accentColor = validation.data.accentColor;
+    if (validation.data.fontSize !== undefined) updates.fontSize = validation.data.fontSize;
+    if (validation.data.compactMode !== undefined) updates.compactMode = validation.data.compactMode;
+    if (validation.data.showAlbumArt !== undefined) updates.showAlbumArt = validation.data.showAlbumArt;
+    if (validation.data.animationsEnabled !== undefined) updates.animationsEnabled = validation.data.animationsEnabled;
+    if (validation.data.highContrast !== undefined) updates.highContrast = validation.data.highContrast;
+    if (validation.data.colorBlindFriendly !== undefined) updates.colorBlindFriendly = validation.data.colorBlindFriendly;
+    if (validation.data.language !== undefined) updates.language = validation.data.language;
+    if (validation.data.dateFormat !== undefined) updates.dateFormat = validation.data.dateFormat;
+    if (validation.data.timeFormat !== undefined) updates.timeFormat = validation.data.timeFormat;
+
     const settings = await settingsService.updateAppearanceSettings(
       user._id.toString(),
-      validation.data
+      updates
     );
 
     res.json({
@@ -161,11 +188,12 @@ export const updateAppearanceSettings = async (req: Request, res: Response) => {
       message: 'Appearance settings updated successfully'
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update appearance settings error:', error);
     res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
-      error: ERROR_MESSAGES.INTERNAL_ERROR
+      error: ERROR_MESSAGES.INTERNAL_ERROR || 'Failed to update appearance settings',
+      message: error?.message
     });
   }
 };
