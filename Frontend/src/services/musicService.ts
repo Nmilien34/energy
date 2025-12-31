@@ -22,7 +22,7 @@ class MusicService {
     
     // Decode HTML entities in search results (safety measure)
     if (response.data.success && response.data.data?.songs) {
-      response.data.data.songs = response.data.data.songs.map(song => ({
+      response.data.data.songs = response.data.data.songs.map((song: Song) => ({
         ...song,
         title: decodeHtmlEntities(song.title),
         artist: decodeHtmlEntities(song.artist),
@@ -84,7 +84,7 @@ class MusicService {
     
     // Decode HTML entities in trending songs (safety measure)
     if (response.data.success && response.data.data?.songs) {
-      response.data.data.songs = response.data.data.songs.map(song => ({
+      response.data.data.songs = response.data.data.songs.map((song: Song) => ({
         ...song,
         title: decodeHtmlEntities(song.title),
         artist: decodeHtmlEntities(song.artist),
@@ -101,7 +101,7 @@ class MusicService {
     
     // Decode HTML entities in artist names (safety measure)
     if (response.data.success && response.data.data?.artists) {
-      response.data.data.artists = response.data.data.artists.map(artist => ({
+      response.data.data.artists = response.data.data.artists.map((artist: Artist) => ({
         ...artist,
         name: decodeHtmlEntities(artist.name),
         channelTitle: artist.channelTitle ? decodeHtmlEntities(artist.channelTitle) : artist.channelTitle,
@@ -126,11 +126,11 @@ class MusicService {
     
     // Decode HTML entities in playlists (safety measure)
     if (response.data.success && response.data.data) {
-      response.data.data = response.data.data.map(playlist => ({
+      response.data.data = response.data.data.map((playlist: Playlist) => ({
         ...playlist,
         name: decodeHtmlEntities(playlist.name),
         description: playlist.description ? decodeHtmlEntities(playlist.description) : playlist.description,
-        songs: playlist.songs ? playlist.songs.map(song => ({
+        songs: playlist.songs ? playlist.songs.map((song: Song) => ({
           ...song,
           title: decodeHtmlEntities(song.title),
           artist: decodeHtmlEntities(song.artist),
@@ -158,7 +158,7 @@ class MusicService {
         ...playlist,
         name: decodeHtmlEntities(playlist.name),
         description: playlist.description ? decodeHtmlEntities(playlist.description) : playlist.description,
-        songs: playlist.songs ? playlist.songs.map(song => ({
+        songs: playlist.songs ? playlist.songs.map((song: Song) => ({
           ...song,
           title: decodeHtmlEntities(song.title),
           artist: decodeHtmlEntities(song.artist),
@@ -203,11 +203,11 @@ class MusicService {
     
     // Decode HTML entities in public playlists (safety measure)
     if (response.data.success && response.data.data?.playlists) {
-      response.data.data.playlists = response.data.data.playlists.map(playlist => ({
+      response.data.data.playlists = response.data.data.playlists.map((playlist: Playlist) => ({
         ...playlist,
         name: decodeHtmlEntities(playlist.name),
         description: playlist.description ? decodeHtmlEntities(playlist.description) : playlist.description,
-        songs: playlist.songs ? playlist.songs.map(song => ({
+        songs: playlist.songs ? playlist.songs.map((song: Song) => ({
           ...song,
           title: decodeHtmlEntities(song.title),
           artist: decodeHtmlEntities(song.artist),
@@ -232,7 +232,7 @@ class MusicService {
     // Decode HTML entities in library songs (safety measure)
     if (response.data.success && response.data.data) {
       const library = response.data.data;
-      const decodeSongs = (songs: Song[]) => songs.map(song => ({
+      const decodeSongs = (songs: Song[]) => songs.map((song: Song) => ({
         ...song,
         title: decodeHtmlEntities(song.title),
         artist: decodeHtmlEntities(song.artist),
@@ -265,7 +265,7 @@ class MusicService {
     
     // Decode HTML entities in recently played songs (safety measure)
     if (response.data.success && response.data.data) {
-      response.data.data = response.data.data.map(song => ({
+      response.data.data = response.data.data.map((song: Song) => ({
         ...song,
         title: decodeHtmlEntities(song.title),
         artist: decodeHtmlEntities(song.artist),
