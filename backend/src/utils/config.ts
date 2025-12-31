@@ -2,6 +2,13 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Validate JWT_SECRET in production
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error('ERROR: JWT_SECRET environment variable is required in production!');
+  console.error('This will cause authentication failures. Please set JWT_SECRET in your environment variables.');
+  // Don't exit in case this is being checked during build, but log the error
+}
+
 export const config = {
   port: process.env.PORT || 5003,
   mongodb: {

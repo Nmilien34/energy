@@ -17,8 +17,25 @@ export const register = async (req: Request, res: Response) => {
   try {
     const { email, password, username } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    if (!email || !password || !username) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email, password, and username are required'
+      });
+    }
+
+    // Normalize email to lowercase for consistent querying and storage
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedUsername = username.trim();
+
+    // Check if user already exists (case-insensitive for email)
+    const existingUser = await User.findOne({ 
+      $or: [
+        { email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+        { username: normalizedUsername }
+      ] 
+    });
+    
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -26,11 +43,11 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    // Create new user
+    // Create new user (Mongoose schema will lowercase email on save, but we normalize here too)
     const user = new User({
-      email,
+      email: normalizedEmail,
       password,
-      username
+      username: normalizedUsername
     }) as IUser;
 
     await user.save();
@@ -45,6 +62,14 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
+    // Log full error details for debugging
+    if (error instanceof Error) {
+      console.error('Registration error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+    }
     res.status(500).json({
       success: false,
       error: 'Error creating user'
@@ -56,45 +81,38 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    console.log('Login attempt for email:', email);
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and password are required'
+      });
+    }
 
-    // Debug: Check all users in database
-    const allUsers = await User.find({}).select('email username');
-    console.log('All users in database:', allUsers.map(u => ({ email: u.email, username: u.username })));
+    // Normalize email to lowercase for consistent querying
+    // (Mongoose lowercase: true only applies on save, not on query)
+    const normalizedEmail = email.toLowerCase().trim();
 
-    // Find user by email
-    const user = await User.findOne({ email }) as IUser | null;
+    // Find user by email (case-insensitive search)
+    const user = await User.findOne({ 
+      email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
+    }) as IUser | null;
+
     if (!user) {
-      console.log('User not found for email:', email);
-      console.log('Searching for user with exact query...');
-
-      // Try case-insensitive search
-      const userCaseInsensitive = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } }) as IUser | null;
-      if (userCaseInsensitive) {
-        console.log('Found user with case-insensitive search:', userCaseInsensitive.email);
-      } else {
-        console.log('No user found even with case-insensitive search');
-      }
-
+      // Don't reveal whether email exists or not for security
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
       });
     }
-
-    console.log('User found, checking password for:', email);
 
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      console.log('Password mismatch for email:', email);
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
       });
     }
-
-    console.log('Login successful for email:', email);
 
     // Update last login
     user.lastLogin = new Date();
@@ -111,6 +129,14 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Login error:', error);
+    // Log full error details for debugging in production
+    if (error instanceof Error) {
+      console.error('Login error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+    }
     res.status(500).json({
       success: false,
       error: 'Error logging in'
