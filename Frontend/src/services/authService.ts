@@ -32,8 +32,37 @@ class AuthService {
       localStorage.setItem('token', token);
       return { user, token };
     } catch (error: any) {
-      console.error('Login error:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.error || error.message || 'Login failed');
+      // Handle timeout errors
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        console.error('Login timeout:', error);
+        throw new Error('Login request timed out. Please check your connection and try again.');
+      }
+      
+      // Handle network errors
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        console.error('Network error during login:', error);
+        throw new Error('Network error. Please check your connection and try again.');
+      }
+      
+      // Handle HTTP errors
+      const errorMessage = error.response?.data?.error || error.message || 'Login failed';
+      const statusCode = error.response?.status;
+      
+      console.error('Login error:', {
+        status: statusCode,
+        error: errorMessage,
+        fullError: error.response?.data,
+        message: error.message
+      });
+      
+      // Provide more specific error messages based on status code
+      if (statusCode === 500) {
+        throw new Error('Server error during login. Please try again later or contact support.');
+      } else if (statusCode === 401) {
+        throw new Error('Invalid email or password. Please check your credentials and try again.');
+      } else {
+        throw new Error(errorMessage);
+      }
     }
   }
 

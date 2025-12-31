@@ -89,13 +89,15 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Normalize email to lowercase for consistent querying
-    // (Mongoose lowercase: true only applies on save, not on query)
+    // Since the schema has lowercase: true, emails are stored in lowercase
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Find user by email (case-insensitive search)
-    const user = await User.findOne({ 
-      email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
-    }) as IUser | null;
+    // Find user by email (direct query - emails are stored lowercase in DB)
+    // Using direct query instead of regex for better performance and index usage
+    // Add maxTimeMS to prevent hanging queries
+    const user = await User.findOne({ email: normalizedEmail })
+      .maxTimeMS(5000) // 5 second timeout
+      .exec() as IUser | null;
 
     if (!user) {
       // Don't reveal whether email exists or not for security
@@ -107,6 +109,7 @@ export const login = async (req: Request, res: Response) => {
 
     // Check password
     const isMatch = await user.comparePassword(password);
+
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -136,7 +139,24 @@ export const login = async (req: Request, res: Response) => {
         stack: error.stack,
         name: error.name
       });
+      
+      // Check for timeout errors
+      if (error.message.includes('timeout')) {
+        return res.status(504).json({
+          success: false,
+          error: 'Request timeout. Please try again.'
+        });
+      }
+      
+      // Check for database connection errors
+      if (error.message.includes('Mongo') || error.message.includes('connection')) {
+        return res.status(503).json({
+          success: false,
+          error: 'Database connection error. Please try again later.'
+        });
+      }
     }
+    
     res.status(500).json({
       success: false,
       error: 'Error logging in'

@@ -19,10 +19,17 @@ import './controllers/oauthController';
 const app = express();
 
 // Connect to MongoDB with timeout options
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/nrgflow', {
-  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of hanging
+const mongoOptions = {
+  serverSelectionTimeoutMS: 10000, // Increased to 10s for production
   socketTimeoutMS: 45000,
-})
+  connectTimeoutMS: 10000,
+  maxPoolSize: 10, // Maintain up to 10 socket connections
+  minPoolSize: 2, // Maintain at least 2 socket connections
+  maxIdleTimeMS: 30000,
+  heartbeatFrequencyMS: 10000
+};
+
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/nrgflow', mongoOptions)
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => {
     console.error('MongoDB connection error:', err);

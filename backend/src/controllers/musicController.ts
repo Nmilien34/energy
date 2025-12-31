@@ -369,9 +369,15 @@ export const getSong = async (req: Request, res: Response) => {
       });
     }
 
+    // Include S3 cache status in response
+    const songData = song.toJSON ? song.toJSON() : song;
     res.json({
       success: true,
-      data: song
+      data: {
+        ...songData,
+        isCached: song.hasS3Audio(),
+        audioSource: song.audioSource || 'youtube'
+      }
     });
   } catch (error) {
     console.error('Get song error:', error);
@@ -426,7 +432,11 @@ export const getAudioStream = async (req: Request, res: Response) => {
         expiresAt: audioResponse.expires?.toISOString?.() || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         format: audioResponse.format as any,
         isEmbed: (audioResponse.format as any) === 'embed',
-        youtubeId
+        youtubeId,
+        // Add audio source information for frontend
+        audioSource: song?.audioSource || 'youtube',
+        isCached: song?.hasS3Audio() || false,
+        quality: audioResponse.quality
       }
     });
   } catch (error) {
@@ -888,6 +898,9 @@ export const getAudioStreamWithFallback = async (req: Request, res: Response) =>
           format: audioResponse.format as any,
           isEmbed: (audioResponse.format as any) === 'embed',
           youtubeId: id,
+          audioSource: song.audioSource || 'youtube',
+          isCached: song.hasS3Audio(),
+          quality: audioResponse.quality,
           fallback: {
             embedUrl: `https://www.youtube.com/embed/${id}?autoplay=0&controls=1&modestbranding=1&rel=0&showinfo=0`,
             playerType: 'youtube_embed'
