@@ -28,10 +28,9 @@ const mongoOptions = {
   minPoolSize: 2, // Maintain at least 2 socket connections
   maxIdleTimeMS: 30000,
   heartbeatFrequencyMS: 10000,
-  retryWrites: true,
-  bufferCommands: true, // Buffer commands if not connected (Mongoose default)
-  bufferMaxEntries: 100 // Allow buffering up to 100 commands while connecting
-  // Note: 'w' option removed - using default write concern
+  retryWrites: true
+  // Note: bufferCommands is a Mongoose option, not MongoDB driver option
+  // Mongoose handles command buffering automatically
 };
 
 // MongoDB connection with better error handling and retry logic
@@ -49,8 +48,12 @@ const connectMongoDB = async (retries = 3, delay = 2000) => {
     console.error('❌ MONGODB_URI not set in environment variables!');
     console.error('❌ Using default localhost connection which will fail in production!');
     console.error('💡 Please set MONGODB_URI in your Render environment variables');
+    console.error('💡 Go to: Render Dashboard → Your Service → Environment → Add MONGODB_URI');
     return; // Don't attempt connection with localhost in production
   }
+  
+  // Log that we have the URI (for debugging)
+  console.log('✅ MONGODB_URI is set, length:', process.env.MONGODB_URI.length);
   
   // Validate connection string format
   if (!mongoUri.startsWith('mongodb://') && !mongoUri.startsWith('mongodb+srv://')) {
@@ -162,10 +165,20 @@ mongoose.connection.on('reconnected', () => {
 });
 
 // Attempt connection (non-blocking - app will start even if connection fails)
-connectMongoDB().catch(err => {
-  console.error('Failed to connect to MongoDB during startup:', err);
-  // Don't exit - allow app to start and retry connections on first request
-});
+console.log('🚀 Starting MongoDB connection attempt...');
+connectMongoDB()
+  .then(() => {
+    console.log('✅ MongoDB connection successful on startup');
+  })
+  .catch(err => {
+    console.error('❌ Failed to connect to MongoDB during startup:', err);
+    console.error('⚠️  App will continue, but database operations will fail until connection is established');
+    console.error('💡 Check:');
+    console.error('   1. MONGODB_URI environment variable is set in Render');
+    console.error('   2. MongoDB Atlas Network Access allows Render IPs (or 0.0.0.0/0)');
+    console.error('   3. Connection string format is correct');
+    console.error('   4. MongoDB cluster is not paused');
+  });
 
 // CORS configuration
 const allowedOrigins = [

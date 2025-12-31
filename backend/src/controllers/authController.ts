@@ -81,13 +81,6 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   const startTime = Date.now();
   console.log('Login attempt started:', { email: req.body?.email ? 'provided' : 'missing', timestamp: new Date().toISOString() });
-  
-  // Create a timeout promise that will reject after 10 seconds
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error('Login request timeout - database connection may be slow'));
-    }, 10000); // 10 second overall timeout
-  });
 
   try {
     const { email, password } = req.body;
@@ -100,28 +93,48 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Normalize email to lowercase for consistent querying
-    // Since the schema has lowercase: true, emails are stored in lowercase
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check connection state - log for debugging
+    // FAIL FAST: Check MongoDB connection state - if not connected, fail immediately
     const connectionState = mongoose.connection.readyState;
-    if (connectionState !== 1) {
-      console.warn('MongoDB connection state:', {
-        readyState: connectionState,
-        state: connectionState === 0 ? 'disconnected' : connectionState === 2 ? 'connecting' : 'disconnecting',
-        host: mongoose.connection.host || 'unknown',
-        name: mongoose.connection.name || 'unknown'
+    if (connectionState === 0) {
+      console.error('MongoDB is disconnected - failing fast');
+      return res.status(503).json({
+        success: false,
+        error: 'Database not available. Please try again in a moment.'
       });
-      // Mongoose will attempt to connect when we make a query (if bufferCommands is true)
     }
 
+    // If connecting, wait max 2 seconds, then fail
+    if (connectionState === 2) {
+      console.warn('MongoDB is connecting, waiting up to 2 seconds...');
+      const waitStart = Date.now();
+      while (mongoose.connection.readyState === 2 && (Date.now() - waitStart) < 2000) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      if (mongoose.connection.readyState !== 1) {
+        console.error('MongoDB still not connected after wait');
+        return res.status(503).json({
+          success: false,
+          error: 'Database connection is taking too long. Please try again in a moment.'
+        });
+      }
+    }
+
+    // Create a timeout promise that will reject after 5 seconds (reduced from 10)
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Login request timeout - database query is taking too long'));
+      }, 5000); // 5 second overall timeout
+    });
+
     // Find user by email with timeout wrapper
-    // Using Promise.race to ensure we don't wait more than 10 seconds total
     let user: IUser | null;
     try {
       const queryPromise = User.findOne({ email: normalizedEmail })
-        .select('_id email password lastLogin') // Only select needed fields for login
-        .maxTimeMS(5000) // 5 second query timeout
+        .select('_id email password lastLogin')
+        .maxTimeMS(3000) // 3 second query timeout
         .exec() as Promise<IUser | null>;
       
       // Race between query and overall timeout
