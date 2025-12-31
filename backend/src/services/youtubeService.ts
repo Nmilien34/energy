@@ -121,9 +121,9 @@ class YouTubeService {
             thumbnailHd: snippet.thumbnails?.high?.url || snippet.thumbnails?.maxres?.url || undefined,
             viewCount: 0, // No view count without video details
             publishedAt: snippet.publishedAt || undefined,
-            channelTitle: snippet.channelTitle || undefined,
+            channelTitle: this.decodeHtmlEntities(snippet.channelTitle || '') || undefined,
             channelId: snippet.channelId || undefined,
-            description: snippet.description || undefined
+            description: this.decodeHtmlEntities(snippet.description || '') || undefined
           };
         });
       }
@@ -144,9 +144,9 @@ class YouTubeService {
           thumbnailHd: snippet.thumbnails?.high?.url || snippet.thumbnails?.maxres?.url || undefined,
           viewCount: parseInt(String(details?.statistics?.viewCount || '0')),
           publishedAt: snippet.publishedAt || undefined,
-          channelTitle: snippet.channelTitle || undefined,
+          channelTitle: this.decodeHtmlEntities(snippet.channelTitle || '') || undefined,
           channelId: snippet.channelId || undefined,
-          description: snippet.description || undefined
+          description: this.decodeHtmlEntities(snippet.description || '') || undefined
         };
       }).filter(song => song.duration > 30 && song.duration < 1200); // Filter 30s - 20min
     } catch (error: any) {
@@ -391,9 +391,9 @@ class YouTubeService {
           thumbnailHd: snippet.thumbnails?.high?.url || undefined,
           viewCount: parseInt(String(statistics.viewCount || '0')),
           publishedAt: snippet.publishedAt || undefined,
-          channelTitle: snippet.channelTitle || undefined,
+          channelTitle: this.decodeHtmlEntities(snippet.channelTitle || '') || undefined,
           channelId: snippet.channelId || undefined,
-          description: snippet.description || undefined
+          description: this.decodeHtmlEntities(snippet.description || '') || undefined
         };
       }).filter(song => song.duration > 30 && song.duration < 1200);
     } catch (error: any) {
@@ -479,10 +479,47 @@ class YouTubeService {
   }
 
   /**
+   * Decode HTML entities (e.g., &#39; -> ', &amp; -> &)
+   */
+  private decodeHtmlEntities(text: string): string {
+    const entityMap: { [key: string]: string } = {
+      '&#39;': "'",
+      '&apos;': "'",
+      '&quot;': '"',
+      '&amp;': '&',
+      '&lt;': '<',
+      '&gt;': '>',
+      '&nbsp;': ' ',
+      '&#8217;': "'", // Right single quotation mark
+      '&#8216;': "'", // Left single quotation mark
+      '&#8220;': '"', // Left double quotation mark
+      '&#8221;': '"', // Right double quotation mark
+      '&#8211;': '–', // En dash
+      '&#8212;': '—', // Em dash
+    };
+
+    // Decode numeric entities (&#39;, &#8217;, etc.)
+    let decoded = text.replace(/&#(\d+);/g, (match, dec) => {
+      return String.fromCharCode(parseInt(dec, 10));
+    });
+
+    // Decode named entities (&amp;, &quot;, etc.)
+    for (const [entity, char] of Object.entries(entityMap)) {
+      decoded = decoded.replace(new RegExp(entity, 'g'), char);
+    }
+
+    return decoded;
+  }
+
+  /**
    * Clean up video title for better display
    */
   private cleanTitle(title: string): string {
-    return title
+    // First decode HTML entities
+    let cleaned = this.decodeHtmlEntities(title);
+    
+    // Then clean up formatting
+    cleaned = cleaned
       .replace(/\[.*?\]/g, '') // Remove square brackets
       .replace(/\(.*?\)/g, '') // Remove parentheses
       .replace(/【.*?】/g, '') // Remove Japanese brackets
@@ -492,12 +529,18 @@ class YouTubeService {
       .replace(/HD|4K|1080p|720p/gi, '')
       .replace(/\s+/g, ' ')
       .trim();
+    
+    return cleaned;
   }
 
   /**
    * Extract artist name from title and channel
    */
   private extractArtist(title: string, channelTitle: string): string {
+    // Decode HTML entities first
+    const decodedTitle = this.decodeHtmlEntities(title);
+    const decodedChannel = this.decodeHtmlEntities(channelTitle);
+    
     // Common patterns to extract artist
     const patterns = [
       /^([^-]+)\s*-\s*/, // Artist - Song
@@ -506,14 +549,14 @@ class YouTubeService {
     ];
 
     for (const pattern of patterns) {
-      const match = title.match(pattern);
+      const match = decodedTitle.match(pattern);
       if (match) {
-        return match[1].trim();
+        return this.decodeHtmlEntities(match[1].trim());
       }
     }
 
     // Fallback to channel title if no pattern matches
-    return channelTitle || 'Unknown Artist';
+    return decodedChannel || 'Unknown Artist';
   }
 
   /**
