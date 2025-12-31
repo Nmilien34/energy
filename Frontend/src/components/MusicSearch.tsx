@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Music, Clock, Eye, Play, Heart, MoreVertical, ListPlus, Cloud } from 'lucide-react';
+import { Search, Music, Clock, Eye, Play, Heart, MoreVertical, ListPlus, Cloud, CheckCircle2, Sparkles } from 'lucide-react';
 import { Song } from '../types/models';
 import { musicService } from '../services/musicService';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
@@ -165,8 +165,14 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
 
           {!loading && songs.length > 0 && (
             <div className="py-2">
-              <div className="px-4 py-2 text-xs text-zinc-400 uppercase tracking-wide border-b border-zinc-700">
-                {songs.length} Results
+              <div className="px-4 py-2 text-xs text-zinc-400 uppercase tracking-wide border-b border-zinc-700 flex items-center justify-between">
+                <span>{songs.length} Results</span>
+                {songs.some(s => s.isBestMatch) && (
+                  <span className="flex items-center space-x-1 text-music-purple normal-case">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>Best match verified</span>
+                  </span>
+                )}
               </div>
               {songs.map((song) => (
                 <SongItem
@@ -275,9 +281,19 @@ const SongItem: React.FC<SongItemProps> = ({
       <div className="flex-1 min-w-0 mr-3">
         <div className="flex items-center space-x-2">
           <h4 className="font-medium text-white truncate">{song.title}</h4>
+          {song.isBestMatch && (
+            <span className="flex items-center flex-shrink-0" title="Verified best match">
+              <CheckCircle2 className="h-4 w-4 text-music-purple" />
+            </span>
+          )}
+          {song.matchScore && song.matchScore > 80 && !song.isBestMatch && (
+            <span className="flex items-center flex-shrink-0" title={`High quality match (${song.matchScore}%)`}>
+              <Sparkles className="h-3.5 w-3.5 text-music-blue" />
+            </span>
+          )}
           {song.isCached && (
-            <span className="flex items-center" title="Cached for faster playback">
-              <Cloud className="h-3.5 w-3.5 text-blue-400" />
+            <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
+              <Cloud className="h-3.5 w-3.5 text-music-blue" />
             </span>
           )}
         </div>

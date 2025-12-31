@@ -46,6 +46,10 @@ export interface Song {
   updatedAt: string;
   audioSource?: 's3' | 'youtube' | 'cache';  // Where audio is from
   isCached?: boolean;                        // Whether song is cached in S3
+  // Search match quality indicators (optional, from backend)
+  matchScore?: number;                      // Match quality score (0-100)
+  durationDelta?: number;                   // Duration difference from query
+  isBestMatch?: boolean;                    // Whether this is the best match
 }
 
 // Artist types
