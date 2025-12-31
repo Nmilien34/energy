@@ -1,15 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Music, Play, Download, Search, Heart, Sparkles } from 'lucide-react';
+import { User, Music, Play, Download, Search, Heart, Sparkles, X, Cloud } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
+import AnonymousLimitModal from '../components/AnonymousLimitModal';
 import ThemeSwitcher from '../components/ThemeSwitcher';
 import UserMenu from '../components/UserMenu';
 import { useAuth } from '../contexts/AuthContext';
+import { useAudioPlayer } from '../contexts/AudioPlayerContext';
+import { useAnonymousLandingSession } from '../hooks/useAnonymousLandingSession';
+import { searchMusicPublic } from '../services/anonymousSessionService';
+import { Song } from '../types/models';
+import FallbackImage from '../components/FallbackImage';
 
 const Welcome: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { play } = useAudioPlayer();
+  const { session, trackPlay } = useAnonymousLandingSession();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Song[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // Search music with debounce
+  useEffect(() => {
+    const searchMusic = async () => {
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
+        setShowSearchResults(false);
+        return;
+      }
+
+      setIsSearching(true);
+      setSearchError(null);
+
+      try {
+        const response = await searchMusicPublic(searchQuery, 'song', 20);
+        if (response.success && response.data) {
+          setSearchResults(response.data.songs);
+          setShowSearchResults(true);
+        } else {
+          setSearchError(response.error || 'Failed to search music');
+          setSearchResults([]);
+        }
+      } catch (err: any) {
+        console.error('Search error:', err);
+        setSearchError('Network error while searching');
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(() => {
+      searchMusic();
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
+
+  // Handle song play with anonymous session tracking
+  const handlePlaySong = useCallback(async (song: Song) => {
+    // If user is authenticated, play normally
+    if (user) {
+      play(song);
+      return;
+    }
+
+    // For anonymous users, check and track the play
+    if (!session) {
+      console.error('No session available');
+      return;
+    }
+
+    // Check if already at limit
+    if (session.hasReachedLimit) {
+      setIsLimitModalOpen(true);
+      return;
+    }
+
+    // Track the play
+    const success = await trackPlay(song.id);
+
+    if (!success) {
+      // Play limit reached
+      setIsLimitModalOpen(true);
+      return;
+    }
+
+    // Play the song
+    play(song);
+  }, [user, session, trackPlay, play]);
+
+  const handleSignupClick = () => {
+    setIsLimitModalOpen(false);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleLoginClick = () => {
+    setIsLimitModalOpen(false);
+    setIsAuthModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-music-black via-music-black-light to-music-black text-white overflow-hidden">
@@ -72,6 +166,97 @@ const Welcome: React.FC = () => {
             Discover, convert, and manage your music collection. 
             <span className="text-white font-medium"> All in one place.</span>
           </p>
+
+          {/* Search Bar */}
+          <div className="relative max-w-2xl mx-auto mb-8 sm:mb-12 px-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => searchQuery && setShowSearchResults(true)}
+                placeholder="Search for songs, artists, or albums..."
+                className="w-full bg-music-black-light/80 backdrop-blur-sm text-white pl-12 pr-12 py-4 sm:py-4.5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-music-purple border border-white/10 transition-all text-base sm:text-lg placeholder:text-gray-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setShowSearchResults(false);
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
+              {isSearching && (
+                <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                  <div className="animate-spin w-5 h-5 border-2 border-music-blue border-t-transparent rounded-full"></div>
+                </div>
+              )}
+            </div>
+
+            {/* Search Results Dropdown */}
+            {showSearchResults && (searchQuery || searchResults.length > 0) && (
+              <div className="absolute top-full left-4 right-4 mt-2 bg-music-black-light rounded-xl shadow-2xl border border-white/10 max-h-[60vh] sm:max-h-96 overflow-y-auto z-50">
+                {searchError && (
+                  <div className="p-4 text-red-400 text-center">
+                    <Music className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>{searchError}</p>
+                  </div>
+                )}
+
+                {isSearching && (
+                  <div className="p-8 text-center text-gray-400">
+                    <div className="animate-spin w-8 h-8 border-2 border-music-blue border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p>Searching...</p>
+                  </div>
+                )}
+
+                {!isSearching && !searchError && searchResults.length === 0 && searchQuery && (
+                  <div className="p-8 text-center text-gray-400">
+                    <Music className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No songs found for "{searchQuery}"</p>
+                    <p className="text-sm mt-2">Try searching for a different song or artist</p>
+                  </div>
+                )}
+
+                {!isSearching && searchResults.length > 0 && (
+                  <div className="py-2">
+                    <div className="px-4 py-2 text-xs text-gray-400 uppercase tracking-wide border-b border-white/10">
+                      {searchResults.length} Results
+                    </div>
+                    {searchResults.map((song) => (
+                      <button
+                        key={song.id}
+                        onClick={() => handlePlaySong(song)}
+                        className="w-full px-4 py-3 hover:bg-white/5 transition-colors flex items-center space-x-3 text-left"
+                      >
+                        <div className="flex-shrink-0 w-12 h-12 bg-music-black-lighter rounded-lg overflow-hidden">
+                          <FallbackImage
+                            src={song.thumbnail}
+                            alt={song.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <p className="font-medium text-white truncate">{song.title}</p>
+                            {song.isCached && (
+                              <Cloud className="h-3.5 w-3.5 text-music-blue flex-shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-400 truncate">{song.artist}</p>
+                        </div>
+                        <Play className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-12 sm:mb-20 px-4">
             <button
@@ -141,6 +326,15 @@ const Welcome: React.FC = () => {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      <AnonymousLimitModal
+        isOpen={isLimitModalOpen}
+        onClose={() => setIsLimitModalOpen(false)}
+        onSignup={handleSignupClick}
+        onLogin={handleLoginClick}
+        message={`You've reached your 5-song preview limit. Create an account to continue listening!`}
+        title="Create an Account to Continue"
       />
     </div>
   );
