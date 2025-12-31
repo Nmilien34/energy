@@ -26,15 +26,54 @@ const mongoOptions = {
   maxPoolSize: 10, // Maintain up to 10 socket connections
   minPoolSize: 2, // Maintain at least 2 socket connections
   maxIdleTimeMS: 30000,
-  heartbeatFrequencyMS: 10000
+  heartbeatFrequencyMS: 10000,
+  retryWrites: true,
+  w: 'majority'
 };
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/nrgflow', mongoOptions)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
+// MongoDB connection with better error handling
+const connectMongoDB = async () => {
+  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/nrgflow';
+  
+  if (!process.env.MONGODB_URI) {
+    console.warn('⚠️  MONGODB_URI not set, using default localhost connection');
+  }
+  
+  try {
+    await mongoose.connect(mongoUri, mongoOptions);
+    console.log('✓ Connected to MongoDB');
+    console.log(`  Host: ${mongoose.connection.host}`);
+    console.log(`  Database: ${mongoose.connection.name}`);
+  } catch (err: any) {
+    console.error('❌ MongoDB connection error:', {
+      message: err?.message,
+      name: err?.name,
+      code: err?.code
+    });
     console.error('MONGODB_URI exists:', !!process.env.MONGODB_URI);
-  });
+    // Don't exit - let the app start and handle connection errors gracefully
+  }
+};
+
+// Set up connection event handlers
+mongoose.connection.on('connected', () => {
+  console.log('✓ MongoDB connection established');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️  MongoDB disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✓ MongoDB reconnected');
+});
+
+// Attempt connection
+connectMongoDB();
 
 // CORS configuration
 const allowedOrigins = [
@@ -106,9 +145,25 @@ app.use('/api/playlists', playlistRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/share', shareRoutes);
 
-// Health check
+// Health check with database status
 app.get('/api/health', (_, res) => {
-  res.status(200).json({ status: 'ok' });
+  const dbStatus = mongoose.connection.readyState;
+  const dbStates = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting'
+  };
+  
+  res.status(dbStatus === 1 ? 200 : 503).json({ 
+    status: dbStatus === 1 ? 'ok' : 'degraded',
+    database: {
+      status: dbStates[dbStatus as keyof typeof dbStates] || 'unknown',
+      readyState: dbStatus,
+      host: mongoose.connection.host || 'unknown',
+      name: mongoose.connection.name || 'unknown'
+    }
+  });
 });
 
 // Error handling
