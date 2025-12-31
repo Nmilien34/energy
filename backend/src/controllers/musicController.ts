@@ -426,7 +426,7 @@ export const getSong = async (req: Request, res: Response) => {
 export const getAudioStream = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { quality = 'medium', mobile = false } = req.query;
+    const { quality = 'medium', mobile = false, sessionId } = req.query;
 
     let youtubeId = id;
     let song: any = null;
@@ -447,6 +447,27 @@ export const getAudioStream = async (req: Request, res: Response) => {
     } else {
       // Find song by YouTube ID
       song = await Song.findOne({ youtubeId: id });
+    }
+
+    // If anonymous session ID provided, track the play (optional - doesn't block if fails)
+    if (sessionId && typeof sessionId === 'string') {
+      try {
+        const { AnonymousSession } = await import('../models/AnonymousSession');
+        const session = await AnonymousSession.findOne({
+          sessionId,
+          sessionType: 'landing'
+        });
+
+        if (session && new Date() < session.expiresAt) {
+          // Track play in background (don't await to avoid blocking)
+          session.addSongPlay(song?._id?.toString() || youtubeId).catch(err => {
+            console.error('Error tracking anonymous play:', err);
+          });
+        }
+      } catch (err) {
+        // Silently fail - don't block audio streaming if session tracking fails
+        console.error('Error in anonymous session tracking:', err);
+      }
     }
 
     const audioResponse = await audioService.getAudioUrl(youtubeId, {

@@ -12,6 +12,7 @@ import playlistRoutes from './routes/playlistRoutes';
 import oauthRoutes from './routes/oauthRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import shareRoutes from './routes/shareRoutes';
+import anonymousRoutes from './routes/anonymousRoutes';
 import { errorHandler } from './middleware/errorHandler';
 
 // Initialize OAuth strategies
@@ -242,6 +243,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/music', musicRoutes);
+app.use('/api/anonymous', anonymousRoutes);
 // Debug: Log all requests to playlists routes
 app.use('/api/playlists', (req, res, next) => {
   console.log(`📨 Playlist Route: ${req.method} ${req.path}`);

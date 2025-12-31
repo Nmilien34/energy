@@ -43,6 +43,7 @@ const favoriteSchema = z.object({
 
 // Public routes - no authentication required
 router.get('/search', searchRateLimit, validateQuery(searchSchema), searchMusic);
+router.get('/search/public', searchRateLimit, validateQuery(searchSchema), searchMusic); // Public search endpoint (same as /search)
 router.get('/trending', getTrendingMusic);
 router.get('/recent', getRecentlyAdded);
 router.get('/popular', getPopularSongs);

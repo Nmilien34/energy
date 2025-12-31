@@ -292,6 +292,8 @@ export const initializeAnonymousSession = async (req: Request, res: Response) =>
     const session = new AnonymousSession({
       sessionId,
       shareId,
+      sessionType: 'share',
+      playLimit: 3, // 3 songs for share sessions
       ipAddress,
       userAgent,
       expiresAt
