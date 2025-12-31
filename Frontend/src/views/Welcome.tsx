@@ -54,38 +54,38 @@ const Welcome: React.FC = () => {
       </nav>
 
       {/* Hero Section */}
-      <div className="relative z-10 container mx-auto px-6 py-20">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 sm:py-20">
         <div className="max-w-4xl mx-auto text-center animate-fade-in">
           <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
             <Sparkles className="h-4 w-4 text-music-purple" />
             <span className="text-sm font-medium">Your Music, Your Way</span>
           </div>
           
-          <h1 className="text-7xl md:text-8xl font-black mb-6 leading-tight font-display tracking-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black mb-4 sm:mb-6 leading-tight font-display tracking-tight px-2">
             <span className="block">Music for</span>
             <span className="block bg-gradient-to-r from-music-purple via-purple-400 to-music-blue bg-clip-text text-transparent">
               Everyone
             </span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-400 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed font-medium px-4">
             Discover, convert, and manage your music collection. 
             <span className="text-white font-medium"> All in one place.</span>
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4 mb-20">
+          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-12 sm:mb-20 px-4">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="group relative px-8 py-4 rounded-full bg-gradient-to-r from-music-purple to-music-blue text-white font-bold text-lg hover:scale-105 transition-all hover:from-music-purple-hover hover:to-music-blue-hover shadow-lg shadow-music-purple/30 font-display"
+              className="group relative px-6 py-3.5 sm:px-8 sm:py-4 rounded-full bg-gradient-to-r from-music-purple to-music-blue text-white font-bold text-base sm:text-lg hover:scale-105 active:scale-95 transition-all hover:from-music-purple-hover hover:to-music-blue-hover shadow-lg shadow-music-purple/30 font-display touch-manipulation"
             >
               <span className="relative z-10 flex items-center justify-center space-x-2">
-                <Play className="h-5 w-5 fill-white" />
+                <Play className="h-4 w-4 sm:h-5 sm:w-5 fill-white" />
                 <span>Get Started Free</span>
               </span>
             </button>
             <button
               onClick={() => navigate('/platform')}
-              className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold text-lg hover:bg-white/20 transition-all hover:scale-105 font-display"
+              className="px-6 py-3.5 sm:px-8 sm:py-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold text-base sm:text-lg hover:bg-white/20 active:scale-95 transition-all hover:scale-105 font-display touch-manipulation"
             >
               Explore Platform
             </button>
@@ -93,43 +93,43 @@ const Welcome: React.FC = () => {
         </div>
 
         {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto animate-slide-up">
-          <div className="group relative bg-gradient-to-br from-music-black-light to-music-black-lighter p-8 rounded-2xl border border-white/10 hover:border-music-purple/50 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-music-purple/10">
-            <div className="absolute inset-0 bg-gradient-to-br from-music-purple/0 to-music-purple/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto animate-slide-up px-4">
+          <div className="group relative bg-gradient-to-br from-music-black-light to-music-black-lighter p-6 sm:p-8 rounded-xl sm:rounded-2xl border border-white/10 hover:border-music-purple/50 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-music-purple/10 active:scale-[0.98] touch-manipulation">
+            <div className="absolute inset-0 bg-gradient-to-br from-music-purple/0 to-music-purple/5 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative z-10">
-              <div className="w-14 h-14 bg-gradient-to-br from-music-purple to-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Download className="h-7 w-7 text-white" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-music-purple to-purple-600 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
+                <Download className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
               </div>
-              <h3 className="text-2xl font-bold mb-3 text-white font-display">YouTube to MP3</h3>
-              <p className="text-gray-400 leading-relaxed font-normal">
+              <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-white font-display">YouTube to MP3</h3>
+              <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-normal">
                 Convert your favorite YouTube videos to high-quality MP3 files instantly. 
                 <span className="text-white font-medium"> No limits, no hassle.</span>
               </p>
             </div>
           </div>
 
-          <div className="group relative bg-gradient-to-br from-music-black-light to-music-black-lighter p-8 rounded-2xl border border-white/10 hover:border-music-blue/50 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-music-blue/10">
-            <div className="absolute inset-0 bg-gradient-to-br from-music-blue/0 to-music-blue/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="group relative bg-gradient-to-br from-music-black-light to-music-black-lighter p-6 sm:p-8 rounded-xl sm:rounded-2xl border border-white/10 hover:border-music-blue/50 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-music-blue/10 active:scale-[0.98] touch-manipulation">
+            <div className="absolute inset-0 bg-gradient-to-br from-music-blue/0 to-music-blue/5 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative z-10">
-              <div className="w-14 h-14 bg-gradient-to-br from-music-blue to-blue-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Search className="h-7 w-7 text-white" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-music-blue to-blue-500 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
+                <Search className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
               </div>
-              <h3 className="text-2xl font-bold mb-3 text-white font-display">Song Recognition</h3>
-              <p className="text-gray-400 leading-relaxed font-normal">
+              <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-white font-display">Song Recognition</h3>
+              <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-normal">
                 Identify any song instantly by uploading a clip. 
                 <span className="text-white font-medium"> Powered by AI.</span>
               </p>
             </div>
           </div>
 
-          <div className="group relative bg-gradient-to-br from-music-black-light to-music-black-lighter p-8 rounded-2xl border border-white/10 hover:border-music-purple/50 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-music-purple/10">
-            <div className="absolute inset-0 bg-gradient-to-br from-music-purple/0 to-music-purple/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="group relative bg-gradient-to-br from-music-black-light to-music-black-lighter p-6 sm:p-8 rounded-xl sm:rounded-2xl border border-white/10 hover:border-music-purple/50 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-music-purple/10 active:scale-[0.98] touch-manipulation">
+            <div className="absolute inset-0 bg-gradient-to-br from-music-purple/0 to-music-purple/5 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative z-10">
-              <div className="w-14 h-14 bg-gradient-to-br from-music-purple to-purple-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Heart className="h-7 w-7 text-white fill-white" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-music-purple to-purple-500 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
+                <Heart className="h-6 w-6 sm:h-7 sm:w-7 text-white fill-white" />
               </div>
-              <h3 className="text-2xl font-bold mb-3 text-white font-display">Personal Library</h3>
-              <p className="text-gray-400 leading-relaxed font-normal">
+              <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-white font-display">Personal Library</h3>
+              <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-normal">
                 Organize and manage your music collection with playlists, favorites, and more.
                 <span className="text-white font-medium"> Your music, organized.</span>
               </p>

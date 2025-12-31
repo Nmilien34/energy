@@ -79,13 +79,13 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
     <div className={`relative ${className}`}>
       {/* Search Input */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 h-5 w-5" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search for songs, artists, or albums..."
-          className="w-full bg-zinc-800 text-white pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+          className="w-full bg-music-black-light text-white pl-10 pr-4 py-3 sm:py-3.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-music-purple transition-all text-base"
           onFocus={() => query && setShowResults(true)}
         />
         {loading && (
@@ -97,7 +97,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
 
       {/* Search Results Dropdown */}
       {showResults && (query || songs.length > 0) && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-800 rounded-lg shadow-xl border border-zinc-700 max-h-96 overflow-y-auto z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-music-black-light rounded-lg shadow-xl border border-white/10 max-h-[60vh] sm:max-h-96 overflow-y-auto z-50">
           {error && (
             <div className="p-4 text-red-400 text-center">
               <Music className="h-8 w-8 mx-auto mb-2 opacity-50" />

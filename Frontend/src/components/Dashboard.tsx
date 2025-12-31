@@ -155,25 +155,25 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
   ];
 
   return (
-    <div className={`px-6 sm:px-8 lg:px-12 py-8 sm:py-12 space-y-12 sm:space-y-16 ${className}`}>
+    <div className={`px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-12 space-y-8 sm:space-y-12 lg:space-y-16 ${className}`}>
       {/* Dynamic Greeting Section */}
-      <section className="space-y-8">
-        <div className="space-y-3">
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight font-display">
+      <section className="space-y-6 sm:space-y-8">
+        <div className="space-y-2 sm:space-y-3">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white tracking-tight font-display">
             {getGreeting()}
           </h1>
-          <p className="text-xl sm:text-2xl text-gray-400 font-medium">What would you like to play today?</p>
+          <p className="text-lg sm:text-xl lg:text-2xl text-gray-400 font-medium">What would you like to play today?</p>
         </div>
 
         {/* Quick Access Grid - Enhanced spacing and responsive */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {quickAccessItems.map((item, index) => (
             <QuickAccessCard key={index} item={item} />
           ))}
         </div>
 
         {/* Search Bar - More prominent and responsive */}
-        <div className="relative max-w-2xl sm:max-w-3xl lg:max-w-4xl">
+        <div className="relative w-full sm:max-w-2xl lg:max-w-3xl xl:max-w-4xl">
           <MusicSearch
             className=""
             onSongSelect={(song) => {
@@ -185,23 +185,23 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
 
       {/* Made for [Name] - User Playlists */}
       {userPlaylists && userPlaylists.length > 0 && (
-        <section className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
-            <div className="space-y-2">
-              <h2 className="text-3xl sm:text-4xl font-black text-white font-display tracking-tight">
+        <section className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
+            <div className="space-y-1 sm:space-y-2">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white font-display tracking-tight">
                 Made for {getFirstName()}
               </h2>
-              <p className="text-gray-400 font-medium">Your personalized playlists</p>
+              <p className="text-sm sm:text-base text-gray-400 font-medium">Your personalized playlists</p>
             </div>
             <button
               onClick={() => navigate('/platform')}
-              className="group text-gray-400 hover:text-white text-sm font-bold uppercase tracking-wider transition-colors flex items-center space-x-2"
+              className="group text-gray-400 hover:text-white text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors flex items-center space-x-2 touch-manipulation py-2"
             >
               <span>Show all</span>
-              <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {userPlaylists.slice(0, 6).map((playlist) => (
               <EnhancedPlaylistCard
                 key={playlist.id}
@@ -215,14 +215,14 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
 
       {/* Recently Played - Moved below playlists */}
       {recentlyPlayed && recentlyPlayed.length > 0 && (
-        <section className="space-y-6">
-          <div className="space-y-2">
-            <h2 className="text-3xl sm:text-4xl font-black text-white font-display tracking-tight">
+        <section className="space-y-4 sm:space-y-6">
+          <div className="space-y-1 sm:space-y-2">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white font-display tracking-tight">
               Recently Played
             </h2>
-            <p className="text-gray-400 font-medium">Pick up where you left off</p>
+            <p className="text-sm sm:text-base text-gray-400 font-medium">Pick up where you left off</p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {recentlyPlayed.map((song) => (
               <EnhancedSongCard
                 key={song.id}
@@ -237,20 +237,20 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
 
       {/* Trending Right Now */}
       {trendingSongs && trendingSongs.length > 0 && (
-        <section className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
-            <div className="space-y-2">
-              <h2 className="text-3xl sm:text-4xl font-black text-white font-display tracking-tight">
+        <section className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
+            <div className="space-y-1 sm:space-y-2">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white font-display tracking-tight">
                 Trending Right Now
               </h2>
-              <p className="text-gray-400 font-medium">What's hot in music right now</p>
+              <p className="text-sm sm:text-base text-gray-400 font-medium">What's hot in music right now</p>
             </div>
-            <button className="group text-gray-400 hover:text-white text-sm font-bold uppercase tracking-wider transition-colors flex items-center space-x-2">
+            <button className="group text-gray-400 hover:text-white text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors flex items-center space-x-2 touch-manipulation py-2">
               <span>Show all</span>
-              <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {trendingSongs.map((song) => (
               <EnhancedSongCard
                 key={song.id}
@@ -357,31 +357,31 @@ const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ item }) => {
   return (
     <button
       onClick={item.action}
-      className="group relative bg-music-black-light hover:bg-white/10 rounded-lg p-4 transition-all duration-300 hover:scale-[1.02] overflow-hidden"
+      className="group relative bg-music-black-light hover:bg-white/10 active:bg-white/5 rounded-lg p-3 sm:p-4 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] overflow-hidden touch-manipulation"
     >
-      <div className="relative flex items-center space-x-4">
+      <div className="relative flex items-center space-x-3 sm:space-x-4">
         <div className="relative flex-shrink-0">
           {getThumbnail() ? (
             <FallbackImage
               src={getThumbnail() || ''}
               alt={item.label}
-              className="w-16 h-16 rounded-lg object-cover shadow-lg group-hover:shadow-xl transition-all duration-300"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover shadow-lg group-hover:shadow-xl transition-all duration-300"
             />
           ) : (
-            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-music-purple to-music-blue flex items-center justify-center shadow-lg">
-              <Music className="h-8 w-8 text-white" />
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-gradient-to-br from-music-purple to-music-blue flex items-center justify-center shadow-lg">
+              <Music className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
             </div>
           )}
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-lg transition-all duration-300 flex items-center justify-center">
-            <div className="bg-gradient-to-r from-music-purple to-music-blue rounded-full p-2 shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
-              <Play className="h-4 w-4 text-black fill-black" />
+            <div className="bg-gradient-to-r from-music-purple to-music-blue rounded-full p-1.5 sm:p-2 shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+              <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white fill-white" />
             </div>
           </div>
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <p className="font-semibold text-white text-base truncate mb-1 group-hover:text-music-purple transition-colors">{item.label}</p>
-          <p className="text-gray-400 text-sm truncate mb-1 font-normal">{item.subtitle}</p>
-          <div className="flex items-center space-x-2 text-xs text-gray-500">
+          <p className="font-semibold text-white text-sm sm:text-base truncate mb-0.5 sm:mb-1 group-hover:text-music-purple transition-colors">{item.label}</p>
+          <p className="text-gray-400 text-xs sm:text-sm truncate mb-0.5 sm:mb-1 font-normal">{item.subtitle}</p>
+          <div className="flex items-center space-x-1.5 sm:space-x-2 text-xs text-gray-500">
             <item.icon className="h-3 w-3" />
             <span className="capitalize">{item.type}</span>
           </div>
@@ -401,8 +401,8 @@ interface EnhancedSongCardProps {
 
 const EnhancedSongCard: React.FC<EnhancedSongCardProps> = ({ song, onPlay, isCurrentSong, showTrendingBadge }) => {
   return (
-    <div className="group cursor-pointer transition-all duration-300 hover:scale-[1.05] bg-music-black-light rounded-lg p-3 hover:bg-white/10" onClick={onPlay}>
-      <div className="relative mb-3">
+    <div className="group cursor-pointer transition-all duration-300 hover:scale-[1.05] active:scale-[0.95] bg-music-black-light rounded-lg p-2 sm:p-3 hover:bg-white/10 touch-manipulation" onClick={onPlay}>
+      <div className="relative mb-2 sm:mb-3">
         <FallbackImage
           src={song.thumbnail}
           alt={song.title}
@@ -429,15 +429,15 @@ const EnhancedSongCard: React.FC<EnhancedSongCardProps> = ({ song, onPlay, isCur
         )}
       </div>
       <div>
-        <div className="flex items-center space-x-1 mb-1">
-          <p className="text-white text-sm font-semibold truncate group-hover:text-music-purple transition-colors">{song.title}</p>
+        <div className="flex items-center space-x-1 mb-0.5 sm:mb-1">
+          <p className="text-white text-xs sm:text-sm font-semibold truncate group-hover:text-music-purple transition-colors">{song.title}</p>
           {song.isCached && (
             <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
-              <Cloud className="h-3.5 w-3.5 text-music-blue" />
+              <Cloud className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-music-blue" />
             </span>
           )}
         </div>
-        <p className="text-gray-400 text-xs truncate">{song.artist}</p>
+        <p className="text-gray-400 text-xs truncate leading-tight">{song.artist}</p>
       </div>
     </div>
   );
@@ -452,10 +452,10 @@ interface EnhancedPlaylistCardProps {
 const EnhancedPlaylistCard: React.FC<EnhancedPlaylistCardProps> = ({ playlist, onClick }) => {
   return (
     <div
-      className="group cursor-pointer transition-all duration-300 hover:scale-[1.05] bg-spotify-black-light rounded-lg p-3 hover:bg-white/10"
+      className="group cursor-pointer transition-all duration-300 hover:scale-[1.05] active:scale-[0.95] bg-music-black-light rounded-lg p-2 sm:p-3 hover:bg-white/10 touch-manipulation"
       onClick={onClick}
     >
-      <div className="relative mb-3">
+      <div className="relative mb-2 sm:mb-3">
         {playlist.thumbnail ? (
           <FallbackImage
             src={playlist.thumbnail}
@@ -468,14 +468,14 @@ const EnhancedPlaylistCard: React.FC<EnhancedPlaylistCardProps> = ({ playlist, o
           </div>
         )}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-lg transition-all duration-300 flex items-center justify-center">
-          <div className="bg-spotify-green rounded-full p-3 shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
-            <Play className="h-5 w-5 text-black fill-black" />
+          <div className="bg-gradient-to-r from-music-purple to-music-blue rounded-full p-2 sm:p-3 shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+            <Play className="h-4 w-4 sm:h-5 sm:w-5 text-white fill-white" />
           </div>
         </div>
       </div>
       <div>
-        <p className="text-white text-sm font-semibold truncate group-hover:text-music-purple transition-colors mb-1">{playlist.name}</p>
-        <p className="text-gray-400 text-xs truncate">
+        <p className="text-white text-xs sm:text-sm font-semibold truncate group-hover:text-music-purple transition-colors mb-0.5 sm:mb-1 leading-tight">{playlist.name}</p>
+        <p className="text-gray-400 text-xs truncate leading-tight">
           {playlist.songs ? playlist.songs.length : 0} songs
         </p>
       </div>

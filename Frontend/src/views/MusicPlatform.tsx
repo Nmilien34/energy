@@ -105,22 +105,22 @@ const MusicPlatform: React.FC = () => {
           </button>
         </div>
 
-        <nav className="px-3 py-2 space-y-1">
+        <nav className="px-2 sm:px-3 py-2 space-y-1">
           {sidebarItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleViewChange(item.id)}
               className={`
-                w-full flex items-center space-x-4 px-4 py-3 rounded-lg transition-all font-medium
+                w-full flex items-center space-x-3 sm:space-x-4 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg transition-all font-medium touch-manipulation
                 ${activeView === item.id
                   ? 'bg-gradient-to-r from-music-purple/20 to-music-blue/20 text-white border-l-4 border-music-purple'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5 active:bg-white/10'
                 }
                 ${item.requiresAuth && !user ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
               `}
             >
-              <item.icon className={`h-6 w-6 ${activeView === item.id ? 'text-white' : ''}`} />
-              <span className="text-base">{item.label}</span>
+              <item.icon className={`h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 ${activeView === item.id ? 'text-white' : ''}`} />
+              <span className="text-sm sm:text-base">{item.label}</span>
               {item.requiresAuth && !user && (
                 <span className="ml-auto text-xs bg-white/10 px-2 py-1 rounded-full text-gray-400">Login</span>
               )}
@@ -129,13 +129,13 @@ const MusicPlatform: React.FC = () => {
         </nav>
 
         {/* User Section */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 border-t border-white/10">
           {user ? (
             <UserMenu onNavigateToSettings={() => setActiveView('settings')} />
           ) : (
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform hover:bg-gray-200"
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-white text-black font-bold rounded-full hover:scale-105 active:scale-95 transition-transform hover:bg-gray-200 touch-manipulation"
             >
               <User className="h-5 w-5" />
               <span>Sign In</span>
