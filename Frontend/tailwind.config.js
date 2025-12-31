@@ -5,10 +5,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        'spotify': {
-          green: '#1DB954',
-          'green-hover': '#1ed760',
-          'green-dark': '#169c46',
+        'music': {
+          purple: '#8B5CF6',
+          'purple-hover': '#A78BFA',
+          'purple-dark': '#7C3AED',
+          blue: '#3B82F6',
+          'blue-hover': '#60A5FA',
+          'blue-dark': '#2563EB',
           black: '#121212',
           'black-light': '#181818',
           'black-lighter': '#1a1a1a',

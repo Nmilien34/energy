@@ -75,10 +75,10 @@ const MusicPlatform: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-spotify-black text-white flex">
+    <div className="min-h-screen bg-music-black text-white flex">
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-spotify-black-light transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 w-64 bg-music-black-light transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
@@ -87,11 +87,11 @@ const MusicPlatform: React.FC = () => {
             onClick={() => navigate('/')}
             className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-spotify-green to-green-600 rounded-lg flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 bg-gradient-to-br from-music-purple to-music-blue rounded-lg flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
               <Music className="h-6 w-6 text-white" />
             </div>
             <span className="text-xl font-black tracking-tight">
-              <span className="bg-gradient-to-r from-spotify-green to-green-400 bg-clip-text text-transparent">NRG</span>
+              <span className="bg-gradient-to-r from-music-purple to-music-blue bg-clip-text text-transparent">NRG</span>
               <span className="text-white">FLOW</span>
             </span>
           </button>
@@ -111,7 +111,7 @@ const MusicPlatform: React.FC = () => {
               className={`
                 w-full flex items-center space-x-4 px-4 py-3 rounded-lg transition-all font-medium
                 ${activeView === item.id
-                  ? 'bg-white/10 text-white'
+                  ? 'bg-gradient-to-r from-music-purple/20 to-music-blue/20 text-white border-l-4 border-music-purple'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
                 }
                 ${item.requiresAuth && !user ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -143,9 +143,9 @@ const MusicPlatform: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col bg-gradient-to-b from-spotify-black-light to-spotify-black min-w-0">
+      <main className="flex-1 flex flex-col bg-gradient-to-b from-music-black-light to-music-black min-w-0">
         {/* Top Navigation */}
-        <header className="bg-spotify-black-light/80 backdrop-blur-xl border-b border-white/5 p-4 lg:hidden sticky top-0 z-40">
+        <header className="bg-music-black-light/80 backdrop-blur-xl border-b border-white/5 p-4 lg:hidden sticky top-0 z-40">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -157,11 +157,11 @@ const MusicPlatform: React.FC = () => {
               onClick={() => navigate('/')}
               className="flex items-center space-x-2 hover:opacity-80 transition-all duration-200 group"
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-spotify-green to-green-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-8 h-8 bg-gradient-to-br from-music-purple to-music-blue rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Music className="h-5 w-5 text-white" />
               </div>
               <span className="font-black text-white">
-                <span className="bg-gradient-to-r from-spotify-green to-green-400 bg-clip-text text-transparent">NRG</span>FLOW
+                <span className="bg-gradient-to-r from-music-purple to-music-blue bg-clip-text text-transparent">NRG</span>FLOW
               </span>
             </button>
             {user ? (

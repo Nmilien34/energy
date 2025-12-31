@@ -357,7 +357,7 @@ const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ item }) => {
   return (
     <button
       onClick={item.action}
-      className="group relative bg-spotify-black-light hover:bg-white/10 rounded-lg p-4 transition-all duration-300 hover:scale-[1.02] overflow-hidden"
+      className="group relative bg-music-black-light hover:bg-white/10 rounded-lg p-4 transition-all duration-300 hover:scale-[1.02] overflow-hidden"
     >
       <div className="relative flex items-center space-x-4">
         <div className="relative flex-shrink-0">
@@ -368,18 +368,18 @@ const QuickAccessCard: React.FC<QuickAccessCardProps> = ({ item }) => {
               className="w-16 h-16 rounded-lg object-cover shadow-lg group-hover:shadow-xl transition-all duration-300"
             />
           ) : (
-            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-spotify-green to-green-600 flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-music-purple to-music-blue flex items-center justify-center shadow-lg">
               <Music className="h-8 w-8 text-white" />
             </div>
           )}
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-lg transition-all duration-300 flex items-center justify-center">
-            <div className="bg-spotify-green rounded-full p-2 shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+            <div className="bg-gradient-to-r from-music-purple to-music-blue rounded-full p-2 shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
               <Play className="h-4 w-4 text-black fill-black" />
             </div>
           </div>
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <p className="font-bold text-white text-base truncate mb-1 group-hover:text-spotify-green transition-colors">{item.label}</p>
+          <p className="font-bold text-white text-base truncate mb-1 group-hover:text-music-purple transition-colors">{item.label}</p>
           <p className="text-gray-400 text-sm truncate mb-1">{item.subtitle}</p>
           <div className="flex items-center space-x-2 text-xs text-gray-500">
             <item.icon className="h-3 w-3" />
@@ -401,13 +401,13 @@ interface EnhancedSongCardProps {
 
 const EnhancedSongCard: React.FC<EnhancedSongCardProps> = ({ song, onPlay, isCurrentSong, showTrendingBadge }) => {
   return (
-    <div className="group cursor-pointer transition-all duration-300 hover:scale-[1.05] bg-spotify-black-light rounded-lg p-3 hover:bg-white/10" onClick={onPlay}>
+    <div className="group cursor-pointer transition-all duration-300 hover:scale-[1.05] bg-music-black-light rounded-lg p-3 hover:bg-white/10" onClick={onPlay}>
       <div className="relative mb-3">
         <FallbackImage
           src={song.thumbnail}
           alt={song.title}
           className={`w-full aspect-square rounded-lg object-cover transition-all duration-300 shadow-lg ${
-            isCurrentSong ? 'ring-2 ring-spotify-green' : 'group-hover:shadow-2xl'
+            isCurrentSong ? 'ring-2 ring-music-purple' : 'group-hover:shadow-2xl'
           }`}
         />
         {showTrendingBadge && (
@@ -422,7 +422,7 @@ const EnhancedSongCard: React.FC<EnhancedSongCardProps> = ({ song, onPlay, isCur
           </div>
         </div>
         {isCurrentSong && (
-          <div className="absolute top-2 left-2 bg-spotify-green text-black text-xs font-bold px-2 py-1 rounded-full flex items-center space-x-1 shadow-lg">
+          <div className="absolute top-2 left-2 bg-gradient-to-r from-music-purple to-music-blue text-white text-xs font-bold px-2 py-1 rounded-full flex items-center space-x-1 shadow-lg">
             <div className="w-1.5 h-1.5 bg-black rounded-full animate-pulse"></div>
             <span>Now</span>
           </div>
@@ -430,10 +430,10 @@ const EnhancedSongCard: React.FC<EnhancedSongCardProps> = ({ song, onPlay, isCur
       </div>
       <div>
         <div className="flex items-center space-x-1 mb-1">
-          <p className="text-white text-sm font-bold truncate group-hover:text-spotify-green transition-colors">{song.title}</p>
+          <p className="text-white text-sm font-bold truncate group-hover:text-music-purple transition-colors">{song.title}</p>
           {song.isCached && (
             <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
-              <Cloud className="h-3.5 w-3.5 text-spotify-green" />
+              <Cloud className="h-3.5 w-3.5 text-music-blue" />
             </span>
           )}
         </div>
@@ -463,7 +463,7 @@ const EnhancedPlaylistCard: React.FC<EnhancedPlaylistCardProps> = ({ playlist, o
             className="w-full aspect-square rounded-lg object-cover shadow-lg group-hover:shadow-2xl transition-all duration-300"
           />
         ) : (
-          <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-spotify-green via-green-500 to-emerald-500 flex items-center justify-center shadow-lg">
+          <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-music-purple via-purple-500 to-music-blue flex items-center justify-center shadow-lg">
             <Music className="h-10 w-10 text-white" />
           </div>
         )}
@@ -474,7 +474,7 @@ const EnhancedPlaylistCard: React.FC<EnhancedPlaylistCardProps> = ({ playlist, o
         </div>
       </div>
       <div>
-        <p className="text-white text-sm font-bold truncate group-hover:text-spotify-green transition-colors mb-1">{playlist.name}</p>
+        <p className="text-white text-sm font-bold truncate group-hover:text-music-purple transition-colors mb-1">{playlist.name}</p>
         <p className="text-gray-400 text-xs truncate">
           {playlist.songs ? playlist.songs.length : 0} songs
         </p>

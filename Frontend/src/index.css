@@ -10,8 +10,10 @@
   --text-secondary: #b3b3b3;
   --text-tertiary: #535353;
   --border-color: #2a2a2a;
-  --accent: #1DB954;
-  --accent-hover: #1ed760;
+  --accent: #8B5CF6;
+  --accent-hover: #A78BFA;
+  --accent-secondary: #3B82F6;
+  --accent-secondary-hover: #60A5FA;
 }
 
 :root[data-theme="light"] {
@@ -22,8 +24,10 @@
   --text-secondary: #535353;
   --text-tertiary: #b3b3b3;
   --border-color: #e0e0e0;
-  --accent: #1DB954;
-  --accent-hover: #1ed760;
+  --accent: #8B5CF6;
+  --accent-hover: #A78BFA;
+  --accent-secondary: #3B82F6;
+  --accent-secondary-hover: #60A5FA;
 }
 
 :root[data-theme="dim"] {
@@ -34,8 +38,10 @@
   --text-secondary: #b3b3b3;
   --text-tertiary: #535353;
   --border-color: #2a2a2a;
-  --accent: #1DB954;
-  --accent-hover: #1ed760;
+  --accent: #8B5CF6;
+  --accent-hover: #A78BFA;
+  --accent-secondary: #3B82F6;
+  --accent-secondary-hover: #60A5FA;
 }
 
 body {
