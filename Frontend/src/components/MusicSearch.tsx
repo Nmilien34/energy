@@ -17,7 +17,25 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
+  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const { play, addToQueue, state } = useAudioPlayer();
+
+  // Load liked songs from library on mount
+  useEffect(() => {
+    const loadLikedSongs = async () => {
+      try {
+        const response = await musicService.getUserLibrary();
+        if (response.success && response.data?.favorites) {
+          const favoriteIds = new Set(response.data.favorites.map(song => song.id));
+          setLikedSongs(favoriteIds);
+        }
+      } catch (err) {
+        // Silently fail - library might not be available
+      }
+    };
+    loadLikedSongs();
+  }, []);
 
   const searchMusic = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -64,12 +82,37 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
   };
 
   const handleAddToFavorites = async (song: Song) => {
+    const isLiked = likedSongs.has(song.id);
+    
+    // Optimistic update
+    if (!isLiked) {
+      setLikedSongs(prev => new Set(prev).add(song.id));
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    }
+    
     try {
-      await musicService.addToFavorites(song.id);
-      // Could show success message here when backend is ready
+      if (isLiked) {
+        await musicService.removeFromFavorites(song.id);
+        setLikedSongs(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(song.id);
+          return newSet;
+        });
+      } else {
+        await musicService.addToFavorites(song.id);
+      }
     } catch (err) {
-      console.warn('Add to favorites not available:', err);
-      // Silently fail for now since backend endpoint doesn't exist
+      console.error('Failed to update favorites:', err);
+      // Revert optimistic update on error
+      if (!isLiked) {
+        setLikedSongs(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(song.id);
+          return newSet;
+        });
+        setShowSuccessMessage(false);
+      }
     }
   };
 
@@ -130,6 +173,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
                   key={song.id}
                   song={song}
                   isCurrentSong={state.currentSong?.id === song.id}
+                  isLiked={likedSongs.has(song.id)}
                   onPlay={() => handlePlaySong(song)}
                   onAddToQueue={() => handleAddToQueue(song)}
                   onAddToFavorites={() => handleAddToFavorites(song)}
@@ -157,6 +201,14 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
           onClick={() => setShowResults(false)}
         />
       )}
+
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-music-purple text-white px-6 py-3 rounded-full shadow-lg z-50 animate-fade-in flex items-center space-x-2">
+          <Heart className="h-5 w-5 fill-white" />
+          <span className="font-semibold">Added to Liked Songs</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -164,6 +216,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
 interface SongItemProps {
   song: Song;
   isCurrentSong: boolean;
+  isLiked: boolean;
   onPlay: () => void;
   onAddToQueue: () => void;
   onAddToFavorites: () => void;
@@ -172,6 +225,7 @@ interface SongItemProps {
 const SongItem: React.FC<SongItemProps> = ({
   song,
   isCurrentSong,
+  isLiked,
   onPlay,
   onAddToQueue,
   onAddToFavorites,
@@ -249,11 +303,14 @@ const SongItem: React.FC<SongItemProps> = ({
       {/* Action Buttons */}
       <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          onClick={onAddToFavorites}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToFavorites();
+          }}
           className="p-2 hover:bg-zinc-600 rounded-full transition-colors"
-          title="Add to favorites"
+          title={isLiked ? "Remove from favorites" : "Add to favorites"}
         >
-          <Heart className="h-4 w-4 text-zinc-400 hover:text-red-400" />
+          <Heart className={`h-4 w-4 ${isLiked ? 'text-red-400 fill-red-400' : 'text-zinc-400 hover:text-red-400'}`} />
         </button>
         <div className="relative">
           <button
@@ -319,9 +376,10 @@ const SongItem: React.FC<SongItemProps> = ({
                   onAddToFavorites();
                   setShowMenu(false);
                 }}
-                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-zinc-600 transition-colors"
+                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-zinc-600 transition-colors flex items-center space-x-2"
               >
-                Add to Favorites
+                <Heart className={`h-4 w-4 ${isLiked ? 'fill-current text-red-400' : ''}`} />
+                <span>{isLiked ? 'Remove from Favorites' : 'Add to Favorites'}</span>
               </button>
               <div className="border-t border-zinc-600 my-1" />
               <button
