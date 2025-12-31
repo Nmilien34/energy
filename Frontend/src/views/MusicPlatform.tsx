@@ -56,8 +56,8 @@ const MusicPlatform: React.FC = () => {
         return <Dashboard />;
       case 'search':
         return (
-          <div className="p-6">
-            <h1 className="text-3xl font-bold text-white mb-6">Search Music</h1>
+          <div className="p-8">
+            <h1 className="text-5xl font-black text-white mb-8">Search</h1>
             <MusicSearch className="max-w-4xl mx-auto" />
           </div>
         );
@@ -75,62 +75,65 @@ const MusicPlatform: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-white flex">
+    <div className="min-h-screen bg-spotify-black text-white flex">
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-zinc-800 transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 w-64 bg-spotify-black-light transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex items-center justify-between p-6 border-b border-zinc-700">
+        <div className="flex items-center justify-between p-6">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center space-x-2 hover:opacity-80 transition-all duration-200 group"
+            className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group"
           >
-            <div className="group-hover:scale-105 transition-transform">
-              <Logo size="md" />
+            <div className="w-10 h-10 bg-gradient-to-br from-spotify-green to-green-600 rounded-lg flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+              <Music className="h-6 w-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">NRG Flow</span>
+            <span className="text-xl font-black tracking-tight">
+              <span className="bg-gradient-to-r from-spotify-green to-green-400 bg-clip-text text-transparent">NRG</span>
+              <span className="text-white">FLOW</span>
+            </span>
           </button>
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden text-zinc-400 hover:text-white"
+            className="lg:hidden text-gray-400 hover:text-white transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="p-4 space-y-1">
+        <nav className="px-3 py-2 space-y-1">
           {sidebarItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleViewChange(item.id)}
               className={`
-                w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-colors
+                w-full flex items-center space-x-4 px-4 py-3 rounded-lg transition-all font-medium
                 ${activeView === item.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-zinc-300 hover:text-white hover:bg-zinc-700'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
                 }
-                ${item.requiresAuth && !user ? 'opacity-50' : ''}
+                ${item.requiresAuth && !user ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
               `}
             >
-              <item.icon className="h-5 w-5" />
-              <span>{item.label}</span>
+              <item.icon className={`h-6 w-6 ${activeView === item.id ? 'text-white' : ''}`} />
+              <span className="text-base">{item.label}</span>
               {item.requiresAuth && !user && (
-                <span className="ml-auto text-xs bg-zinc-600 px-2 py-1 rounded">Login</span>
+                <span className="ml-auto text-xs bg-white/10 px-2 py-1 rounded-full text-gray-400">Login</span>
               )}
             </button>
           ))}
         </nav>
 
         {/* User Section */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-zinc-700">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
           {user ? (
             <UserMenu onNavigateToSettings={() => setActiveView('settings')} />
           ) : (
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="w-full flex items-center space-x-3 px-3 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform hover:bg-gray-200"
             >
               <User className="h-5 w-5" />
               <span>Sign In</span>
@@ -140,13 +143,13 @@ const MusicPlatform: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col bg-gradient-to-b from-spotify-black-light to-spotify-black min-w-0">
         {/* Top Navigation */}
-        <header className="bg-zinc-800 border-b border-zinc-700 p-4 lg:hidden">
+        <header className="bg-spotify-black-light/80 backdrop-blur-xl border-b border-white/5 p-4 lg:hidden sticky top-0 z-40">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="text-zinc-400 hover:text-white"
+              className="text-gray-400 hover:text-white transition-colors"
             >
               <Menu className="h-6 w-6" />
             </button>
@@ -154,17 +157,19 @@ const MusicPlatform: React.FC = () => {
               onClick={() => navigate('/')}
               className="flex items-center space-x-2 hover:opacity-80 transition-all duration-200 group"
             >
-              <div className="group-hover:scale-105 transition-transform">
-                <Logo size="sm" />
+              <div className="w-8 h-8 bg-gradient-to-br from-spotify-green to-green-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Music className="h-5 w-5 text-white" />
               </div>
-              <span className="font-bold text-white group-hover:text-blue-400 transition-colors">NRG Flow</span>
+              <span className="font-black text-white">
+                <span className="bg-gradient-to-r from-spotify-green to-green-400 bg-clip-text text-transparent">NRG</span>FLOW
+              </span>
             </button>
             {user ? (
               <UserMenu onNavigateToSettings={() => setActiveView('settings')} />
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="text-zinc-300 hover:text-white"
+                className="text-gray-400 hover:text-white transition-colors"
               >
                 <User className="h-6 w-6" />
               </button>
@@ -183,7 +188,7 @@ const MusicPlatform: React.FC = () => {
       {/* Sidebar Overlay for Mobile */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
