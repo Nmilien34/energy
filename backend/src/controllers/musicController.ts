@@ -10,6 +10,28 @@ import { s3Service } from '../services/s3Service';
 import { IUser } from '../models/User';
 import { Types } from 'mongoose';
 
+// Helper function to normalize song objects (convert _id to id for frontend)
+const normalizeSong = (song: any): any => {
+  if (!song) return song;
+  
+  // If it's a Mongoose document, use toObject/toJSON
+  if (song.toObject && typeof song.toObject === 'function') {
+    return song.toObject();
+  }
+  
+  // If it's a lean result or plain object, convert _id to id
+  const normalized = { ...song };
+  if (normalized._id) {
+    normalized.id = normalized._id.toString();
+    delete normalized._id;
+  } else if (normalized.youtubeId && !normalized.id) {
+    // Fallback: use youtubeId as id if _id is missing
+    normalized.id = normalized.youtubeId;
+  }
+  
+  return normalized;
+};
+
 
 interface SearchQuery {
   q: string;
@@ -60,19 +82,7 @@ export const searchMusic = async (req: Request, res: Response) => {
           .maxTimeMS(3000);
 
         if (songs.length > 0) {
-          results = songs.map(song => ({
-            id: song.youtubeId,
-            title: song.title,
-            artist: song.artist,
-            duration: song.duration,
-            thumbnail: song.thumbnail,
-            thumbnailHd: song.thumbnailHd,
-            viewCount: song.viewCount,
-            publishedAt: song.publishedAt?.toISOString(),
-            channelTitle: song.channelTitle,
-            channelId: song.channelId,
-            description: song.description
-          }));
+          results = songs.map(song => normalizeSong(song));
           cacheSource = 'database';
 
           // Record cache hit
@@ -106,19 +116,7 @@ export const searchMusic = async (req: Request, res: Response) => {
 
       if (existingSongs.length >= 5) {
         console.log(`✓ Found ${existingSongs.length} songs in database for query "${q}"`);
-        results = existingSongs.map(song => ({
-          id: song.youtubeId,
-          title: song.title,
-          artist: song.artist,
-          duration: song.duration,
-          thumbnail: song.thumbnail,
-          thumbnailHd: song.thumbnailHd,
-          viewCount: song.viewCount,
-          publishedAt: song.publishedAt?.toISOString(),
-          channelTitle: song.channelTitle,
-          channelId: song.channelId,
-          description: song.description
-        }));
+        results = existingSongs.map(song => normalizeSong(song));
         cacheSource = 'database-search';
 
         // Cache these results for future searches
@@ -204,8 +202,8 @@ export const searchMusic = async (req: Request, res: Response) => {
           }
         }
 
-        // Convert to plain object for response
-        return song.toObject ? song.toObject() : song;
+        // Convert to plain object for response and normalize
+        return normalizeSong(song);
       })
     );
 
@@ -398,6 +396,9 @@ export const getSong = async (req: Request, res: Response) => {
       });
     }
 
+    // Normalize song object (convert _id to id)
+    const songData = normalizeSong(song);
+
     // Add S3 cache status (check if has S3 audio)
     const isCached = song.audioSource === 's3' && !!song.s3AudioKey;
     const audioSource = song.audioSource || 'youtube';
@@ -408,7 +409,7 @@ export const getSong = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: {
-        ...song,
+        ...songData,
         isCached,
         audioSource
       }
@@ -515,8 +516,8 @@ export const getTrendingMusic = async (req: Request, res: Response) => {
           song = newSong;
         }
 
-        // Convert to plain object for response
-        return song.toObject ? song.toObject() : song;
+        // Convert to plain object for response and normalize
+        return normalizeSong(song);
       })
     );
 
@@ -550,13 +551,16 @@ export const getRecentlyAdded = async (req: Request, res: Response) => {
       .lean()
       .maxTimeMS(5000); // 5 second timeout
 
+    // Normalize songs (convert _id to id)
+    const normalizedSongs = recentSongs.map(song => normalizeSong(song));
+
     // Add cache headers (cache for 15 minutes)
     res.set('Cache-Control', 'public, max-age=900');
     res.json({
       success: true,
       data: {
-        songs: recentSongs,
-        total: recentSongs.length
+        songs: normalizedSongs,
+        total: normalizedSongs.length
       }
     });
   } catch (error) {
@@ -580,13 +584,16 @@ export const getPopularSongs = async (req: Request, res: Response) => {
       .lean()
       .maxTimeMS(5000); // 5 second timeout
 
+    // Normalize songs (convert _id to id)
+    const normalizedSongs = popularSongs.map(song => normalizeSong(song));
+
     // Add cache headers (cache for 30 minutes)
     res.set('Cache-Control', 'public, max-age=1800');
     res.json({
       success: true,
       data: {
-        songs: popularSongs,
-        total: popularSongs.length
+        songs: normalizedSongs,
+        total: normalizedSongs.length
       }
     });
   } catch (error) {

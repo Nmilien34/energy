@@ -240,19 +240,20 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     
     if (currentSong) {
       // Check if this is a new song - compare by ID if both have IDs, otherwise always load
-      const hasId = currentSong.id && state.currentSong?.id;
-      const isNewSong = hasId 
-        ? currentSong.id !== state.currentSong.id
-        : currentSong !== state.currentSong; // Fallback to reference comparison
+      const existingSong = state.currentSong;
+      const hasId = currentSong.id && existingSong?.id;
+      const isNewSong = hasId && existingSong
+        ? currentSong.id !== existingSong.id
+        : currentSong !== existingSong; // Fallback to reference comparison
       
       console.log('Is new song?', isNewSong, {
         hasId,
         currentSongId: currentSong.id,
-        existingSongId: state.currentSong?.id,
-        songsEqual: currentSong === state.currentSong
+        existingSongId: existingSong?.id,
+        songsEqual: currentSong === existingSong
       });
       
-      if (isNewSong || !state.currentSong) {
+      if (isNewSong || !existingSong) {
         console.log('Loading new song:', currentSong.title || 'Unknown');
         dispatch({ type: 'SET_CURRENT_SONG', payload: currentSong });
         // Load the song; autoplay if requested by the play() call
