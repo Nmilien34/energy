@@ -12,8 +12,9 @@ import {
   Star,
   ListMusic,
   Cloud,
+  User,
 } from 'lucide-react';
-import { Song, Playlist } from '../types/models';
+import { Song, Playlist, Artist } from '../types/models';
 import { musicService } from '../services/musicService';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,6 +30,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
   const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
   const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
   const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
+  const [trendingArtists, setTrendingArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { user } = useAuth();
@@ -88,6 +90,19 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
       } catch (error) {
         console.warn('Trending music not available:', error);
         setTrendingSongs([]);
+      }
+
+      // Load trending artists with error handling
+      try {
+        const trendingArtistsResponse = await musicService.getTrendingArtists(20);
+        if (trendingArtistsResponse.success && trendingArtistsResponse.data && Array.isArray(trendingArtistsResponse.data.artists)) {
+          setTrendingArtists(trendingArtistsResponse.data.artists.slice(0, 12));
+        } else {
+          setTrendingArtists([]);
+        }
+      } catch (error) {
+        console.warn('Trending artists not available:', error);
+        setTrendingArtists([]);
       }
     } catch (error) {
       console.warn('Dashboard data not fully available:', error);
@@ -264,6 +279,36 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
         </section>
       )}
 
+      {/* Trending Artists */}
+      {trendingArtists && trendingArtists.length > 0 && (
+        <section className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
+            <div className="space-y-1 sm:space-y-2">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white font-display tracking-tight">
+                Popular Artists
+              </h2>
+              <p className="text-sm sm:text-base text-gray-400 font-medium">Top trending artists</p>
+            </div>
+            <button className="group text-gray-400 hover:text-white text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors flex items-center space-x-2 touch-manipulation py-2">
+              <span>Show all</span>
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+            {trendingArtists.map((artist, index) => (
+              <ArtistCard
+                key={artist.name || index}
+                artist={artist}
+                onClick={() => {
+                  // Navigate to artist page or search for artist
+                  navigate(`/platform/search?q=${encodeURIComponent(artist.name)}`);
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Enhanced Stats Section */}
       <section className="space-y-6">
         <div className="space-y-1">
@@ -417,8 +462,8 @@ const EnhancedSongCard: React.FC<EnhancedSongCardProps> = ({ song, onPlay, isCur
           </div>
         )}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-lg transition-all duration-300 flex items-center justify-center">
-          <div className="bg-spotify-green rounded-full p-3 shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
-            <Play className="h-5 w-5 text-black fill-black" />
+          <div className="bg-gradient-to-r from-music-purple to-music-blue rounded-full p-2 sm:p-3 shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+            <Play className="h-4 w-4 sm:h-5 sm:w-5 text-white fill-white" />
           </div>
         </div>
         {isCurrentSong && (
@@ -438,6 +483,50 @@ const EnhancedSongCard: React.FC<EnhancedSongCardProps> = ({ song, onPlay, isCur
           )}
         </div>
         <p className="text-gray-400 text-xs truncate leading-tight">{song.artist}</p>
+      </div>
+    </div>
+  );
+};
+
+// Artist Card Component
+interface ArtistCardProps {
+  artist: Artist;
+  onClick: () => void;
+}
+
+const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onClick }) => {
+  return (
+    <div
+      className="group cursor-pointer transition-all duration-300 hover:scale-[1.05] active:scale-[0.95] bg-music-black-light rounded-lg p-2 sm:p-3 hover:bg-white/10 touch-manipulation"
+      onClick={onClick}
+    >
+      <div className="relative mb-2 sm:mb-3">
+        {artist.thumbnail ? (
+          <FallbackImage
+            src={artist.thumbnail}
+            alt={artist.name}
+            className="w-full aspect-square rounded-full object-cover shadow-lg group-hover:shadow-2xl transition-all duration-300"
+          />
+        ) : (
+          <div className="w-full aspect-square rounded-full bg-gradient-to-br from-music-purple via-purple-500 to-music-blue flex items-center justify-center shadow-lg">
+            <User className="h-10 w-10 text-white" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-full transition-all duration-300 flex items-center justify-center">
+          <div className="bg-gradient-to-r from-music-purple to-music-blue rounded-full p-2 sm:p-3 shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+            <Music className="h-4 w-4 sm:h-5 sm:w-5 text-white fill-white" />
+          </div>
+        </div>
+      </div>
+      <div>
+        <p className="text-white text-xs sm:text-sm font-semibold truncate group-hover:text-music-purple transition-colors mb-0.5 sm:mb-1 leading-tight text-center">
+          {artist.name}
+        </p>
+        {artist.playCount !== undefined && (
+          <p className="text-gray-400 text-xs truncate leading-tight text-center">
+            {artist.playCount.toLocaleString()} plays
+          </p>
+        )}
       </div>
     </div>
   );

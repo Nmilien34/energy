@@ -48,6 +48,16 @@ export interface Song {
   isCached?: boolean;                        // Whether song is cached in S3
 }
 
+// Artist types
+export interface Artist {
+  name: string;
+  thumbnail?: string;
+  playCount?: number;
+  songCount?: number;
+  channelId?: string;
+  channelTitle?: string;
+}
+
 export interface SearchResult {
   songs: Song[];
   total: number;

@@ -10,7 +10,8 @@ import {
   YouTubePlaylist,
   YouTubeVideo,
   ImportPlaylistRequest,
-  UserLibrary
+  UserLibrary,
+  Artist
 } from '../types/models';
 
 class MusicService {
@@ -54,6 +55,11 @@ class MusicService {
 
   async getTrendingSongs(limit = 20): Promise<ApiResponse<{ songs: Song[] }>> {
     const response = await api.get(`/api/music/trending?limit=${limit}`);
+    return response.data;
+  }
+
+  async getTrendingArtists(limit = 20): Promise<ApiResponse<{ artists: Artist[] }>> {
+    const response = await api.get(`/api/music/trending/artists?limit=${limit}`);
     return response.data;
   }
 
