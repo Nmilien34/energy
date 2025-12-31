@@ -4,6 +4,7 @@ import {
   getSong,
   getAudioStream,
   getTrendingMusic,
+  getTrendingArtists,
   getRecentlyAdded,
   getPopularSongs,
   getRelatedSongs,
@@ -45,6 +46,7 @@ const favoriteSchema = z.object({
 router.get('/search', searchRateLimit, validateQuery(searchSchema), searchMusic);
 router.get('/search/public', searchRateLimit, validateQuery(searchSchema), searchMusic); // Public search endpoint (same as /search)
 router.get('/trending', getTrendingMusic);
+router.get('/trending/artists', getTrendingArtists);
 router.get('/recent', getRecentlyAdded);
 router.get('/popular', getPopularSongs);
 router.get('/song/:id', getSong);

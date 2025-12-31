@@ -626,6 +626,116 @@ export const getPopularSongs = async (req: Request, res: Response) => {
   }
 };
 
+export const getTrendingArtists = async (req: Request, res: Response) => {
+  try {
+    const { limit = 20 } = req.query;
+    const limitNum = parseInt(limit as string);
+
+    // Aggregate songs by channelId/channelTitle to get trending artists
+    // Group by channelId and calculate totals
+    const artists = await Song.aggregate([
+      // Match only songs with channel information
+      {
+        $match: {
+          channelId: { $exists: true, $ne: null },
+          channelTitle: { $exists: true, $ne: null }
+        }
+      },
+      // Group by channelId
+      {
+        $group: {
+          _id: '$channelId',
+          name: { $first: '$channelTitle' }, // Use channelTitle as artist name
+          channelId: { $first: '$channelId' },
+          channelTitle: { $first: '$channelTitle' },
+          // Sum playCount from all songs
+          playCount: { $sum: '$playCount' },
+          // Count number of songs
+          songCount: { $sum: 1 },
+          // Store all thumbnails to pick best one later
+          thumbnails: { $push: { thumbnail: '$thumbnail', thumbnailHd: '$thumbnailHd', playCount: '$playCount' } }
+        }
+      },
+      // Get thumbnail from the most popular song in the group
+      {
+        $lookup: {
+          from: 'songs',
+          let: { channelId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$channelId', '$$channelId'] }
+              }
+            },
+            {
+              $sort: { playCount: -1, viewCount: -1 }
+            },
+            {
+              $limit: 1
+            },
+            {
+              $project: {
+                thumbnail: 1,
+                thumbnailHd: 1
+              }
+            }
+          ],
+          as: 'topSongData'
+        }
+      },
+      // Unwind and set thumbnail
+      {
+        $unwind: {
+          path: '$topSongData',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      // Project final fields
+      {
+        $project: {
+          _id: 0,
+          name: '$name',
+          channelId: '$channelId',
+          channelTitle: '$channelTitle',
+          playCount: { $ifNull: ['$playCount', 0] },
+          songCount: { $ifNull: ['$songCount', 0] },
+          thumbnail: {
+            $ifNull: [
+              '$topSongData.thumbnailHd',
+              { $ifNull: ['$topSongData.thumbnail', null] }
+            ]
+          }
+        }
+      },
+      // Sort by playCount descending
+      {
+        $sort: { playCount: -1, songCount: -1 }
+      },
+      // Limit results
+      {
+        $limit: limitNum
+      }
+    ], {
+      maxTimeMS: 10000 // 10 second timeout for aggregation
+    });
+
+    // Add cache headers (cache for 1 hour)
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.json({
+      success: true,
+      data: {
+        artists: artists
+      }
+    });
+  } catch (error) {
+    console.error('Get trending artists error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get trending artists'
+    });
+  }
+};
+
 export const getRelatedSongs = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
