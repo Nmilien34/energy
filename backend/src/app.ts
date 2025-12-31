@@ -27,31 +27,67 @@ const mongoOptions = {
   minPoolSize: 2, // Maintain at least 2 socket connections
   maxIdleTimeMS: 30000,
   heartbeatFrequencyMS: 10000,
-  retryWrites: true,
-  w: 'majority'
+  retryWrites: true
+  // Note: 'w' option removed - using default write concern
 };
 
-// MongoDB connection with better error handling
-const connectMongoDB = async () => {
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/nrgflow';
+// MongoDB connection with better error handling and retry logic
+const connectMongoDB = async (retries = 3, delay = 2000) => {
+  const { config } = await import('./utils/config');
+  const mongoUri = config.mongodb.uri;
   
   if (!process.env.MONGODB_URI) {
     console.warn('⚠️  MONGODB_URI not set, using default localhost connection');
+    console.warn('⚠️  This will likely fail in production!');
+  } else {
+    // Log connection string info (without password)
+    const uriInfo = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
+    console.log('🔌 Attempting MongoDB connection:', uriInfo.split('?')[0]);
   }
   
-  try {
-    await mongoose.connect(mongoUri, mongoOptions);
-    console.log('✓ Connected to MongoDB');
-    console.log(`  Host: ${mongoose.connection.host}`);
-    console.log(`  Database: ${mongoose.connection.name}`);
-  } catch (err: any) {
-    console.error('❌ MongoDB connection error:', {
-      message: err?.message,
-      name: err?.name,
-      code: err?.code
-    });
-    console.error('MONGODB_URI exists:', !!process.env.MONGODB_URI);
-    // Don't exit - let the app start and handle connection errors gracefully
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`📡 MongoDB connection attempt ${attempt}/${retries}...`);
+      const connection = await mongoose.connect(mongoUri, mongoOptions);
+      console.log('✓ Connected to MongoDB');
+      console.log(`  Host: ${connection.connection.host}`);
+      console.log(`  Database: ${connection.connection.name}`);
+      console.log(`  ReadyState: ${connection.connection.readyState} (1=connected)`);
+      return; // Success, exit retry loop
+    } catch (err: any) {
+      console.error(`❌ MongoDB connection attempt ${attempt} failed:`, {
+        message: err?.message,
+        name: err?.name,
+        code: err?.code,
+        mongoUriExists: !!process.env.MONGODB_URI,
+        mongoUriLength: process.env.MONGODB_URI?.length || 0
+      });
+      
+      // Provide helpful error messages
+      if (err?.name === 'MongoServerSelectionError') {
+        console.error('💡 This usually means:');
+        console.error('   - Wrong connection string');
+        console.error('   - Network/firewall blocking connection');
+        console.error('   - MongoDB server is down');
+        console.error('   - IP not whitelisted (if using MongoDB Atlas)');
+      }
+      
+      if (err?.code === 'ENOTFOUND' || err?.code === 'ECONNREFUSED') {
+        console.error('💡 Network error - check:');
+        console.error('   - Connection string hostname is correct');
+        console.error('   - Server can reach MongoDB (firewall/network)');
+      }
+      
+      // If not the last attempt, wait and retry
+      if (attempt < retries) {
+        console.log(`⏳ Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        // Last attempt failed
+        console.warn('⚠️  All MongoDB connection attempts failed - database operations will fail!');
+        console.warn('⚠️  App will continue to start, but login and other DB operations will return 503 errors');
+      }
+    }
   }
 };
 

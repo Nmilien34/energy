@@ -97,13 +97,42 @@ export const login = async (req: Request, res: Response) => {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Check if MongoDB is connected before querying
-    if (mongoose.connection.readyState !== 1) {
-      console.error('MongoDB not connected. ReadyState:', mongoose.connection.readyState);
-      console.error('Connection states: 0=disconnected, 1=connected, 2=connecting, 3=disconnecting');
-      return res.status(503).json({
-        success: false,
-        error: 'Database not ready. Please try again in a moment.'
+    const connectionState = mongoose.connection.readyState;
+    const connectionStates = {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    };
+    
+    if (connectionState !== 1) {
+      console.error('MongoDB not connected:', {
+        readyState: connectionState,
+        state: connectionStates[connectionState as keyof typeof connectionStates],
+        host: mongoose.connection.host,
+        name: mongoose.connection.name,
+        mongoUri: process.env.MONGODB_URI ? 'set' : 'missing'
       });
+      
+      // If connecting, wait a bit and retry
+      if (connectionState === 2) {
+        console.log('MongoDB is connecting, waiting 1 second...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Check again
+        if (mongoose.connection.readyState === 1) {
+          console.log('MongoDB connected after wait');
+        } else {
+          return res.status(503).json({
+            success: false,
+            error: 'Database is connecting. Please try again in a moment.'
+          });
+        }
+      } else {
+        return res.status(503).json({
+          success: false,
+          error: 'Database not connected. Please try again later.'
+        });
+      }
     }
 
     // Find user by email (direct query - emails are stored lowercase in DB)
@@ -115,31 +144,48 @@ export const login = async (req: Request, res: Response) => {
         .maxTimeMS(5000) // 5 second timeout
         .exec() as IUser | null;
     } catch (dbError: any) {
-      console.error('Database query error:', {
+      const errorDetails = {
         message: dbError?.message,
         name: dbError?.name,
         code: dbError?.code,
-        readyState: mongoose.connection.readyState
-      });
+        readyState: mongoose.connection.readyState,
+        connectionState: connectionStates[mongoose.connection.readyState as keyof typeof connectionStates],
+        stack: dbError?.stack
+      };
+      
+      console.error('Database query error:', errorDetails);
       
       // More specific error messages
       if (dbError?.name === 'MongoServerSelectionError' || dbError?.code === 'ECONNREFUSED') {
+        console.error('MongoDB server selection failed - connection string or network issue');
         return res.status(503).json({
           success: false,
-          error: 'Database connection failed. Please try again later.'
+          error: 'Database connection failed. Please check server configuration.'
         });
       }
       
       if (dbError?.name === 'MongoTimeoutError' || dbError?.message?.includes('timeout')) {
+        console.error('MongoDB query timed out');
         return res.status(504).json({
           success: false,
           error: 'Database query timeout. Please try again.'
         });
       }
       
+      if (dbError?.name === 'MongoNetworkError') {
+        console.error('MongoDB network error');
+        return res.status(503).json({
+          success: false,
+          error: 'Database network error. Please try again later.'
+        });
+      }
+      
+      // Log the full error for debugging
+      console.error('Unknown database error:', JSON.stringify(errorDetails, null, 2));
+      
       return res.status(503).json({
         success: false,
-        error: 'Database error. Please try again later.'
+        error: 'Database connection error. Please try again later.'
       });
     }
 
