@@ -87,9 +87,11 @@ const MusicPlatform: React.FC = () => {
             onClick={() => navigate('/')}
             className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-music-purple to-music-blue rounded-lg flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
-              <Music className="h-6 w-6 text-white" />
-            </div>
+            <img 
+              src="/logofortheapp.png" 
+              alt="NRGFLOW Logo" 
+              className="w-10 h-10 rounded-lg shadow-lg group-hover:scale-105 transition-transform"
+            />
             <span className="text-xl font-black tracking-tight font-display">
               <span className="bg-gradient-to-r from-music-purple to-music-blue bg-clip-text text-transparent">NRG</span>
               <span className="text-white">FLOW</span>
@@ -157,9 +159,11 @@ const MusicPlatform: React.FC = () => {
               onClick={() => navigate('/')}
               className="flex items-center space-x-2 hover:opacity-80 transition-all duration-200 group"
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-music-purple to-music-blue rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Music className="h-5 w-5 text-white" />
-              </div>
+              <img 
+                src="/logofortheapp.png" 
+                alt="NRGFLOW Logo" 
+                className="w-8 h-8 rounded-lg group-hover:scale-105 transition-transform"
+              />
               <span className="font-black text-white font-display">
                 <span className="bg-gradient-to-r from-music-purple to-music-blue bg-clip-text text-transparent">NRG</span>FLOW
               </span>

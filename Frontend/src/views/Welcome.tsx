@@ -24,9 +24,11 @@ const Welcome: React.FC = () => {
       <nav className="relative z-10 bg-music-black/80 backdrop-blur-xl border-b border-white/5">
         <div className="container mx-auto px-6 py-5 flex justify-between items-center">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-music-purple to-music-blue rounded-lg flex items-center justify-center shadow-lg">
-              <Music className="h-6 w-6 text-white" />
-            </div>
+            <img 
+              src="/logofortheapp.png" 
+              alt="NRGFLOW Logo" 
+              className="w-10 h-10 rounded-lg shadow-lg"
+            />
             <h1 className="text-2xl font-black tracking-tight font-display">
               <span className="bg-gradient-to-r from-music-purple to-music-blue bg-clip-text text-transparent">
                 NRG
