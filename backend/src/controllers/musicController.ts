@@ -171,10 +171,9 @@ export const searchMusic = async (req: Request, res: Response) => {
     // Save new songs to database (upsert) - optimized batch operation
     const savedSongs = await Promise.all(
       results.map(async (result) => {
-        // Use findOne with lean for faster reads
+        // Use findOne without lean first to check if exists
         let song = await Song.findOne({ youtubeId: result.id })
-          .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId description')
-          .lean();
+          .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId description');
 
         if (!song) {
           // Create new song
@@ -193,19 +192,20 @@ export const searchMusic = async (req: Request, res: Response) => {
           });
 
           await newSong.save();
-          song = newSong.toObject();
+          song = newSong;
         } else {
           // Update view count if it's higher (use updateOne for better performance)
-          if (result.viewCount && result.viewCount > ((song as any).viewCount || 0)) {
+          if (result.viewCount && result.viewCount > (song.viewCount || 0)) {
             await Song.updateOne(
               { youtubeId: result.id },
               { $set: { viewCount: result.viewCount } }
             );
-            (song as any).viewCount = result.viewCount;
+            song.viewCount = result.viewCount;
           }
         }
 
-        return song;
+        // Convert to plain object for response
+        return song.toObject ? song.toObject() : song;
       })
     );
 
@@ -489,13 +489,12 @@ export const getTrendingMusic = async (req: Request, res: Response) => {
     // Use cached trending results with 12h TTL
     const trending = await trendingService.getTrending(parseInt(limit as string));
 
-    // Save trending songs to database (optimized with lean and selective fields)
+    // Save trending songs to database (optimized with selective fields)
     const savedSongs = await Promise.all(
       trending.map(async (result) => {
-        // Use lean() and select only needed fields for faster queries
+        // Use select only needed fields for faster queries
         let song = await Song.findOne({ youtubeId: result.id })
-          .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId')
-          .lean();
+          .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId');
 
         if (!song) {
           const newSong = new Song({
@@ -513,10 +512,11 @@ export const getTrendingMusic = async (req: Request, res: Response) => {
           });
 
           await newSong.save();
-          song = newSong.toObject();
+          song = newSong;
         }
 
-        return song;
+        // Convert to plain object for response
+        return song.toObject ? song.toObject() : song;
       })
     );
 

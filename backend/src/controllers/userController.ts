@@ -165,8 +165,8 @@ export const getUserLibrary = async (req: Request, res: Response) => {
       });
     }
 
-    // Optimize query with lean() and selective field population
-    let library = await UserLibrary.findOne({ user: userId })
+    // Optimize query with selective field population
+    let libraryDoc = await UserLibrary.findOne({ user: userId })
       .populate('favoriteSongs', 'youtubeId title artist thumbnail duration')
       .populate('favoritePlaylists', 'name description thumbnail songCount')
       .populate({
@@ -178,12 +178,11 @@ export const getUserLibrary = async (req: Request, res: Response) => {
         path: 'listeningHistory.song',
         select: 'youtubeId title artist thumbnail duration',
         options: { limit: 100 } // Limit history to 100 items
-      })
-      .lean(); // Use lean() for faster queries (returns plain JS object)
+      });
 
     // Create library if it doesn't exist
-    if (!library) {
-      library = new UserLibrary({
+    if (!libraryDoc) {
+      libraryDoc = new UserLibrary({
         user: userId,
         favoriteSongs: [],
         favoritePlaylists: [],
@@ -200,10 +199,10 @@ export const getUserLibrary = async (req: Request, res: Response) => {
         followedArtists: [],
         blockedSongs: []
       });
-      await library.save();
+      await libraryDoc.save();
 
       // Populate after saving with optimized fields
-      library = await UserLibrary.findById(library._id)
+      libraryDoc = await UserLibrary.findById(libraryDoc._id)
         .populate('favoriteSongs', 'youtubeId title artist thumbnail duration')
         .populate('favoritePlaylists', 'name description thumbnail songCount')
         .populate({
@@ -215,9 +214,11 @@ export const getUserLibrary = async (req: Request, res: Response) => {
           path: 'listeningHistory.song',
           select: 'youtubeId title artist thumbnail duration',
           options: { limit: 100 }
-        })
-        .lean();
+        });
     }
+
+    // Convert to plain object for response
+    const library = libraryDoc ? (libraryDoc.toObject ? libraryDoc.toObject() : libraryDoc) : null;
 
     // Transform library data to match frontend expectations
     if (!library) {
