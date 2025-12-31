@@ -96,8 +96,30 @@ userSchema.pre('save', async function(next) {
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
   try {
+    // Validate inputs
+    if (!candidatePassword || typeof candidatePassword !== 'string') {
+      console.error('Invalid candidate password provided');
+      return false;
+    }
+    
+    if (!this.password || typeof this.password !== 'string') {
+      console.error('User password hash is invalid:', { userId: this._id, hasPassword: !!this.password });
+      return false;
+    }
+
+    // Check if password hash looks valid (bcrypt hashes start with $2a$, $2b$, or $2y$)
+    if (!this.password.startsWith('$2')) {
+      console.error('Password hash format is invalid (not bcrypt):', { userId: this._id });
+      return false;
+    }
+
     return await bcrypt.compare(candidatePassword, this.password);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('bcrypt.compare error:', {
+      error: error.message,
+      userId: this._id,
+      passwordHashLength: this.password?.length
+    });
     throw error;
   }
 };

@@ -78,6 +78,9 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  console.log('Login attempt started:', { email: req.body?.email ? 'provided' : 'missing', timestamp: new Date().toISOString() });
+  
   try {
     const { email, password } = req.body;
 
@@ -95,9 +98,18 @@ export const login = async (req: Request, res: Response) => {
     // Find user by email (direct query - emails are stored lowercase in DB)
     // Using direct query instead of regex for better performance and index usage
     // Add maxTimeMS to prevent hanging queries
-    const user = await User.findOne({ email: normalizedEmail })
-      .maxTimeMS(5000) // 5 second timeout
-      .exec() as IUser | null;
+    let user: IUser | null;
+    try {
+      user = await User.findOne({ email: normalizedEmail })
+        .maxTimeMS(5000) // 5 second timeout
+        .exec() as IUser | null;
+    } catch (dbError: any) {
+      console.error('Database query error:', dbError);
+      return res.status(503).json({
+        success: false,
+        error: 'Database connection error. Please try again later.'
+      });
+    }
 
     if (!user) {
       // Don't reveal whether email exists or not for security
@@ -107,8 +119,32 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Check password
-    const isMatch = await user.comparePassword(password);
+    // Check if user has a valid password (OAuth users might have placeholder passwords)
+    if (!user.password || user.password === 'google-oauth' || user.password.length < 10) {
+      console.error('User has invalid password hash:', { userId: user._id, email: user.email });
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid credentials'
+      });
+    }
+
+    // Check password with error handling
+    let isMatch: boolean;
+    try {
+      isMatch = await user.comparePassword(password);
+    } catch (passwordError: any) {
+      console.error('Password comparison error:', passwordError);
+      console.error('User password hash issue:', { 
+        userId: user._id, 
+        email: user.email,
+        passwordExists: !!user.password,
+        passwordLength: user.password?.length 
+      });
+      return res.status(500).json({
+        success: false,
+        error: 'Error verifying password'
+      });
+    }
 
     if (!isMatch) {
       return res.status(401).json({
@@ -118,11 +154,36 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    try {
+      user.lastLogin = new Date();
+      await user.save();
+    } catch (saveError: any) {
+      console.error('Error saving last login:', saveError);
+      // Continue anyway - last login update is not critical
+    }
 
-    const token = generateToken(user._id.toString());
+    // Generate token with error handling
+    let token: string;
+    try {
+      if (!config.jwt.secret || config.jwt.secret === 'fallback-secret-change-in-production') {
+        console.error('JWT_SECRET is not properly configured!');
+        return res.status(500).json({
+          success: false,
+          error: 'Server configuration error'
+        });
+      }
+      token = generateToken(user._id.toString());
+    } catch (tokenError: any) {
+      console.error('Token generation error:', tokenError);
+      return res.status(500).json({
+        success: false,
+        error: 'Error generating authentication token'
+      });
+    }
 
+    const duration = Date.now() - startTime;
+    console.log('Login successful:', { email: normalizedEmail, duration: `${duration}ms` });
+    
     res.json({
       success: true,
       data: {
@@ -130,18 +191,28 @@ export const login = async (req: Request, res: Response) => {
         token
       }
     });
-  } catch (error) {
-    console.error('Login error:', error);
+  } catch (error: any) {
+    const duration = Date.now() - startTime;
+    console.error('Login error:', {
+      error: error?.message || 'Unknown error',
+      stack: error?.stack,
+      name: error?.name,
+      duration: `${duration}ms`,
+      email: req.body?.email ? 'provided' : 'missing',
+      timestamp: new Date().toISOString()
+    });
+    
     // Log full error details for debugging in production
     if (error instanceof Error) {
       console.error('Login error details:', {
         message: error.message,
         stack: error.stack,
-        name: error.name
+        name: error.name,
+        cause: (error as any).cause
       });
       
       // Check for timeout errors
-      if (error.message.includes('timeout')) {
+      if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
         return res.status(504).json({
           success: false,
           error: 'Request timeout. Please try again.'
@@ -149,14 +220,23 @@ export const login = async (req: Request, res: Response) => {
       }
       
       // Check for database connection errors
-      if (error.message.includes('Mongo') || error.message.includes('connection')) {
+      if (error.message?.includes('Mongo') || error.message?.includes('connection') || error.message?.includes('ECONNREFUSED')) {
         return res.status(503).json({
           success: false,
           error: 'Database connection error. Please try again later.'
         });
       }
+      
+      // Check for JWT errors
+      if (error.message?.includes('jwt') || error.message?.includes('JWT')) {
+        return res.status(500).json({
+          success: false,
+          error: 'Authentication service error. Please contact support.'
+        });
+      }
     }
     
+    // Generic error response
     res.status(500).json({
       success: false,
       error: 'Error logging in'
