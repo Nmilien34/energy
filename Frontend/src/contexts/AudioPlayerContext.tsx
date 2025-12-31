@@ -231,24 +231,41 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       currentIndex: state.currentIndex,
       queueLength: state.queue.length,
       currentSongId: currentSong?.id,
+      currentSongTitle: currentSong?.title,
       existingSongId: state.currentSong?.id,
-      shouldAutoplay: shouldAutoplayNextLoad.current
+      existingSongTitle: state.currentSong?.title,
+      shouldAutoplay: shouldAutoplayNextLoad.current,
+      fullSong: currentSong
     });
     
     if (currentSong) {
-      const isNewSong = currentSong.id !== state.currentSong?.id;
-      console.log('Is new song?', isNewSong);
+      // Check if this is a new song - compare by ID if both have IDs, otherwise always load
+      const hasId = currentSong.id && state.currentSong?.id;
+      const isNewSong = hasId 
+        ? currentSong.id !== state.currentSong.id
+        : currentSong !== state.currentSong; // Fallback to reference comparison
       
-      if (isNewSong) {
+      console.log('Is new song?', isNewSong, {
+        hasId,
+        currentSongId: currentSong.id,
+        existingSongId: state.currentSong?.id,
+        songsEqual: currentSong === state.currentSong
+      });
+      
+      if (isNewSong || !state.currentSong) {
+        console.log('Loading new song:', currentSong.title || 'Unknown');
         dispatch({ type: 'SET_CURRENT_SONG', payload: currentSong });
         // Load the song; autoplay if requested by the play() call
         const autoplay = shouldAutoplayNextLoad.current;
         shouldAutoplayNextLoad.current = false;
         console.log('Loading song with autoplay:', autoplay);
         loadSong(currentSong, autoplay);
+      } else {
+        console.log('Song already loaded, skipping');
       }
     } else if (state.currentSong) {
       // Queue is empty but we have a current song - clear it
+      console.log('Queue empty, clearing current song');
       dispatch({ type: 'SET_CURRENT_SONG', payload: null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -283,7 +300,19 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       return;
     }
 
-    console.log('loadSong called:', { songId: song.id, songTitle: song.title, autoPlay });
+    if (!song.id) {
+      console.error('Song has no ID, cannot load:', song);
+      dispatch({ type: 'SET_LOADING', payload: false });
+      return;
+    }
+
+    console.log('loadSong called:', { 
+      songId: song.id, 
+      songTitle: song.title, 
+      youtubeId: song.youtubeId,
+      autoPlay,
+      fullSong: song
+    });
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
@@ -415,9 +444,27 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     console.log('Play called with song:', song?.title || 'current song', 'YouTube mode:', state.youtubeMode?.isYoutube);
 
     if (song) {
+      // Validate song has required properties
+      if (!song.id) {
+        console.error('Song missing ID:', song);
+        // Try to use youtubeId as fallback ID
+        if (song.youtubeId) {
+          song.id = song.youtubeId;
+          console.log('Using youtubeId as ID:', song.id);
+        } else {
+          console.error('Song has no ID or youtubeId, cannot play');
+          return;
+        }
+      }
+      
       // Add song to queue and play immediately
       const newQueue = [song];
-      console.log('Setting queue with song:', song.id, song.title);
+      console.log('Setting queue with song:', {
+        id: song.id,
+        title: song.title,
+        youtubeId: song.youtubeId,
+        fullSong: song
+      });
       dispatch({ type: 'SET_QUEUE', payload: newQueue });
       dispatch({ type: 'SET_CURRENT_INDEX', payload: 0 });
       // Signal the effect to autoplay when it loads the song
