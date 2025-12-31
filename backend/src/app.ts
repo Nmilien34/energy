@@ -21,14 +21,16 @@ const app = express();
 
 // Connect to MongoDB with timeout options
 const mongoOptions = {
-  serverSelectionTimeoutMS: 10000, // Increased to 10s for production
-  socketTimeoutMS: 45000,
-  connectTimeoutMS: 10000,
+  serverSelectionTimeoutMS: 5000, // Reduced to 5s for faster failure
+  socketTimeoutMS: 30000, // Reduced socket timeout
+  connectTimeoutMS: 5000, // Reduced connection timeout
   maxPoolSize: 10, // Maintain up to 10 socket connections
   minPoolSize: 2, // Maintain at least 2 socket connections
   maxIdleTimeMS: 30000,
   heartbeatFrequencyMS: 10000,
-  retryWrites: true
+  retryWrites: true,
+  bufferCommands: true, // Buffer commands if not connected (Mongoose default)
+  bufferMaxEntries: 0 // Don't buffer indefinitely
   // Note: 'w' option removed - using default write concern
 };
 

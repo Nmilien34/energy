@@ -96,44 +96,25 @@ export const login = async (req: Request, res: Response) => {
     // Since the schema has lowercase: true, emails are stored in lowercase
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if MongoDB is connected before querying
+    // Check if MongoDB is connected - but don't block if connecting
+    // Mongoose will buffer operations if not connected, so we can proceed
     const connectionState = mongoose.connection.readyState;
-    const connectionStates = {
-      0: 'disconnected',
-      1: 'connected',
-      2: 'connecting',
-      3: 'disconnecting'
-    };
     
-    if (connectionState !== 1) {
-      console.error('MongoDB not connected:', {
+    // Only fail fast if completely disconnected (not connecting)
+    if (connectionState === 0) {
+      console.error('MongoDB disconnected:', {
         readyState: connectionState,
-        state: connectionStates[connectionState as keyof typeof connectionStates],
         host: mongoose.connection.host,
-        name: mongoose.connection.name,
-        mongoUri: process.env.MONGODB_URI ? 'set' : 'missing'
+        name: mongoose.connection.name
       });
-      
-      // If connecting, wait a bit and retry
-      if (connectionState === 2) {
-        console.log('MongoDB is connecting, waiting 1 second...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // Check again
-        if (mongoose.connection.readyState === 1) {
-          console.log('MongoDB connected after wait');
-        } else {
-          return res.status(503).json({
-            success: false,
-            error: 'Database is connecting. Please try again in a moment.'
-          });
-        }
-      } else {
-        return res.status(503).json({
-          success: false,
-          error: 'Database not connected. Please try again later.'
-        });
-      }
+      return res.status(503).json({
+        success: false,
+        error: 'Database not connected. Please try again in a moment.'
+      });
     }
+    
+    // If connecting (state 2), Mongoose will buffer the query, so we can proceed
+    // The maxTimeMS on the query will handle timeouts
 
     // Find user by email (direct query - emails are stored lowercase in DB)
     // Using direct query instead of regex for better performance and index usage
@@ -141,15 +122,23 @@ export const login = async (req: Request, res: Response) => {
     let user: IUser | null;
     try {
       user = await User.findOne({ email: normalizedEmail })
-        .maxTimeMS(5000) // 5 second timeout
+        .select('_id email password lastLogin') // Only select needed fields for login
+        .maxTimeMS(3000) // 3 second timeout (reduced for faster failure)
         .exec() as IUser | null;
     } catch (dbError: any) {
+      const connectionStates = {
+        0: 'disconnected',
+        1: 'connected',
+        2: 'connecting',
+        3: 'disconnecting'
+      };
+      
       const errorDetails = {
         message: dbError?.message,
         name: dbError?.name,
         code: dbError?.code,
         readyState: mongoose.connection.readyState,
-        connectionState: connectionStates[mongoose.connection.readyState as keyof typeof connectionStates],
+        connectionState: connectionStates[mongoose.connection.readyState as keyof typeof connectionStates] || 'unknown',
         stack: dbError?.stack
       };
       
