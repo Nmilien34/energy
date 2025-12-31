@@ -13,16 +13,42 @@ import {
   UserLibrary,
   Artist
 } from '../types/models';
+import { decodeHtmlEntities } from '../utils/htmlEntities';
 
 class MusicService {
   // Music search and streaming
   async searchMusic(query: string, type = 'song', limit = 20): Promise<ApiResponse<SearchResult>> {
     const response = await api.get(`/api/music/search?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}`);
+    
+    // Decode HTML entities in search results (safety measure)
+    if (response.data.success && response.data.data?.songs) {
+      response.data.data.songs = response.data.data.songs.map(song => ({
+        ...song,
+        title: decodeHtmlEntities(song.title),
+        artist: decodeHtmlEntities(song.artist),
+        channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
+        description: song.description ? decodeHtmlEntities(song.description) : song.description,
+      }));
+    }
+    
     return response.data;
   }
 
   async getSongById(songId: string): Promise<ApiResponse<Song>> {
     const response = await api.get(`/api/music/songs/${songId}`);
+    
+    // Decode HTML entities (safety measure)
+    if (response.data.success && response.data.data) {
+      const song = response.data.data;
+      response.data.data = {
+        ...song,
+        title: decodeHtmlEntities(song.title),
+        artist: decodeHtmlEntities(song.artist),
+        channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
+        description: song.description ? decodeHtmlEntities(song.description) : song.description,
+      };
+    }
+    
     return response.data;
   }
 
@@ -55,11 +81,33 @@ class MusicService {
 
   async getTrendingSongs(limit = 20): Promise<ApiResponse<{ songs: Song[] }>> {
     const response = await api.get(`/api/music/trending?limit=${limit}`);
+    
+    // Decode HTML entities in trending songs (safety measure)
+    if (response.data.success && response.data.data?.songs) {
+      response.data.data.songs = response.data.data.songs.map(song => ({
+        ...song,
+        title: decodeHtmlEntities(song.title),
+        artist: decodeHtmlEntities(song.artist),
+        channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
+        description: song.description ? decodeHtmlEntities(song.description) : song.description,
+      }));
+    }
+    
     return response.data;
   }
 
   async getTrendingArtists(limit = 20): Promise<ApiResponse<{ artists: Artist[] }>> {
     const response = await api.get(`/api/music/trending/artists?limit=${limit}`);
+    
+    // Decode HTML entities in artist names (safety measure)
+    if (response.data.success && response.data.data?.artists) {
+      response.data.data.artists = response.data.data.artists.map(artist => ({
+        ...artist,
+        name: decodeHtmlEntities(artist.name),
+        channelTitle: artist.channelTitle ? decodeHtmlEntities(artist.channelTitle) : artist.channelTitle,
+      }));
+    }
+    
     return response.data;
   }
 
@@ -75,6 +123,23 @@ class MusicService {
   // Playlist management
   async getUserPlaylists(): Promise<ApiResponse<Playlist[]>> {
     const response = await api.get('/api/playlists/user');
+    
+    // Decode HTML entities in playlists (safety measure)
+    if (response.data.success && response.data.data) {
+      response.data.data = response.data.data.map(playlist => ({
+        ...playlist,
+        name: decodeHtmlEntities(playlist.name),
+        description: playlist.description ? decodeHtmlEntities(playlist.description) : playlist.description,
+        songs: playlist.songs ? playlist.songs.map(song => ({
+          ...song,
+          title: decodeHtmlEntities(song.title),
+          artist: decodeHtmlEntities(song.artist),
+          channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
+          description: song.description ? decodeHtmlEntities(song.description) : song.description,
+        })) : playlist.songs,
+      }));
+    }
+    
     return response.data;
   }
 
@@ -85,6 +150,24 @@ class MusicService {
 
   async getPlaylistById(playlistId: string): Promise<ApiResponse<Playlist>> {
     const response = await api.get(`/api/playlists/${playlistId}`);
+    
+    // Decode HTML entities in playlist songs (safety measure)
+    if (response.data.success && response.data.data) {
+      const playlist = response.data.data;
+      response.data.data = {
+        ...playlist,
+        name: decodeHtmlEntities(playlist.name),
+        description: playlist.description ? decodeHtmlEntities(playlist.description) : playlist.description,
+        songs: playlist.songs ? playlist.songs.map(song => ({
+          ...song,
+          title: decodeHtmlEntities(song.title),
+          artist: decodeHtmlEntities(song.artist),
+          channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
+          description: song.description ? decodeHtmlEntities(song.description) : song.description,
+        })) : playlist.songs,
+      };
+    }
+    
     return response.data;
   }
 
@@ -117,6 +200,23 @@ class MusicService {
     let url = `/api/playlists/public?page=${page}&limit=${limit}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     const response = await api.get(url);
+    
+    // Decode HTML entities in public playlists (safety measure)
+    if (response.data.success && response.data.data?.playlists) {
+      response.data.data.playlists = response.data.data.playlists.map(playlist => ({
+        ...playlist,
+        name: decodeHtmlEntities(playlist.name),
+        description: playlist.description ? decodeHtmlEntities(playlist.description) : playlist.description,
+        songs: playlist.songs ? playlist.songs.map(song => ({
+          ...song,
+          title: decodeHtmlEntities(song.title),
+          artist: decodeHtmlEntities(song.artist),
+          channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
+          description: song.description ? decodeHtmlEntities(song.description) : song.description,
+        })) : playlist.songs,
+      }));
+    }
+    
     return response.data;
   }
 
@@ -128,6 +228,25 @@ class MusicService {
   // User library management
   async getUserLibrary(): Promise<ApiResponse<UserLibrary>> {
     const response = await api.get('/api/users/library');
+    
+    // Decode HTML entities in library songs (safety measure)
+    if (response.data.success && response.data.data) {
+      const library = response.data.data;
+      const decodeSongs = (songs: Song[]) => songs.map(song => ({
+        ...song,
+        title: decodeHtmlEntities(song.title),
+        artist: decodeHtmlEntities(song.artist),
+        channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
+        description: song.description ? decodeHtmlEntities(song.description) : song.description,
+      }));
+      
+      response.data.data = {
+        ...library,
+        favorites: library.favorites ? decodeSongs(library.favorites) : library.favorites,
+        recentlyPlayed: library.recentlyPlayed ? decodeSongs(library.recentlyPlayed) : library.recentlyPlayed,
+      };
+    }
+    
     return response.data;
   }
 
@@ -143,6 +262,18 @@ class MusicService {
 
   async getRecentlyPlayed(limit = 50): Promise<ApiResponse<Song[]>> {
     const response = await api.get(`/api/users/library/recent?limit=${limit}`);
+    
+    // Decode HTML entities in recently played songs (safety measure)
+    if (response.data.success && response.data.data) {
+      response.data.data = response.data.data.map(song => ({
+        ...song,
+        title: decodeHtmlEntities(song.title),
+        artist: decodeHtmlEntities(song.artist),
+        channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
+        description: song.description ? decodeHtmlEntities(song.description) : song.description,
+      }));
+    }
+    
     return response.data;
   }
 
