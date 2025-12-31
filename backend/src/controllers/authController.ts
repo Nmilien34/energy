@@ -82,6 +82,13 @@ export const login = async (req: Request, res: Response) => {
   const startTime = Date.now();
   console.log('Login attempt started:', { email: req.body?.email ? 'provided' : 'missing', timestamp: new Date().toISOString() });
   
+  // Create a timeout promise that will reject after 10 seconds
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error('Login request timeout - database connection may be slow'));
+    }, 10000); // 10 second overall timeout
+  });
+
   try {
     const { email, password } = req.body;
 
@@ -96,8 +103,7 @@ export const login = async (req: Request, res: Response) => {
     // Since the schema has lowercase: true, emails are stored in lowercase
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Let Mongoose handle connection state - it will buffer operations if needed
-    // Only log connection state for debugging, but don't block the query
+    // Check connection state - log for debugging
     const connectionState = mongoose.connection.readyState;
     if (connectionState !== 1) {
       console.warn('MongoDB connection state:', {
@@ -106,20 +112,30 @@ export const login = async (req: Request, res: Response) => {
         host: mongoose.connection.host || 'unknown',
         name: mongoose.connection.name || 'unknown'
       });
-      // Don't return error - let Mongoose try to connect and buffer the query
-      // The query timeout (maxTimeMS) will handle failures
+      // Mongoose will attempt to connect when we make a query (if bufferCommands is true)
     }
 
-    // Find user by email (direct query - emails are stored lowercase in DB)
-    // Using direct query instead of regex for better performance and index usage
-    // Add maxTimeMS to prevent hanging queries
+    // Find user by email with timeout wrapper
+    // Using Promise.race to ensure we don't wait more than 10 seconds total
     let user: IUser | null;
     try {
-      user = await User.findOne({ email: normalizedEmail })
+      const queryPromise = User.findOne({ email: normalizedEmail })
         .select('_id email password lastLogin') // Only select needed fields for login
-        .maxTimeMS(3000) // 3 second timeout (reduced for faster failure)
-        .exec() as IUser | null;
+        .maxTimeMS(5000) // 5 second query timeout
+        .exec() as Promise<IUser | null>;
+      
+      // Race between query and overall timeout
+      user = await Promise.race([queryPromise, timeoutPromise]);
     } catch (dbError: any) {
+      // Check if this is our timeout error
+      if (dbError?.message?.includes('Login request timeout')) {
+        console.error('Login request timed out after 10 seconds');
+        return res.status(504).json({
+          success: false,
+          error: 'Request timeout. Database connection may be slow. Please try again.'
+        });
+      }
+
       const connectionStates = {
         0: 'disconnected',
         1: 'connected',

@@ -39,13 +39,36 @@ const connectMongoDB = async (retries = 3, delay = 2000) => {
   const { config } = await import('./utils/config');
   const mongoUri = config.mongodb.uri;
   
+  // Detailed logging for debugging
+  console.log('🔍 MongoDB Connection Diagnostics:');
+  console.log('  - MONGODB_URI env var exists:', !!process.env.MONGODB_URI);
+  console.log('  - MONGODB_URI length:', process.env.MONGODB_URI?.length || 0);
+  console.log('  - NODE_ENV:', process.env.NODE_ENV || 'not set');
+  
   if (!process.env.MONGODB_URI) {
-    console.warn('⚠️  MONGODB_URI not set, using default localhost connection');
-    console.warn('⚠️  This will likely fail in production!');
-  } else {
-    // Log connection string info (without password)
-    const uriInfo = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
-    console.log('🔌 Attempting MongoDB connection:', uriInfo.split('?')[0]);
+    console.error('❌ MONGODB_URI not set in environment variables!');
+    console.error('❌ Using default localhost connection which will fail in production!');
+    console.error('💡 Please set MONGODB_URI in your Render environment variables');
+    return; // Don't attempt connection with localhost in production
+  }
+  
+  // Validate connection string format
+  if (!mongoUri.startsWith('mongodb://') && !mongoUri.startsWith('mongodb+srv://')) {
+    console.error('❌ Invalid MongoDB URI format. Must start with mongodb:// or mongodb+srv://');
+    return;
+  }
+  
+  // Log connection string info (without password)
+  const uriInfo = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
+  console.log('🔌 Attempting MongoDB connection:', uriInfo.split('?')[0]);
+  
+  // Check if password has special characters that need encoding
+  const passwordMatch = mongoUri.match(/\/\/([^:]+):([^@]+)@/);
+  if (passwordMatch && passwordMatch[2]) {
+    const password = passwordMatch[2];
+    if (password !== encodeURIComponent(password)) {
+      console.warn('⚠️  Password contains special characters - ensure they are URL encoded!');
+    }
   }
   
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -68,17 +91,38 @@ const connectMongoDB = async (retries = 3, delay = 2000) => {
       
       // Provide helpful error messages
       if (err?.name === 'MongoServerSelectionError') {
-        console.error('💡 This usually means:');
-        console.error('   - Wrong connection string');
-        console.error('   - Network/firewall blocking connection');
-        console.error('   - MongoDB server is down');
-        console.error('   - IP not whitelisted (if using MongoDB Atlas)');
+        console.error('💡 MongoDB Server Selection Error - This usually means:');
+        console.error('   1. IP Address not whitelisted in MongoDB Atlas');
+        console.error('      → Go to MongoDB Atlas → Network Access → Add IP Address');
+        console.error('      → For Render, you may need to whitelist 0.0.0.0/0 (all IPs)');
+        console.error('   2. Wrong connection string format');
+        console.error('      → Check username, password, and cluster address');
+        console.error('   3. Password contains special characters that need URL encoding');
+        console.error('      → Use encodeURIComponent() for special chars like @, #, %, etc.');
+        console.error('   4. Network/firewall blocking connection');
+        console.error('   5. MongoDB cluster is paused or down');
+        console.error('');
+        console.error('   Full error:', err.message);
       }
       
       if (err?.code === 'ENOTFOUND' || err?.code === 'ECONNREFUSED') {
-        console.error('💡 Network error - check:');
+        console.error('💡 Network/DNS Error - check:');
         console.error('   - Connection string hostname is correct');
+        console.error('   - DNS can resolve the MongoDB hostname');
         console.error('   - Server can reach MongoDB (firewall/network)');
+        console.error('   - MongoDB Atlas cluster is not paused');
+        console.error('');
+        console.error('   Full error:', err.message);
+      }
+      
+      if (err?.code === 'EAUTH' || err?.message?.includes('authentication')) {
+        console.error('💡 Authentication Error - check:');
+        console.error('   - Username is correct');
+        console.error('   - Password is correct (check for typos)');
+        console.error('   - Password special characters are URL encoded');
+        console.error('   - Database user has proper permissions');
+        console.error('');
+        console.error('   Full error:', err.message);
       }
       
       // If not the last attempt, wait and retry
@@ -204,6 +248,23 @@ app.get('/api/health', (_, res) => {
     2: 'connecting',
     3: 'disconnecting'
   };
+
+  const mongoUri = process.env.MONGODB_URI || 'not set';
+  const hasMongoUri = !!process.env.MONGODB_URI;
+  
+  // Extract connection info (without password)
+  let connectionInfo = 'not configured';
+  if (hasMongoUri) {
+    try {
+      const uriInfo = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
+      const match = uriInfo.match(/mongodb\+?srv?:\/\/([^/]+)\/([^?]+)/);
+      if (match) {
+        connectionInfo = `${match[1]}/${match[2]}`;
+      }
+    } catch (e) {
+      connectionInfo = 'invalid format';
+    }
+  }
   
   res.status(dbStatus === 1 ? 200 : 503).json({ 
     status: dbStatus === 1 ? 'ok' : 'degraded',
@@ -211,7 +272,16 @@ app.get('/api/health', (_, res) => {
       status: dbStates[dbStatus as keyof typeof dbStates] || 'unknown',
       readyState: dbStatus,
       host: mongoose.connection.host || 'unknown',
-      name: mongoose.connection.name || 'unknown'
+      name: mongoose.connection.name || 'unknown',
+      mongoUriConfigured: hasMongoUri,
+      connectionString: connectionInfo,
+      troubleshooting: dbStatus !== 1 ? {
+        check1: 'Verify MONGODB_URI is set in Render environment variables',
+        check2: 'Check MongoDB Atlas Network Access - whitelist Render IPs or use 0.0.0.0/0',
+        check3: 'Verify connection string format: mongodb+srv://username:password@cluster.mongodb.net/database',
+        check4: 'Ensure password special characters are URL encoded',
+        check5: 'Check MongoDB Atlas cluster is not paused'
+      } : null
     }
   });
 });
