@@ -21,16 +21,16 @@ const app = express();
 
 // Connect to MongoDB with timeout options
 const mongoOptions = {
-  serverSelectionTimeoutMS: 5000, // Reduced to 5s for faster failure
-  socketTimeoutMS: 30000, // Reduced socket timeout
-  connectTimeoutMS: 5000, // Reduced connection timeout
+  serverSelectionTimeoutMS: 10000, // 10s for server selection (allows time for Atlas)
+  socketTimeoutMS: 45000, // 45s socket timeout
+  connectTimeoutMS: 10000, // 10s connection timeout
   maxPoolSize: 10, // Maintain up to 10 socket connections
   minPoolSize: 2, // Maintain at least 2 socket connections
   maxIdleTimeMS: 30000,
   heartbeatFrequencyMS: 10000,
   retryWrites: true,
   bufferCommands: true, // Buffer commands if not connected (Mongoose default)
-  bufferMaxEntries: 0 // Don't buffer indefinitely
+  bufferMaxEntries: 100 // Allow buffering up to 100 commands while connecting
   // Note: 'w' option removed - using default write concern
 };
 
@@ -104,15 +104,24 @@ mongoose.connection.on('error', (err) => {
 });
 
 mongoose.connection.on('disconnected', () => {
-  console.warn('⚠️  MongoDB disconnected');
+  console.warn('⚠️  MongoDB disconnected - attempting to reconnect...');
+  // Attempt to reconnect after a delay
+  setTimeout(() => {
+    connectMongoDB().catch(err => {
+      console.error('Reconnection attempt failed:', err);
+    });
+  }, 5000);
 });
 
 mongoose.connection.on('reconnected', () => {
   console.log('✓ MongoDB reconnected');
 });
 
-// Attempt connection
-connectMongoDB();
+// Attempt connection (non-blocking - app will start even if connection fails)
+connectMongoDB().catch(err => {
+  console.error('Failed to connect to MongoDB during startup:', err);
+  // Don't exit - allow app to start and retry connections on first request
+});
 
 // CORS configuration
 const allowedOrigins = [

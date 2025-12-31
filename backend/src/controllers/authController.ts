@@ -96,25 +96,19 @@ export const login = async (req: Request, res: Response) => {
     // Since the schema has lowercase: true, emails are stored in lowercase
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if MongoDB is connected - but don't block if connecting
-    // Mongoose will buffer operations if not connected, so we can proceed
+    // Let Mongoose handle connection state - it will buffer operations if needed
+    // Only log connection state for debugging, but don't block the query
     const connectionState = mongoose.connection.readyState;
-    
-    // Only fail fast if completely disconnected (not connecting)
-    if (connectionState === 0) {
-      console.error('MongoDB disconnected:', {
+    if (connectionState !== 1) {
+      console.warn('MongoDB connection state:', {
         readyState: connectionState,
-        host: mongoose.connection.host,
-        name: mongoose.connection.name
+        state: connectionState === 0 ? 'disconnected' : connectionState === 2 ? 'connecting' : 'disconnecting',
+        host: mongoose.connection.host || 'unknown',
+        name: mongoose.connection.name || 'unknown'
       });
-      return res.status(503).json({
-        success: false,
-        error: 'Database not connected. Please try again in a moment.'
-      });
+      // Don't return error - let Mongoose try to connect and buffer the query
+      // The query timeout (maxTimeMS) will handle failures
     }
-    
-    // If connecting (state 2), Mongoose will buffer the query, so we can proceed
-    // The maxTimeMS on the query will handle timeouts
 
     // Find user by email (direct query - emails are stored lowercase in DB)
     // Using direct query instead of regex for better performance and index usage
