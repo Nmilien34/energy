@@ -26,8 +26,30 @@ class MusicService {
   }
 
   async getSongAudioStream(songId: string): Promise<ApiResponse<AudioStream>> {
-    const response = await api.get(`/api/music/songs/${songId}/stream`);
-    return response.data;
+    // Based on backend docs, the endpoint is /api/music/stream/:id
+    // But we'll try both endpoints for compatibility
+    try {
+      console.log('Fetching stream from /api/music/stream/' + songId);
+      const response = await api.get(`/api/music/stream/${songId}`);
+      console.log('Stream endpoint response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      // Fallback to old endpoint if new one fails
+      console.log('Primary endpoint failed, trying fallback:', error.response?.status);
+      try {
+        const response = await api.get(`/api/music/songs/${songId}/stream`);
+        console.log('Fallback endpoint response:', response.data);
+        return response.data;
+      } catch (fallbackError: any) {
+        console.error('Both endpoints failed:', {
+          primary: error.response?.status,
+          fallback: fallbackError.response?.status,
+          primaryError: error.message,
+          fallbackError: fallbackError.message
+        });
+        throw fallbackError;
+      }
+    }
   }
 
   async getTrendingSongs(limit = 20): Promise<ApiResponse<{ songs: Song[] }>> {

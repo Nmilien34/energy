@@ -227,12 +227,29 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   // Update current song when queue or index changes
   useEffect(() => {
     const currentSong = state.queue[state.currentIndex] || null;
-    if (currentSong && currentSong.id !== state.currentSong?.id) {
-      dispatch({ type: 'SET_CURRENT_SONG', payload: currentSong });
-      // Load the song; autoplay if requested by the play() call
-      const autoplay = shouldAutoplayNextLoad.current;
-      shouldAutoplayNextLoad.current = false;
-      loadSong(currentSong, autoplay);
+    console.log('Queue effect triggered:', {
+      currentIndex: state.currentIndex,
+      queueLength: state.queue.length,
+      currentSongId: currentSong?.id,
+      existingSongId: state.currentSong?.id,
+      shouldAutoplay: shouldAutoplayNextLoad.current
+    });
+    
+    if (currentSong) {
+      const isNewSong = currentSong.id !== state.currentSong?.id;
+      console.log('Is new song?', isNewSong);
+      
+      if (isNewSong) {
+        dispatch({ type: 'SET_CURRENT_SONG', payload: currentSong });
+        // Load the song; autoplay if requested by the play() call
+        const autoplay = shouldAutoplayNextLoad.current;
+        shouldAutoplayNextLoad.current = false;
+        console.log('Loading song with autoplay:', autoplay);
+        loadSong(currentSong, autoplay);
+      }
+    } else if (state.currentSong) {
+      // Queue is empty but we have a current song - clear it
+      dispatch({ type: 'SET_CURRENT_SONG', payload: null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.queue, state.currentIndex]);
@@ -261,13 +278,18 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   };
 
   const loadSong = async (song: Song, autoPlay = false) => {
-    if (!audioRef.current) return;
+    if (!audioRef.current) {
+      console.error('Audio ref is null, cannot load song');
+      return;
+    }
 
+    console.log('loadSong called:', { songId: song.id, songTitle: song.title, autoPlay });
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
+      console.log('Fetching audio stream for song:', song.id);
       const streamResponse = await musicService.getSongAudioStream(song.id);
-      console.log('Stream response:', streamResponse);
+      console.log('Stream response received:', streamResponse);
 
       // Defensive extraction of possible URL fields from backend
       const data = streamResponse?.data as any;
@@ -354,6 +376,8 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
         dispatch({ type: 'SET_LOADING', payload: false });
       } else {
         console.error('Failed to get stream data - missing audio URL. Response:', streamResponse);
+        console.error('Response data:', streamResponse?.data);
+        console.error('Success flag:', streamResponse?.success);
         // Reset any YouTube mode to avoid inconsistent state
         dispatch({ type: 'SET_YOUTUBE_MODE', payload: { isYoutube: false } });
         dispatch({ type: 'SET_LOADING', payload: false });
@@ -383,13 +407,17 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   };
 
   const play = async (song?: Song) => {
-    if (!audioRef.current) return;
+    if (!audioRef.current) {
+      console.error('Audio ref is null in play()');
+      return;
+    }
 
     console.log('Play called with song:', song?.title || 'current song', 'YouTube mode:', state.youtubeMode?.isYoutube);
 
     if (song) {
       // Add song to queue and play immediately
       const newQueue = [song];
+      console.log('Setting queue with song:', song.id, song.title);
       dispatch({ type: 'SET_QUEUE', payload: newQueue });
       dispatch({ type: 'SET_CURRENT_INDEX', payload: 0 });
       // Signal the effect to autoplay when it loads the song
