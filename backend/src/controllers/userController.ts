@@ -165,11 +165,21 @@ export const getUserLibrary = async (req: Request, res: Response) => {
       });
     }
 
+    // Optimize query with lean() and selective field population
     let library = await UserLibrary.findOne({ user: userId })
-      .populate('favoriteSongs')
-      .populate('favoritePlaylists')
-      .populate('recentlyPlayed.song')
-      .populate('listeningHistory.song');
+      .populate('favoriteSongs', 'youtubeId title artist thumbnail duration')
+      .populate('favoritePlaylists', 'name description thumbnail songCount')
+      .populate({
+        path: 'recentlyPlayed.song',
+        select: 'youtubeId title artist thumbnail duration',
+        options: { limit: 50 } // Limit recently played to 50 items
+      })
+      .populate({
+        path: 'listeningHistory.song',
+        select: 'youtubeId title artist thumbnail duration',
+        options: { limit: 100 } // Limit history to 100 items
+      })
+      .lean(); // Use lean() for faster queries (returns plain JS object)
 
     // Create library if it doesn't exist
     if (!library) {
@@ -192,12 +202,21 @@ export const getUserLibrary = async (req: Request, res: Response) => {
       });
       await library.save();
 
-      // Populate after saving
+      // Populate after saving with optimized fields
       library = await UserLibrary.findById(library._id)
-        .populate('favoriteSongs')
-        .populate('favoritePlaylists')
-        .populate('recentlyPlayed.song')
-        .populate('listeningHistory.song');
+        .populate('favoriteSongs', 'youtubeId title artist thumbnail duration')
+        .populate('favoritePlaylists', 'name description thumbnail songCount')
+        .populate({
+          path: 'recentlyPlayed.song',
+          select: 'youtubeId title artist thumbnail duration',
+          options: { limit: 50 }
+        })
+        .populate({
+          path: 'listeningHistory.song',
+          select: 'youtubeId title artist thumbnail duration',
+          options: { limit: 100 }
+        })
+        .lean();
     }
 
     // Transform library data to match frontend expectations

@@ -142,6 +142,7 @@ const userLibrarySchema = new Schema<IUserLibrary>({
 });
 
 // Indexes for efficient querying
+userLibrarySchema.index({ user: 1 }); // Primary lookup index (already unique, but explicit index helps)
 userLibrarySchema.index({ 'recentlyPlayed.playedAt': -1 });
 userLibrarySchema.index({ 'listeningHistory.playedAt': -1 });
 

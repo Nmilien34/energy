@@ -63,14 +63,18 @@ export const getUserPlaylists = async (req: Request, res: Response) => {
       });
     }
 
+    // Optimize query with lean and selective population
     const playlists = await Playlist.find({
       $or: [
         { owner: userId },
         { collaborators: userId }
       ]
     })
+      .select('name description thumbnail isPublic isCollaborative songCount owner createdAt updatedAt')
       .populate('songs', 'youtubeId title artist duration thumbnail')
-      .sort({ updatedAt: -1 });
+      .sort({ updatedAt: -1 })
+      .lean()
+      .maxTimeMS(5000);
 
     res.json({
       success: true,
@@ -96,8 +100,12 @@ export const getPlaylist = async (req: Request, res: Response) => {
       });
     }
 
+    // Optimize query with selective fields
     const playlist = await Playlist.findById(id)
-      .populate('songs')
+      .select('-__v')
+      .populate('songs', 'youtubeId title artist duration thumbnail thumbnailHd viewCount playCount')
+      .lean()
+      .maxTimeMS(5000)
       .populate('owner', 'username email')
       .populate('collaborators', 'username email');
 

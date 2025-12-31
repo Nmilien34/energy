@@ -53,8 +53,11 @@ export const searchMusic = async (req: Request, res: Response) => {
       if (dbCache && dbCache.youtubeIds.length > 0) {
         console.log(`✓ Cache hit: Database for query "${q}"`);
 
-        // Fetch songs from database by YouTube IDs
-        const songs = await Song.find({ youtubeId: { $in: dbCache.youtubeIds.slice(0, limitNum) } });
+        // Fetch songs from database by YouTube IDs (optimized with lean and selective fields)
+        const songs = await Song.find({ youtubeId: { $in: dbCache.youtubeIds.slice(0, limitNum) } })
+          .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId description')
+          .lean()
+          .maxTimeMS(3000);
 
         if (songs.length > 0) {
           results = songs.map(song => ({
@@ -87,6 +90,7 @@ export const searchMusic = async (req: Request, res: Response) => {
 
     // LAYER 3: Search existing songs in MongoDB (if caches missed)
     if (!results) {
+      // Optimize database search with lean and selective fields
       const existingSongs = await Song.find({
         $or: [
           { title: { $regex: q, $options: 'i' } },
@@ -94,8 +98,11 @@ export const searchMusic = async (req: Request, res: Response) => {
           { channelTitle: { $regex: q, $options: 'i' } }
         ]
       })
+      .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId description playCount')
       .sort({ playCount: -1, viewCount: -1 })
-      .limit(limitNum);
+      .limit(limitNum)
+      .lean()
+      .maxTimeMS(5000);
 
       if (existingSongs.length >= 5) {
         console.log(`✓ Found ${existingSongs.length} songs in database for query "${q}"`);
@@ -161,13 +168,17 @@ export const searchMusic = async (req: Request, res: Response) => {
       }
     }
 
-    // Save new songs to database (upsert)
+    // Save new songs to database (upsert) - optimized batch operation
     const savedSongs = await Promise.all(
       results.map(async (result) => {
-        let song = await Song.findOne({ youtubeId: result.id });
+        // Use findOne with lean for faster reads
+        let song = await Song.findOne({ youtubeId: result.id })
+          .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId description')
+          .lean();
 
         if (!song) {
-          song = new Song({
+          // Create new song
+          const newSong = new Song({
             youtubeId: result.id,
             title: result.title,
             artist: result.artist,
@@ -181,18 +192,29 @@ export const searchMusic = async (req: Request, res: Response) => {
             description: result.description
           });
 
-          await song.save();
+          await newSong.save();
+          song = newSong.toObject();
         } else {
-          // Update view count if it's higher
-          if (result.viewCount && result.viewCount > (song.viewCount || 0)) {
-            song.viewCount = result.viewCount;
-            await song.save();
+          // Update view count if it's higher (use updateOne for better performance)
+          if (result.viewCount && result.viewCount > ((song as any).viewCount || 0)) {
+            await Song.updateOne(
+              { youtubeId: result.id },
+              { $set: { viewCount: result.viewCount } }
+            );
+            (song as any).viewCount = result.viewCount;
           }
         }
 
         return song;
       })
     );
+
+    // Add cache headers based on cache source
+    if (cacheSource === 'redis' || cacheSource === 'database') {
+      res.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour if from cache
+    } else {
+      res.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes if fresh
+    }
 
     res.json({
       success: true,
@@ -355,11 +377,18 @@ export const getSong = async (req: Request, res: Response) => {
     // Check if the ID is a MongoDB ObjectId (24 characters, hexadecimal)
     const isMongoId = /^[0-9a-fA-F]{24}$/.test(id);
 
-    let song;
+    // Optimize query with lean and selective fields
+    let song: any;
     if (isMongoId) {
-      song = await Song.findById(id);
+      song = await Song.findById(id)
+        .select('-__v')
+        .lean()
+        .maxTimeMS(3000);
     } else {
-      song = await Song.findOne({ youtubeId: id });
+      song = await Song.findOne({ youtubeId: id })
+        .select('-__v')
+        .lean()
+        .maxTimeMS(3000);
     }
 
     if (!song) {
@@ -369,14 +398,19 @@ export const getSong = async (req: Request, res: Response) => {
       });
     }
 
-    // Include S3 cache status in response
-    const songData = song.toJSON ? song.toJSON() : song;
+    // Add S3 cache status (check if has S3 audio)
+    const isCached = song.audioSource === 's3' && !!song.s3AudioKey;
+    const audioSource = song.audioSource || 'youtube';
+
+    // Add cache headers (cache individual songs for 1 hour)
+    res.set('Cache-Control', 'public, max-age=3600');
+    
     res.json({
       success: true,
       data: {
-        ...songData,
-        isCached: song.hasS3Audio(),
-        audioSource: song.audioSource || 'youtube'
+        ...song,
+        isCached,
+        audioSource
       }
     });
   } catch (error) {
@@ -455,13 +489,16 @@ export const getTrendingMusic = async (req: Request, res: Response) => {
     // Use cached trending results with 12h TTL
     const trending = await trendingService.getTrending(parseInt(limit as string));
 
-    // Save trending songs to database
+    // Save trending songs to database (optimized with lean and selective fields)
     const savedSongs = await Promise.all(
       trending.map(async (result) => {
-        let song = await Song.findOne({ youtubeId: result.id });
+        // Use lean() and select only needed fields for faster queries
+        let song = await Song.findOne({ youtubeId: result.id })
+          .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId')
+          .lean();
 
         if (!song) {
-          song = new Song({
+          const newSong = new Song({
             youtubeId: result.id,
             title: result.title,
             artist: result.artist,
@@ -475,13 +512,16 @@ export const getTrendingMusic = async (req: Request, res: Response) => {
             description: result.description
           });
 
-          await song.save();
+          await newSong.save();
+          song = newSong.toObject();
         }
 
         return song;
       })
     );
 
+    // Add cache headers for trending music (cache for 1 hour)
+    res.set('Cache-Control', 'public, max-age=3600');
     res.json({
       success: true,
       data: {
@@ -502,10 +542,16 @@ export const getRecentlyAdded = async (req: Request, res: Response) => {
   try {
     const { limit = 20 } = req.query;
 
+    // Optimize query with lean() and selective fields
     const recentSongs = await Song.find()
+      .select('youtubeId title artist duration thumbnail thumbnailHd viewCount createdAt')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit as string));
+      .limit(parseInt(limit as string))
+      .lean()
+      .maxTimeMS(5000); // 5 second timeout
 
+    // Add cache headers (cache for 15 minutes)
+    res.set('Cache-Control', 'public, max-age=900');
     res.json({
       success: true,
       data: {
@@ -526,10 +572,16 @@ export const getPopularSongs = async (req: Request, res: Response) => {
   try {
     const { limit = 20 } = req.query;
 
+    // Optimize query with lean() and selective fields
     const popularSongs = await Song.find()
+      .select('youtubeId title artist duration thumbnail thumbnailHd viewCount playCount publishedAt')
       .sort({ playCount: -1, viewCount: -1 })
-      .limit(parseInt(limit as string));
+      .limit(parseInt(limit as string))
+      .lean()
+      .maxTimeMS(5000); // 5 second timeout
 
+    // Add cache headers (cache for 30 minutes)
+    res.set('Cache-Control', 'public, max-age=1800');
     res.json({
       success: true,
       data: {

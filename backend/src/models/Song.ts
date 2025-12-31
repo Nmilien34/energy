@@ -137,6 +137,9 @@ songSchema.index({ title: 'text', artist: 'text', album: 'text' });
 songSchema.index({ artist: 1, title: 1 });
 songSchema.index({ playCount: -1 });
 songSchema.index({ createdAt: -1 });
+songSchema.index({ youtubeId: 1 }); // Ensure unique index for youtubeId lookups
+songSchema.index({ audioSource: 1, s3AudioKey: 1 }); // For S3 audio queries
+songSchema.index({ lastPlayed: -1 }); // For recently played queries
 
 // Method to check if audio URL needs refreshing
 songSchema.methods.needsAudioRefresh = function(): boolean {

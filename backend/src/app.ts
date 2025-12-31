@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import mongoose from 'mongoose';
 import passport from 'passport';
 import authRoutes from './routes/authRoutes';
@@ -158,8 +159,10 @@ const corsOptions = {
 
 // Middleware
 app.set('trust proxy', 1); // Trust first proxy (for Render, Heroku, etc.)
+app.use(compression()); // Compress responses to reduce payload size
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(morgan('dev'));
 
