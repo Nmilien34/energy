@@ -206,14 +206,15 @@ class YouTubeService {
   /**
    * Get detailed video information with quota tracking
    */
-  private async getVideoDetails(videoIds: string[]): Promise<any[]> {
+  async getVideoDetails(videoIds: string | string[]): Promise<any[]> {
+    const ids = Array.isArray(videoIds) ? videoIds : [videoIds];
     try {
       // Record quota usage for video details (1 unit per video)
-      quotaTracker.recordVideoDetailsRequest(videoIds.length);
+      quotaTracker.recordVideoDetailsRequest(ids.length);
 
       const response = await this.youtube.videos.list({
         part: ['contentDetails', 'statistics'],
-        id: videoIds
+        id: ids
       });
 
       return response.data.items || [];
