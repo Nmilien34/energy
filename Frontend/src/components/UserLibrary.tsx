@@ -11,6 +11,7 @@ import {
   List,
   Shuffle,
   Plus,
+  Cloud,
 } from 'lucide-react';
 import { Song, UserLibrary as UserLibraryType } from '../types/models';
 import { musicService } from '../services/musicService';
@@ -455,7 +456,14 @@ const SongCard: React.FC<SongCardProps> = ({ song, onPlay, onAddToQueue, onRemov
       </div>
 
       <div className="space-y-1">
-        <h4 className="text-xs font-semibold text-white truncate leading-tight">{song.title}</h4>
+        <div className="flex items-center space-x-1">
+          <h4 className="text-xs font-semibold text-white truncate leading-tight">{song.title}</h4>
+          {song.isCached && (
+            <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
+              <Cloud className="h-3 w-3 text-blue-400" />
+            </span>
+          )}
+        </div>
         <p className="text-zinc-400 truncate text-xs">{song.artist}</p>
         <div className="flex items-center justify-between text-xs text-zinc-500">
           <span>{musicService.formatDuration(song.duration)}</span>
@@ -530,7 +538,14 @@ const SongRow: React.FC<SongRowProps> = ({ song, index, onPlay, onAddToQueue, on
       />
 
       <div className="flex-1 min-w-0 mr-4">
-        <p className="font-medium text-white truncate">{song.title}</p>
+        <div className="flex items-center space-x-2">
+          <p className="font-medium text-white truncate">{song.title}</p>
+          {song.isCached && (
+            <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
+              <Cloud className="h-3.5 w-3.5 text-blue-400" />
+            </span>
+          )}
+        </div>
         <p className="text-sm text-zinc-400 truncate">{song.artist}</p>
       </div>
 

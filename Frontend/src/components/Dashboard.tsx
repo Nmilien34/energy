@@ -11,6 +11,7 @@ import {
   Headphones,
   Star,
   ListMusic,
+  Cloud,
 } from 'lucide-react';
 import { Song, Playlist } from '../types/models';
 import { musicService } from '../services/musicService';
@@ -447,7 +448,14 @@ const EnhancedSongCard: React.FC<EnhancedSongCardProps> = ({ song, onPlay, isCur
         )}
       </div>
       <div className="px-0.5">
-        <p className="text-white text-xs font-semibold truncate group-hover:text-blue-300 transition-colors duration-200">{song.title}</p>
+        <div className="flex items-center space-x-1">
+          <p className="text-white text-xs font-semibold truncate group-hover:text-blue-300 transition-colors duration-200">{song.title}</p>
+          {song.isCached && (
+            <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
+              <Cloud className="h-3 w-3 text-blue-400" />
+            </span>
+          )}
+        </div>
         <p className="text-zinc-400 text-xs truncate">{song.artist}</p>
       </div>
     </div>

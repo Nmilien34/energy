@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   User,
+  Cloud,
 } from 'lucide-react';
 import { Playlist, Song } from '../types/models';
 import { musicService } from '../services/musicService';
@@ -397,7 +398,14 @@ const SongRow: React.FC<SongRowProps> = ({ song, index, onPlay, onAddToQueue, on
 
         {/* Title & Artist */}
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-white truncate">{song.title}</p>
+          <div className="flex items-center space-x-2">
+            <p className="font-medium text-white truncate">{song.title}</p>
+            {song.isCached && (
+              <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
+                <Cloud className="h-3.5 w-3.5 text-blue-400" />
+              </span>
+            )}
+          </div>
           <p className="text-sm text-zinc-400 truncate">{song.artist}</p>
         </div>
       </div>

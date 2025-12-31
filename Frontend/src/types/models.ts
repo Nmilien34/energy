@@ -44,6 +44,8 @@ export interface Song {
   playCount: number;
   createdAt: string;
   updatedAt: string;
+  audioSource?: 's3' | 'youtube' | 'cache';  // Where audio is from
+  isCached?: boolean;                        // Whether song is cached in S3
 }
 
 export interface SearchResult {
@@ -59,6 +61,9 @@ export interface AudioStream {
   format?: 'stream' | 'embed' | 'proxy';
   isEmbed?: boolean;
   youtubeId?: string;
+  audioSource?: 's3' | 'youtube' | 'cache';  // Where audio is from
+  isCached?: boolean;                        // Whether song is cached in S3
+  quality?: string;                          // Audio quality
 }
 
 // Playlist types

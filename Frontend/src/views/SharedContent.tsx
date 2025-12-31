@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Cloud } from 'lucide-react';
 import { getSharedContent } from '../services/shareService';
 import { ShareContent, Song, Playlist } from '../types/models';
 import { useAuth } from '../contexts/AuthContext';
@@ -202,7 +203,14 @@ const SharedContent: React.FC = () => {
               />
             </div>
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-white mb-2">{song.title}</h1>
+              <div className="flex items-center justify-center space-x-2">
+                <h1 className="text-2xl font-bold text-white mb-2">{song.title}</h1>
+                {song.isCached && (
+                  <span className="flex items-center mb-2" title="Cached for faster playback">
+                    <Cloud className="h-5 w-5 text-blue-400" />
+                  </span>
+                )}
+              </div>
               <p className="text-lg text-zinc-400">{song.artist}</p>
             </div>
           </div>
@@ -381,7 +389,14 @@ const SharedContent: React.FC = () => {
 
                 {/* Song info */}
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-white truncate">{s.title}</div>
+                  <div className="flex items-center space-x-2">
+                    <div className="font-medium text-white truncate">{s.title}</div>
+                    {s.isCached && (
+                      <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
+                        <Cloud className="h-3.5 w-3.5 text-blue-400" />
+                      </span>
+                    )}
+                  </div>
                   <div className="text-sm text-zinc-400 truncate">{s.artist}</div>
                 </div>
 

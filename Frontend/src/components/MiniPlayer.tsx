@@ -14,6 +14,7 @@ import {
   Shuffle,
   Repeat,
   Repeat1,
+  Cloud,
 } from 'lucide-react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import FallbackImage from './FallbackImage';
@@ -330,7 +331,14 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
             {/* Song Info */}
             <div className="text-center space-y-2 max-w-md">
-              <h1 className="text-3xl font-bold text-white">{state.currentSong.title}</h1>
+              <div className="flex items-center justify-center space-x-2">
+                <h1 className="text-3xl font-bold text-white">{state.currentSong.title}</h1>
+                {state.currentSong.isCached && (
+                  <span className="flex items-center" title="Cached for faster playback">
+                    <Cloud className="h-6 w-6 text-blue-400" />
+                  </span>
+                )}
+              </div>
               <p className="text-xl text-zinc-400">{state.currentSong.artist}</p>
             </div>
 
@@ -519,7 +527,14 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
             />
           </div>
           <div className="min-w-0 flex-1 cursor-pointer" onClick={onExpand}>
-            <p className="text-white font-medium truncate text-sm">{state.currentSong.title}</p>
+            <div className="flex items-center space-x-2">
+              <p className="text-white font-medium truncate text-sm">{state.currentSong.title}</p>
+              {state.currentSong.isCached && (
+                <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
+                  <Cloud className="h-3.5 w-3.5 text-blue-400" />
+                </span>
+              )}
+            </div>
             <p className="text-zinc-400 text-xs truncate">{state.currentSong.artist}</p>
           </div>
         </div>

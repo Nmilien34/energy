@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Music, Clock, Eye, Play, Heart, MoreVertical, ListPlus } from 'lucide-react';
+import { Search, Music, Clock, Eye, Play, Heart, MoreVertical, ListPlus, Cloud } from 'lucide-react';
 import { Song } from '../types/models';
 import { musicService } from '../services/musicService';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
@@ -219,7 +219,14 @@ const SongItem: React.FC<SongItemProps> = ({
 
       {/* Song Info */}
       <div className="flex-1 min-w-0 mr-3">
-        <h4 className="font-medium text-white truncate">{song.title}</h4>
+        <div className="flex items-center space-x-2">
+          <h4 className="font-medium text-white truncate">{song.title}</h4>
+          {song.isCached && (
+            <span className="flex items-center" title="Cached for faster playback">
+              <Cloud className="h-3.5 w-3.5 text-blue-400" />
+            </span>
+          )}
+        </div>
         <p className="text-sm text-zinc-400 truncate">{song.artist}</p>
         <div className="flex items-center space-x-3 text-xs text-zinc-500 mt-1">
           <span className="flex items-center">
