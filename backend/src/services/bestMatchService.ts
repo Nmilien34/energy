@@ -258,14 +258,25 @@ class BestMatchService {
 
       console.log(`✅ Best Match: "${bestMatch.result.title}" (Score: ${bestMatch.score.toFixed(1)})`);
 
-      return {
+      // Ensure all required fields are present
+      const bestMatchResult: BestMatchResult = {
         ...bestMatch.result,
         matchScore: bestMatch.score,
         durationDelta: bestMatch.durationDelta,
         isBestMatch: true
       };
+
+      // Validate required fields
+      if (!bestMatchResult.id || !bestMatchResult.title) {
+        console.warn('Best match result missing required fields, using fallback');
+        return await this.fallbackToRawSearch(userQuery);
+      }
+
+      return bestMatchResult;
     } catch (error: any) {
-      console.error('Error in best match algorithm:', error);
+      console.error('Error in best match algorithm:', error?.message || error);
+      console.error('Stack:', error?.stack);
+      // Always fallback to raw search on any error
       return await this.fallbackToRawSearch(userQuery);
     }
   }
@@ -277,15 +288,21 @@ class BestMatchService {
     try {
       const results = await youtubeService.searchSongs(query, 1);
       if (results && results.length > 0) {
+        const fallbackResult = results[0];
+        // Validate required fields
+        if (!fallbackResult.id || !fallbackResult.title) {
+          console.warn('Fallback result missing required fields');
+          return null;
+        }
         return {
-          ...results[0],
+          ...fallbackResult,
           matchScore: 0,
           durationDelta: 0,
           isBestMatch: false
         };
       }
-    } catch (error) {
-      console.error('Fallback search also failed:', error);
+    } catch (error: any) {
+      console.error('Fallback search also failed:', error?.message || error);
     }
     return null;
   }

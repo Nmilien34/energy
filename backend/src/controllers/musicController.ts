@@ -143,23 +143,47 @@ export const searchMusic = async (req: Request, res: Response) => {
             // Use Musi Algorithm (Best Match) for the first result
             // This ensures the top result is the exact track the user wants
             if (limitNum >= 1) {
-              console.log(`🎯 Using Musi Algorithm for best match`);
-              const bestMatch = await bestMatchService.findBestMatch(q);
-              
-              if (bestMatch && bestMatch.isBestMatch) {
-                console.log(`✅ Best match found: "${bestMatch.title}" (Score: ${bestMatch.matchScore.toFixed(1)})`);
-                // Get additional results using regular search
-                const additionalResults = await youtubeService.searchSongs(q, Math.max(1, limitNum - 1));
-                // Combine: best match first, then additional results (avoid duplicates)
-                const bestMatchId = bestMatch.id;
-                const filteredAdditional = additionalResults.filter(r => r.id !== bestMatchId);
-                results = [bestMatch, ...filteredAdditional].slice(0, limitNum);
-                cacheSource = 'musi-algorithm';
-              } else {
-                // Fallback to regular search if best match fails
-                console.log(`⚠️  Best match algorithm failed, using regular search`);
-                results = await youtubeService.searchSongs(q, limitNum);
-                cacheSource = 'youtube-api';
+              try {
+                console.log(`🎯 Using Musi Algorithm for best match`);
+                const bestMatch = await bestMatchService.findBestMatch(q);
+                
+                if (bestMatch && bestMatch.isBestMatch && bestMatch.id && bestMatch.title) {
+                  const score = typeof bestMatch.matchScore === 'number' ? bestMatch.matchScore.toFixed(1) : 'N/A';
+                  console.log(`✅ Best match found: "${bestMatch.title}" (Score: ${score})`);
+                  
+                  try {
+                    // Get additional results using regular search
+                    const additionalResults = await youtubeService.searchSongs(q, Math.max(1, limitNum - 1));
+                    // Combine: best match first, then additional results (avoid duplicates)
+                    const bestMatchId = bestMatch.id;
+                    const filteredAdditional = additionalResults.filter(r => r.id !== bestMatchId);
+                    results = [bestMatch, ...filteredAdditional].slice(0, limitNum);
+                    cacheSource = 'musi-algorithm';
+                  } catch (additionalError: any) {
+                    // If getting additional results fails, just use the best match
+                    console.warn('Error getting additional results, using best match only:', additionalError?.message);
+                    results = [bestMatch].slice(0, limitNum);
+                    cacheSource = 'musi-algorithm';
+                  }
+                } else {
+                  // Fallback to regular search if best match fails or is invalid
+                  console.log(`⚠️  Best match algorithm failed or returned invalid result, using regular search`);
+                  results = await youtubeService.searchSongs(q, limitNum);
+                  cacheSource = 'youtube-api';
+                }
+              } catch (bestMatchError: any) {
+                // If best match algorithm throws an error, fall back to regular search
+                console.error('Best match algorithm error:', bestMatchError?.message || bestMatchError);
+                console.error('Stack trace:', bestMatchError?.stack);
+                console.log('⚠️  Falling back to regular YouTube search due to error');
+                try {
+                  results = await youtubeService.searchSongs(q, limitNum);
+                  cacheSource = 'youtube-api';
+                } catch (fallbackError: any) {
+                  // If even the fallback fails, throw the error to be caught by outer catch
+                  console.error('Fallback search also failed:', fallbackError?.message);
+                  throw fallbackError;
+                }
               }
             } else {
               results = await youtubeService.searchSongs(q, limitNum);
