@@ -107,11 +107,10 @@ const Welcome: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-music-black via-music-black-light to-music-black text-white overflow-hidden">
-      {/* Animated background elements */}
+      {/* Subtle grid pattern background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-music-purple/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-music-blue/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.03)_1px,_transparent_1px)] bg-[size:24px_24px]"></div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-music-purple/5 via-transparent to-transparent"></div>
       </div>
 
       {/* Navigation */}
@@ -150,9 +149,8 @@ const Welcome: React.FC = () => {
       {/* Hero Section */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 sm:py-20">
         <div className="max-w-4xl mx-auto text-center animate-fade-in">
-          <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
-            <Sparkles className="h-4 w-4 text-music-purple" />
-            <span className="text-sm font-medium">Your Music, Your Way</span>
+          <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-6">
+            <span className="text-xs font-medium text-gray-400 tracking-wide uppercase">Your Music, Your Way</span>
           </div>
           
           <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black mb-4 sm:mb-6 leading-tight font-display tracking-tight px-2">
@@ -261,16 +259,16 @@ const Welcome: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-12 sm:mb-20 px-4">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="group relative px-6 py-3.5 sm:px-8 sm:py-4 rounded-full bg-gradient-to-r from-music-purple to-music-blue text-white font-bold text-base sm:text-lg hover:scale-105 active:scale-95 transition-all hover:from-music-purple-hover hover:to-music-blue-hover shadow-lg shadow-music-purple/30 font-display touch-manipulation"
+              className="group relative px-6 py-3 sm:px-7 sm:py-3.5 rounded-full bg-white text-zinc-900 font-semibold text-sm sm:text-base hover:bg-gray-100 active:scale-[0.98] transition-all font-display touch-manipulation"
             >
-              <span className="relative z-10 flex items-center justify-center space-x-2">
-                <Play className="h-4 w-4 sm:h-5 sm:w-5 fill-white" />
-                <span>Get Started Free</span>
+              <span className="flex items-center justify-center space-x-2">
+                <span>Get Started</span>
+                <span className="text-xs text-zinc-500">— it's free</span>
               </span>
             </button>
             <button
               onClick={() => navigate('/platform')}
-              className="px-6 py-3.5 sm:px-8 sm:py-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold text-base sm:text-lg hover:bg-white/20 active:scale-95 transition-all hover:scale-105 font-display touch-manipulation"
+              className="px-6 py-3 sm:px-7 sm:py-3.5 rounded-full bg-transparent border border-zinc-700 text-gray-300 font-medium text-sm sm:text-base hover:border-zinc-500 hover:text-white active:scale-[0.98] transition-all font-display touch-manipulation"
             >
               Explore Platform
             </button>
