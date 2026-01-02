@@ -279,6 +279,136 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     }
   }, [state.volume]);
 
+  // Media Session API for background playback and lock screen controls
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+
+    const currentSong = state.currentSong;
+    if (!currentSong) {
+      // Clear media session when no song is playing
+      navigator.mediaSession.metadata = null;
+      return;
+    }
+
+    // Set metadata for lock screen / media notification
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentSong.title || 'Unknown Title',
+      artist: currentSong.artist || 'Unknown Artist',
+      album: currentSong.album || 'NRGFLOW',
+      artwork: currentSong.thumbnail ? [
+        { src: currentSong.thumbnail, sizes: '96x96', type: 'image/jpeg' },
+        { src: currentSong.thumbnail, sizes: '128x128', type: 'image/jpeg' },
+        { src: currentSong.thumbnail, sizes: '192x192', type: 'image/jpeg' },
+        { src: currentSong.thumbnail, sizes: '256x256', type: 'image/jpeg' },
+        { src: currentSong.thumbnail, sizes: '384x384', type: 'image/jpeg' },
+        { src: currentSong.thumbnail, sizes: '512x512', type: 'image/jpeg' },
+      ] : []
+    });
+  }, [state.currentSong]);
+
+  // Media Session action handlers
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+
+    // Play handler
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (state.youtubeMode?.isYoutube) {
+        dispatch({ type: 'SET_PLAYING', payload: true });
+      } else if (audioRef.current) {
+        audioRef.current.play();
+      }
+    });
+
+    // Pause handler
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (state.youtubeMode?.isYoutube) {
+        dispatch({ type: 'SET_PLAYING', payload: false });
+      } else if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    });
+
+    // Previous track handler
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      previous();
+    });
+
+    // Next track handler
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      next();
+    });
+
+    // Seek backward handler (10 seconds)
+    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+      const skipTime = details.seekOffset || 10;
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.max(audioRef.current.currentTime - skipTime, 0);
+      }
+    });
+
+    // Seek forward handler (10 seconds)
+    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+      const skipTime = details.seekOffset || 10;
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.min(
+          audioRef.current.currentTime + skipTime,
+          audioRef.current.duration || 0
+        );
+      }
+    });
+
+    // Seek to specific position handler
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime !== undefined && audioRef.current) {
+        audioRef.current.currentTime = details.seekTime;
+      }
+    });
+
+    // Stop handler
+    navigator.mediaSession.setActionHandler('stop', () => {
+      stop();
+    });
+
+    // Cleanup
+    return () => {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('previoustrack', null);
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('seekbackward', null);
+        navigator.mediaSession.setActionHandler('seekforward', null);
+        navigator.mediaSession.setActionHandler('seekto', null);
+        navigator.mediaSession.setActionHandler('stop', null);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.youtubeMode]);
+
+  // Update Media Session position state for scrubber
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+
+    if (state.duration > 0) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: state.duration,
+          playbackRate: 1,
+          position: Math.min(state.currentTime, state.duration)
+        });
+      } catch (e) {
+        // Ignore errors from invalid position state
+      }
+    }
+  }, [state.currentTime, state.duration]);
+
+  // Update Media Session playback state
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+
+    navigator.mediaSession.playbackState = state.isPlaying ? 'playing' : 'paused';
+  }, [state.isPlaying]);
+
   const startTimeUpdateInterval = () => {
     if (timeUpdateInterval.current) return;
     timeUpdateInterval.current = setInterval(() => {
