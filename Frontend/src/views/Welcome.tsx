@@ -189,14 +189,18 @@ const Welcome: React.FC = () => {
           {/* Search Bar */}
           <div className="relative max-w-2xl mx-auto mb-8 sm:mb-12 px-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Search className={`absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 ${isLight ? 'text-[var(--text-tertiary)]' : 'text-gray-400'}`} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchQuery && setShowSearchResults(true)}
                 placeholder="Search for songs, artists, or albums..."
-                className="w-full bg-white/5 backdrop-blur-2xl text-white pl-12 pr-12 py-3.5 sm:py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-white/20 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all text-sm sm:text-base placeholder:text-white/40 shadow-lg shadow-black/10"
+                className={`w-full backdrop-blur-2xl pl-12 pr-12 py-3.5 sm:py-4 rounded-2xl focus:outline-none focus:ring-2 border transition-all text-sm sm:text-base shadow-lg ${
+                  isLight
+                    ? 'bg-black/5 text-[var(--text-primary)] border-black/10 hover:border-black/20 hover:bg-black/10 focus:ring-black/10 placeholder:text-black/30 shadow-black/5'
+                    : 'bg-white/5 text-white border-white/10 hover:border-white/20 hover:bg-white/10 focus:ring-white/20 placeholder:text-white/40 shadow-black/10'
+                }`}
               />
               {searchQuery && (
                 <button
@@ -204,36 +208,44 @@ const Welcome: React.FC = () => {
                     setSearchQuery('');
                     setShowSearchResults(false);
                   }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${
+                    isLight ? 'text-black/40 hover:text-black/70' : 'text-gray-400 hover:text-white'
+                  }`}
                 >
                   <X className="h-5 w-5" />
                 </button>
               )}
               {isSearching && (
                 <div className="absolute right-12 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full"></div>
+                  <div className={`animate-spin w-4 h-4 border-2 rounded-full ${
+                    isLight ? 'border-black/20 border-t-black/60' : 'border-white/20 border-t-white/60'
+                  }`}></div>
                 </div>
               )}
             </div>
 
             {/* Search Results Dropdown */}
             {showSearchResults && (searchQuery || searchResults.length > 0) && (
-              <div className="absolute top-full left-4 right-4 mt-2 bg-white/5 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/10 max-h-[60vh] sm:max-h-96 overflow-y-auto z-50">
+              <div className={`absolute top-full left-4 right-4 mt-2 backdrop-blur-2xl rounded-2xl shadow-2xl border max-h-[60vh] sm:max-h-96 overflow-y-auto z-50 ${
+                isLight ? 'bg-white/80 border-black/10' : 'bg-white/5 border-white/10'
+              }`}>
                 {searchError && (
-                  <div className="p-4 text-red-400/80 text-center text-sm">
+                  <div className="p-4 text-red-500/80 text-center text-sm">
                     <p>{searchError}</p>
                   </div>
                 )}
 
                 {isSearching && (
-                  <div className="p-6 text-center text-white/50">
-                    <div className="animate-spin w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full mx-auto mb-3"></div>
+                  <div className={`p-6 text-center ${isLight ? 'text-black/50' : 'text-white/50'}`}>
+                    <div className={`animate-spin w-5 h-5 border-2 rounded-full mx-auto mb-3 ${
+                      isLight ? 'border-black/20 border-t-black/60' : 'border-white/20 border-t-white/60'
+                    }`}></div>
                     <p className="text-sm">Searching...</p>
                   </div>
                 )}
 
                 {!isSearching && !searchError && searchResults.length === 0 && searchQuery && (
-                  <div className="p-6 text-center text-white/40">
+                  <div className={`p-6 text-center ${isLight ? 'text-black/40' : 'text-white/40'}`}>
                     <p className="text-sm">No results for "{searchQuery}"</p>
                   </div>
                 )}
@@ -244,9 +256,11 @@ const Welcome: React.FC = () => {
                       <button
                         key={song.id}
                         onClick={() => handlePlaySong(song)}
-                        className="w-full px-3 py-2.5 hover:bg-white/10 transition-colors flex items-center space-x-3 text-left"
+                        className={`w-full px-3 py-2.5 transition-colors flex items-center space-x-3 text-left ${
+                          isLight ? 'hover:bg-black/5' : 'hover:bg-white/10'
+                        }`}
                       >
-                        <div className="flex-shrink-0 w-10 h-10 bg-white/10 rounded-lg overflow-hidden">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden ${isLight ? 'bg-black/10' : 'bg-white/10'}`}>
                           <FallbackImage
                             src={song.thumbnail}
                             alt={song.title}
@@ -254,10 +268,10 @@ const Welcome: React.FC = () => {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">{song.title}</p>
-                          <p className="text-xs text-white/40 truncate">{song.artist}</p>
+                          <p className={`text-sm font-medium truncate ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>{song.title}</p>
+                          <p className={`text-xs truncate ${isLight ? 'text-black/40' : 'text-white/40'}`}>{song.artist}</p>
                         </div>
-                        <Play className="h-4 w-4 text-white/30 flex-shrink-0" />
+                        <Play className={`h-4 w-4 flex-shrink-0 ${isLight ? 'text-black/30' : 'text-white/30'}`} />
                       </button>
                     ))}
                   </div>
@@ -269,16 +283,24 @@ const Welcome: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-12 sm:mb-20 px-4">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="group relative px-6 py-3 sm:px-7 sm:py-3.5 rounded-full bg-white/90 backdrop-blur-xl text-zinc-900 font-semibold text-sm sm:text-base hover:bg-white active:scale-[0.98] transition-all font-display touch-manipulation shadow-lg shadow-white/10"
+              className={`group relative px-6 py-3 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl font-semibold text-sm sm:text-base active:scale-[0.98] transition-all font-display touch-manipulation shadow-lg ${
+                isLight
+                  ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-black/80 shadow-black/10'
+                  : 'bg-white/90 text-zinc-900 hover:bg-white shadow-white/10'
+              }`}
             >
               <span className="flex items-center justify-center space-x-2">
                 <span>Get Started</span>
-                <span className="text-xs text-zinc-500">— it's free</span>
+                <span className={`text-xs ${isLight ? 'text-white/60' : 'text-zinc-500'}`}>— it's free</span>
               </span>
             </button>
             <button
               onClick={() => navigate('/platform')}
-              className="px-6 py-3 sm:px-7 sm:py-3.5 rounded-full bg-white/5 backdrop-blur-xl border border-white/20 text-white font-medium text-sm sm:text-base hover:bg-white/10 hover:border-white/30 active:scale-[0.98] transition-all font-display touch-manipulation"
+              className={`px-6 py-3 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl border font-medium text-sm sm:text-base active:scale-[0.98] transition-all font-display touch-manipulation ${
+                isLight
+                  ? 'bg-black/5 border-black/20 text-[var(--text-primary)] hover:bg-black/10 hover:border-black/30'
+                  : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
+              }`}
             >
               Explore Platform
             </button>
@@ -287,38 +309,56 @@ const Welcome: React.FC = () => {
 
         {/* Feature Cards - Glass */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 max-w-5xl mx-auto animate-slide-up px-4">
-          <div className="group bg-white/5 backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all active:scale-[0.98] touch-manipulation shadow-lg shadow-black/5">
+          <div className={`group backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
+            isLight
+              ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
+              : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
+          }`}>
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-purple-500/20 backdrop-blur-xl border border-purple-400/20 flex items-center justify-center">
-                <Download className="h-4 w-4 text-purple-300" />
+              <div className={`w-9 h-9 rounded-xl backdrop-blur-xl border flex items-center justify-center ${
+                isLight ? 'bg-purple-500/10 border-purple-500/20' : 'bg-purple-500/20 border-purple-400/20'
+              }`}>
+                <Download className={`h-4 w-4 ${isLight ? 'text-purple-600' : 'text-purple-300'}`} />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-white">YouTube to MP3</h3>
+              <h3 className={`text-base sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>YouTube to MP3</h3>
             </div>
-            <p className="text-sm text-white/50 leading-relaxed">
+            <p className={`text-sm leading-relaxed ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/50'}`}>
               Convert YouTube videos to high-quality MP3 files. No limits.
             </p>
           </div>
 
-          <div className="group bg-white/5 backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all active:scale-[0.98] touch-manipulation shadow-lg shadow-black/5">
+          <div className={`group backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
+            isLight
+              ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
+              : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
+          }`}>
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/20 backdrop-blur-xl border border-blue-400/20 flex items-center justify-center">
-                <Music className="h-4 w-4 text-blue-300" />
+              <div className={`w-9 h-9 rounded-xl backdrop-blur-xl border flex items-center justify-center ${
+                isLight ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-500/20 border-blue-400/20'
+              }`}>
+                <Music className={`h-4 w-4 ${isLight ? 'text-blue-600' : 'text-blue-300'}`} />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-white">Song Recognition</h3>
+              <h3 className={`text-base sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>Song Recognition</h3>
             </div>
-            <p className="text-sm text-white/50 leading-relaxed">
+            <p className={`text-sm leading-relaxed ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/50'}`}>
               Identify any song instantly by uploading a short clip.
             </p>
           </div>
 
-          <div className="group bg-white/5 backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all active:scale-[0.98] touch-manipulation shadow-lg shadow-black/5">
+          <div className={`group backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
+            isLight
+              ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
+              : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
+          }`}>
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 backdrop-blur-xl border border-cyan-400/20 flex items-center justify-center">
-                <Heart className="h-4 w-4 text-cyan-300" />
+              <div className={`w-9 h-9 rounded-xl backdrop-blur-xl border flex items-center justify-center ${
+                isLight ? 'bg-cyan-500/10 border-cyan-500/20' : 'bg-cyan-500/20 border-cyan-400/20'
+              }`}>
+                <Heart className={`h-4 w-4 ${isLight ? 'text-cyan-600' : 'text-cyan-300'}`} />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-white">Personal Library</h3>
+              <h3 className={`text-base sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>Personal Library</h3>
             </div>
-            <p className="text-sm text-white/50 leading-relaxed">
+            <p className={`text-sm leading-relaxed ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/50'}`}>
               Organize your music with playlists and favorites.
             </p>
           </div>
@@ -326,7 +366,7 @@ const Welcome: React.FC = () => {
 
         {/* Footer */}
         <footer className="mt-20 sm:mt-32 pb-8 text-center">
-          <p className="text-xs text-white/30">
+          <p className={`text-xs ${isLight ? 'text-black/30' : 'text-white/30'}`}>
             Built for music lovers
           </p>
         </footer>
