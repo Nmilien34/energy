@@ -32,6 +32,7 @@ export interface Song {
   youtubeId: string;
   title: string;
   artist: string;
+  album?: string;
   duration: number;
   thumbnail: string;
   thumbnailHd: string;

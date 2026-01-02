@@ -310,7 +310,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title || 'Unknown Title',
       artist: currentSong.artist || 'Unknown Artist',
-      album: (currentSong as any).album || 'NRGFLOW',
+      album: currentSong.album || 'NRGFLOW',
       artwork: currentSong.thumbnail ? [
         { src: currentSong.thumbnail, sizes: '96x96', type: 'image/jpeg' },
         { src: currentSong.thumbnail, sizes: '128x128', type: 'image/jpeg' },
