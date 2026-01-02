@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Music, Play, Download, Search, Heart, Sparkles, X, Cloud } from 'lucide-react';
+import { User, Music, Play, Download, Search, Heart, X } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
 import AnonymousLimitModal from '../components/AnonymousLimitModal';
 import ThemeSwitcher from '../components/ThemeSwitcher';
@@ -175,7 +175,7 @@ const Welcome: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchQuery && setShowSearchResults(true)}
                 placeholder="Search for songs, artists, or albums..."
-                className="w-full bg-music-black-light/80 backdrop-blur-sm text-white pl-12 pr-12 py-4 sm:py-4.5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-music-purple border border-white/10 transition-all text-base sm:text-lg placeholder:text-gray-500"
+                className="w-full bg-zinc-900/80 text-white pl-12 pr-12 py-3.5 sm:py-4 rounded-xl focus:outline-none focus:ring-1 focus:ring-zinc-600 border border-zinc-800 hover:border-zinc-700 transition-all text-sm sm:text-base placeholder:text-zinc-600"
               />
               {searchQuery && (
                 <button
@@ -190,48 +190,42 @@ const Welcome: React.FC = () => {
               )}
               {isSearching && (
                 <div className="absolute right-12 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin w-5 h-5 border-2 border-music-blue border-t-transparent rounded-full"></div>
+                  <div className="animate-spin w-4 h-4 border-2 border-zinc-600 border-t-zinc-400 rounded-full"></div>
                 </div>
               )}
             </div>
 
             {/* Search Results Dropdown */}
             {showSearchResults && (searchQuery || searchResults.length > 0) && (
-              <div className="absolute top-full left-4 right-4 mt-2 bg-music-black-light rounded-xl shadow-2xl border border-white/10 max-h-[60vh] sm:max-h-96 overflow-y-auto z-50">
+              <div className="absolute top-full left-4 right-4 mt-2 bg-zinc-900 rounded-xl shadow-2xl border border-zinc-800 max-h-[60vh] sm:max-h-96 overflow-y-auto z-50">
                 {searchError && (
-                  <div className="p-4 text-red-400 text-center">
-                    <Music className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <div className="p-4 text-red-400/80 text-center text-sm">
                     <p>{searchError}</p>
                   </div>
                 )}
 
                 {isSearching && (
-                  <div className="p-8 text-center text-gray-400">
-                    <div className="animate-spin w-8 h-8 border-2 border-music-blue border-t-transparent rounded-full mx-auto mb-4"></div>
-                    <p>Searching...</p>
+                  <div className="p-6 text-center text-zinc-500">
+                    <div className="animate-spin w-5 h-5 border-2 border-zinc-700 border-t-zinc-400 rounded-full mx-auto mb-3"></div>
+                    <p className="text-sm">Searching...</p>
                   </div>
                 )}
 
                 {!isSearching && !searchError && searchResults.length === 0 && searchQuery && (
-                  <div className="p-8 text-center text-gray-400">
-                    <Music className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No songs found for "{searchQuery}"</p>
-                    <p className="text-sm mt-2">Try searching for a different song or artist</p>
+                  <div className="p-6 text-center text-zinc-500">
+                    <p className="text-sm">No results for "{searchQuery}"</p>
                   </div>
                 )}
 
                 {!isSearching && searchResults.length > 0 && (
-                  <div className="py-2">
-                    <div className="px-4 py-2 text-xs text-gray-400 uppercase tracking-wide border-b border-white/10">
-                      {searchResults.length} Results
-                    </div>
+                  <div className="py-1">
                     {searchResults.map((song) => (
                       <button
                         key={song.id}
                         onClick={() => handlePlaySong(song)}
-                        className="w-full px-4 py-3 hover:bg-white/5 transition-colors flex items-center space-x-3 text-left"
+                        className="w-full px-3 py-2.5 hover:bg-zinc-800/50 transition-colors flex items-center space-x-3 text-left"
                       >
-                        <div className="flex-shrink-0 w-12 h-12 bg-music-black-lighter rounded-lg overflow-hidden">
+                        <div className="flex-shrink-0 w-10 h-10 bg-zinc-800 rounded-md overflow-hidden">
                           <FallbackImage
                             src={song.thumbnail}
                             alt={song.title}
@@ -239,15 +233,10 @@ const Welcome: React.FC = () => {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <p className="font-medium text-white truncate">{song.title}</p>
-                            {song.isCached && (
-                              <Cloud className="h-3.5 w-3.5 text-music-blue flex-shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-400 truncate">{song.artist}</p>
+                          <p className="text-sm font-medium text-white truncate">{song.title}</p>
+                          <p className="text-xs text-zinc-500 truncate">{song.artist}</p>
                         </div>
-                        <Play className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        <Play className="h-4 w-4 text-zinc-600 flex-shrink-0" />
                       </button>
                     ))}
                   </div>
@@ -276,49 +265,50 @@ const Welcome: React.FC = () => {
         </div>
 
         {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto animate-slide-up px-4">
-          <div className="group relative bg-gradient-to-br from-music-black-light to-music-black-lighter p-6 sm:p-8 rounded-xl sm:rounded-2xl border border-white/10 hover:border-music-purple/50 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-music-purple/10 active:scale-[0.98] touch-manipulation">
-            <div className="absolute inset-0 bg-gradient-to-br from-music-purple/0 to-music-purple/5 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-music-purple to-purple-600 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
-                <Download className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 max-w-5xl mx-auto animate-slide-up px-4">
+          <div className="group bg-zinc-900/50 p-5 sm:p-6 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-all active:scale-[0.98] touch-manipulation">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-music-purple/50 transition-colors">
+                <Download className="h-4 w-4 text-music-purple" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-white font-display">YouTube to MP3</h3>
-              <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-normal">
-                Convert your favorite YouTube videos to high-quality MP3 files instantly. 
-                <span className="text-white font-medium"> No limits, no hassle.</span>
-              </p>
+              <h3 className="text-base sm:text-lg font-semibold text-white">YouTube to MP3</h3>
             </div>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Convert YouTube videos to high-quality MP3 files. No limits.
+            </p>
           </div>
 
-          <div className="group relative bg-gradient-to-br from-music-black-light to-music-black-lighter p-6 sm:p-8 rounded-xl sm:rounded-2xl border border-white/10 hover:border-music-blue/50 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-music-blue/10 active:scale-[0.98] touch-manipulation">
-            <div className="absolute inset-0 bg-gradient-to-br from-music-blue/0 to-music-blue/5 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-music-blue to-blue-500 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
-                <Search className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+          <div className="group bg-zinc-900/50 p-5 sm:p-6 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-all active:scale-[0.98] touch-manipulation">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-music-blue/50 transition-colors">
+                <Music className="h-4 w-4 text-music-blue" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-white font-display">Song Recognition</h3>
-              <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-normal">
-                Identify any song instantly by uploading a clip. 
-                <span className="text-white font-medium"> Powered by AI.</span>
-              </p>
+              <h3 className="text-base sm:text-lg font-semibold text-white">Song Recognition</h3>
             </div>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Identify any song instantly by uploading a short clip.
+            </p>
           </div>
 
-          <div className="group relative bg-gradient-to-br from-music-black-light to-music-black-lighter p-6 sm:p-8 rounded-xl sm:rounded-2xl border border-white/10 hover:border-music-purple/50 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-music-purple/10 active:scale-[0.98] touch-manipulation">
-            <div className="absolute inset-0 bg-gradient-to-br from-music-purple/0 to-music-purple/5 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-music-purple to-purple-500 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
-                <Heart className="h-6 w-6 sm:h-7 sm:w-7 text-white fill-white" />
+          <div className="group bg-zinc-900/50 p-5 sm:p-6 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-all active:scale-[0.98] touch-manipulation">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-music-purple/50 transition-colors">
+                <Heart className="h-4 w-4 text-music-purple" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-white font-display">Personal Library</h3>
-              <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-normal">
-                Organize and manage your music collection with playlists, favorites, and more.
-                <span className="text-white font-medium"> Your music, organized.</span>
-              </p>
+              <h3 className="text-base sm:text-lg font-semibold text-white">Personal Library</h3>
             </div>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Organize your music with playlists and favorites.
+            </p>
           </div>
         </div>
+
+        {/* Footer */}
+        <footer className="mt-20 sm:mt-32 pb-8 text-center">
+          <p className="text-xs text-zinc-600">
+            Built for music lovers
+          </p>
+        </footer>
       </div>
 
       <AuthModal
