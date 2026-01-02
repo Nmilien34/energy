@@ -6,6 +6,7 @@ import AnonymousLimitModal from '../components/AnonymousLimitModal';
 import ThemeSwitcher from '../components/ThemeSwitcher';
 import UserMenu from '../components/UserMenu';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import { useAnonymousLandingSession } from '../hooks/useAnonymousLandingSession';
 import { searchMusicPublic } from '../services/anonymousSessionService';
@@ -15,7 +16,11 @@ import FallbackImage from '../components/FallbackImage';
 const Welcome: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const { play } = useAudioPlayer();
+
+  // Theme-aware styling
+  const isLight = theme === 'light';
   const { session, trackPlay } = useAnonymousLandingSession();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
@@ -106,15 +111,25 @@ const Welcome: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-music-black via-music-black-light to-music-black text-white overflow-hidden">
-      {/* Subtle grid pattern background */}
+    <div className={`min-h-screen overflow-hidden transition-colors ${
+      isLight
+        ? 'bg-[var(--bg-primary)] text-[var(--text-primary)]'
+        : 'bg-gradient-to-b from-music-black via-music-black-light to-music-black text-white'
+    }`}>
+      {/* Gradient blobs for glass effect */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.03)_1px,_transparent_1px)] bg-[size:24px_24px]"></div>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-music-purple/5 via-transparent to-transparent"></div>
+        <div className={`absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full blur-[120px] ${isLight ? 'bg-purple-400/30' : 'bg-purple-600/20'}`}></div>
+        <div className={`absolute top-1/4 -right-20 w-[400px] h-[400px] rounded-full blur-[120px] ${isLight ? 'bg-blue-400/25' : 'bg-blue-600/20'}`}></div>
+        <div className={`absolute bottom-0 left-1/3 w-[600px] h-[400px] rounded-full blur-[120px] ${isLight ? 'bg-purple-300/20' : 'bg-purple-500/15'}`}></div>
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[100px] ${isLight ? 'bg-cyan-400/15' : 'bg-cyan-500/10'}`}></div>
       </div>
 
-      {/* Navigation */}
-      <nav className="relative z-10 bg-music-black/80 backdrop-blur-xl border-b border-white/5">
+      {/* Navigation - Glass */}
+      <nav className={`relative z-10 backdrop-blur-2xl border-b shadow-lg transition-colors ${
+        isLight
+          ? 'bg-black/5 border-black/10 shadow-black/5'
+          : 'bg-white/5 border-white/10 shadow-black/5'
+      }`}>
         <div className="container mx-auto px-6 py-5 flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <img 
@@ -126,7 +141,7 @@ const Welcome: React.FC = () => {
               <span className="bg-gradient-to-r from-music-purple to-music-blue bg-clip-text text-transparent">
                 NRG
               </span>
-              <span className="text-white">FLOW</span>
+              <span className={isLight ? 'text-[var(--text-primary)]' : 'text-white'}>FLOW</span>
             </h1>
           </div>
           <div className="flex items-center gap-4">
@@ -136,7 +151,11 @@ const Welcome: React.FC = () => {
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="flex items-center space-x-2 px-4 py-2 rounded-full bg-white text-black font-semibold hover:scale-105 transition-transform hover:bg-gray-200"
+                className={`flex items-center space-x-2 px-4 py-2 rounded-full backdrop-blur-xl font-medium transition-all ${
+                  isLight
+                    ? 'bg-black/5 border border-black/10 text-[var(--text-primary)] hover:bg-black/10'
+                    : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
+                }`}
               >
                 <User className="h-4 w-4" />
                 <span>Log in</span>
@@ -149,8 +168,10 @@ const Welcome: React.FC = () => {
       {/* Hero Section */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 sm:py-20">
         <div className="max-w-4xl mx-auto text-center animate-fade-in">
-          <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-6">
-            <span className="text-xs font-medium text-gray-400 tracking-wide uppercase">Your Music, Your Way</span>
+          <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full backdrop-blur-xl border mb-6 ${
+            isLight ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'
+          }`}>
+            <span className={`text-xs font-medium tracking-wide uppercase ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/60'}`}>Your Music, Your Way</span>
           </div>
           
           <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black mb-4 sm:mb-6 leading-tight font-display tracking-tight px-2">
@@ -160,9 +181,9 @@ const Welcome: React.FC = () => {
             </span>
           </h1>
           
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-400 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed font-medium px-4">
-            Discover, convert, and manage your music collection. 
-            <span className="text-white font-medium"> All in one place.</span>
+          <p className={`text-base sm:text-lg md:text-xl lg:text-2xl mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed font-medium px-4 ${isLight ? 'text-[var(--text-secondary)]' : 'text-gray-400'}`}>
+            Discover, convert, and manage your music collection.
+            <span className={isLight ? 'text-[var(--text-primary)] font-medium' : 'text-white font-medium'}> All in one place.</span>
           </p>
 
           {/* Search Bar */}
@@ -175,7 +196,7 @@ const Welcome: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchQuery && setShowSearchResults(true)}
                 placeholder="Search for songs, artists, or albums..."
-                className="w-full bg-zinc-900/80 text-white pl-12 pr-12 py-3.5 sm:py-4 rounded-xl focus:outline-none focus:ring-1 focus:ring-zinc-600 border border-zinc-800 hover:border-zinc-700 transition-all text-sm sm:text-base placeholder:text-zinc-600"
+                className="w-full bg-white/5 backdrop-blur-2xl text-white pl-12 pr-12 py-3.5 sm:py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-white/20 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all text-sm sm:text-base placeholder:text-white/40 shadow-lg shadow-black/10"
               />
               {searchQuery && (
                 <button
@@ -190,14 +211,14 @@ const Welcome: React.FC = () => {
               )}
               {isSearching && (
                 <div className="absolute right-12 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin w-4 h-4 border-2 border-zinc-600 border-t-zinc-400 rounded-full"></div>
+                  <div className="animate-spin w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full"></div>
                 </div>
               )}
             </div>
 
             {/* Search Results Dropdown */}
             {showSearchResults && (searchQuery || searchResults.length > 0) && (
-              <div className="absolute top-full left-4 right-4 mt-2 bg-zinc-900 rounded-xl shadow-2xl border border-zinc-800 max-h-[60vh] sm:max-h-96 overflow-y-auto z-50">
+              <div className="absolute top-full left-4 right-4 mt-2 bg-white/5 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/10 max-h-[60vh] sm:max-h-96 overflow-y-auto z-50">
                 {searchError && (
                   <div className="p-4 text-red-400/80 text-center text-sm">
                     <p>{searchError}</p>
@@ -205,14 +226,14 @@ const Welcome: React.FC = () => {
                 )}
 
                 {isSearching && (
-                  <div className="p-6 text-center text-zinc-500">
-                    <div className="animate-spin w-5 h-5 border-2 border-zinc-700 border-t-zinc-400 rounded-full mx-auto mb-3"></div>
+                  <div className="p-6 text-center text-white/50">
+                    <div className="animate-spin w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full mx-auto mb-3"></div>
                     <p className="text-sm">Searching...</p>
                   </div>
                 )}
 
                 {!isSearching && !searchError && searchResults.length === 0 && searchQuery && (
-                  <div className="p-6 text-center text-zinc-500">
+                  <div className="p-6 text-center text-white/40">
                     <p className="text-sm">No results for "{searchQuery}"</p>
                   </div>
                 )}
@@ -223,9 +244,9 @@ const Welcome: React.FC = () => {
                       <button
                         key={song.id}
                         onClick={() => handlePlaySong(song)}
-                        className="w-full px-3 py-2.5 hover:bg-zinc-800/50 transition-colors flex items-center space-x-3 text-left"
+                        className="w-full px-3 py-2.5 hover:bg-white/10 transition-colors flex items-center space-x-3 text-left"
                       >
-                        <div className="flex-shrink-0 w-10 h-10 bg-zinc-800 rounded-md overflow-hidden">
+                        <div className="flex-shrink-0 w-10 h-10 bg-white/10 rounded-lg overflow-hidden">
                           <FallbackImage
                             src={song.thumbnail}
                             alt={song.title}
@@ -234,9 +255,9 @@ const Welcome: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-white truncate">{song.title}</p>
-                          <p className="text-xs text-zinc-500 truncate">{song.artist}</p>
+                          <p className="text-xs text-white/40 truncate">{song.artist}</p>
                         </div>
-                        <Play className="h-4 w-4 text-zinc-600 flex-shrink-0" />
+                        <Play className="h-4 w-4 text-white/30 flex-shrink-0" />
                       </button>
                     ))}
                   </div>
@@ -248,7 +269,7 @@ const Welcome: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-12 sm:mb-20 px-4">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="group relative px-6 py-3 sm:px-7 sm:py-3.5 rounded-full bg-white text-zinc-900 font-semibold text-sm sm:text-base hover:bg-gray-100 active:scale-[0.98] transition-all font-display touch-manipulation"
+              className="group relative px-6 py-3 sm:px-7 sm:py-3.5 rounded-full bg-white/90 backdrop-blur-xl text-zinc-900 font-semibold text-sm sm:text-base hover:bg-white active:scale-[0.98] transition-all font-display touch-manipulation shadow-lg shadow-white/10"
             >
               <span className="flex items-center justify-center space-x-2">
                 <span>Get Started</span>
@@ -257,47 +278,47 @@ const Welcome: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/platform')}
-              className="px-6 py-3 sm:px-7 sm:py-3.5 rounded-full bg-transparent border border-zinc-700 text-gray-300 font-medium text-sm sm:text-base hover:border-zinc-500 hover:text-white active:scale-[0.98] transition-all font-display touch-manipulation"
+              className="px-6 py-3 sm:px-7 sm:py-3.5 rounded-full bg-white/5 backdrop-blur-xl border border-white/20 text-white font-medium text-sm sm:text-base hover:bg-white/10 hover:border-white/30 active:scale-[0.98] transition-all font-display touch-manipulation"
             >
               Explore Platform
             </button>
           </div>
         </div>
 
-        {/* Feature Cards */}
+        {/* Feature Cards - Glass */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 max-w-5xl mx-auto animate-slide-up px-4">
-          <div className="group bg-zinc-900/50 p-5 sm:p-6 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-all active:scale-[0.98] touch-manipulation">
+          <div className="group bg-white/5 backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all active:scale-[0.98] touch-manipulation shadow-lg shadow-black/5">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-music-purple/50 transition-colors">
-                <Download className="h-4 w-4 text-music-purple" />
+              <div className="w-9 h-9 rounded-xl bg-purple-500/20 backdrop-blur-xl border border-purple-400/20 flex items-center justify-center">
+                <Download className="h-4 w-4 text-purple-300" />
               </div>
               <h3 className="text-base sm:text-lg font-semibold text-white">YouTube to MP3</h3>
             </div>
-            <p className="text-sm text-gray-500 leading-relaxed">
+            <p className="text-sm text-white/50 leading-relaxed">
               Convert YouTube videos to high-quality MP3 files. No limits.
             </p>
           </div>
 
-          <div className="group bg-zinc-900/50 p-5 sm:p-6 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-all active:scale-[0.98] touch-manipulation">
+          <div className="group bg-white/5 backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all active:scale-[0.98] touch-manipulation shadow-lg shadow-black/5">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-music-blue/50 transition-colors">
-                <Music className="h-4 w-4 text-music-blue" />
+              <div className="w-9 h-9 rounded-xl bg-blue-500/20 backdrop-blur-xl border border-blue-400/20 flex items-center justify-center">
+                <Music className="h-4 w-4 text-blue-300" />
               </div>
               <h3 className="text-base sm:text-lg font-semibold text-white">Song Recognition</h3>
             </div>
-            <p className="text-sm text-gray-500 leading-relaxed">
+            <p className="text-sm text-white/50 leading-relaxed">
               Identify any song instantly by uploading a short clip.
             </p>
           </div>
 
-          <div className="group bg-zinc-900/50 p-5 sm:p-6 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-all active:scale-[0.98] touch-manipulation">
+          <div className="group bg-white/5 backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all active:scale-[0.98] touch-manipulation shadow-lg shadow-black/5">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-music-purple/50 transition-colors">
-                <Heart className="h-4 w-4 text-music-purple" />
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 backdrop-blur-xl border border-cyan-400/20 flex items-center justify-center">
+                <Heart className="h-4 w-4 text-cyan-300" />
               </div>
               <h3 className="text-base sm:text-lg font-semibold text-white">Personal Library</h3>
             </div>
-            <p className="text-sm text-gray-500 leading-relaxed">
+            <p className="text-sm text-white/50 leading-relaxed">
               Organize your music with playlists and favorites.
             </p>
           </div>
@@ -305,7 +326,7 @@ const Welcome: React.FC = () => {
 
         {/* Footer */}
         <footer className="mt-20 sm:mt-32 pb-8 text-center">
-          <p className="text-xs text-zinc-600">
+          <p className="text-xs text-white/30">
             Built for music lovers
           </p>
         </footer>

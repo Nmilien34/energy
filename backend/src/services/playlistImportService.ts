@@ -6,6 +6,39 @@ import { Song, ISong } from '../models/Song';
 import { youtubeService } from './youtubeService';
 import { config } from '../utils/config';
 
+/**
+ * Decode HTML entities (e.g., &#39; -> ', &amp; -> &)
+ */
+function decodeHtmlEntities(text: string): string {
+  if (!text) return text;
+
+  // Decode numeric entities (&#39;, &#8217;, etc.)
+  let decoded = text.replace(/&#(\d+);/g, (_, dec) => {
+    return String.fromCharCode(parseInt(dec, 10));
+  });
+
+  // Decode hex entities (&#x27;, etc.)
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+    return String.fromCharCode(parseInt(hex, 16));
+  });
+
+  // Decode named entities
+  const entityMap: { [key: string]: string } = {
+    '&apos;': "'",
+    '&quot;': '"',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&nbsp;': ' ',
+  };
+
+  for (const [entity, char] of Object.entries(entityMap)) {
+    decoded = decoded.replace(new RegExp(entity, 'g'), char);
+  }
+
+  return decoded;
+}
+
 export interface ImportedPlaylist {
   id: string;
   title: string;
@@ -79,13 +112,13 @@ export class PlaylistImportService {
 
         playlists.push({
           id: playlist.id,
-          title: playlist.snippet.title || 'Untitled Playlist',
-          description: playlist.snippet.description || '',
+          title: decodeHtmlEntities(playlist.snippet.title || 'Untitled Playlist'),
+          description: decodeHtmlEntities(playlist.snippet.description || ''),
           thumbnail: playlist.snippet.thumbnails?.medium?.url ||
                     playlist.snippet.thumbnails?.default?.url || '',
           videoCount: playlist.contentDetails?.itemCount || 0,
           privacy: playlist.status?.privacyStatus || 'private',
-          channelTitle: playlist.snippet.channelTitle || '',
+          channelTitle: decodeHtmlEntities(playlist.snippet.channelTitle || ''),
           publishedAt: playlist.snippet.publishedAt || ''
         });
       }
@@ -145,8 +178,8 @@ export class PlaylistImportService {
 
         videos.push({
           youtubeId: videoId,
-          title: item.snippet.title || 'Untitled Video',
-          channelTitle: item.snippet.videoOwnerChannelTitle || 'Unknown Channel',
+          title: decodeHtmlEntities(item.snippet.title || 'Untitled Video'),
+          channelTitle: decodeHtmlEntities(item.snippet.videoOwnerChannelTitle || 'Unknown Channel'),
           thumbnail: item.snippet.thumbnails?.medium?.url ||
                     item.snippet.thumbnails?.default?.url || '',
           duration: duration,

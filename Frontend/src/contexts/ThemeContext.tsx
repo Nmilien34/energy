@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { settingsService } from '../services/settingsService';
 import { useAuth } from './AuthContext';
 
-type Theme = 'dark' | 'light' | 'dim' | 'system';
+type Theme = 'dark' | 'light' | 'dim';
 
 interface ThemeContextType {
   theme: Theme;

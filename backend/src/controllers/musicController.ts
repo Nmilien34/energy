@@ -11,17 +11,55 @@ import { bestMatchService } from '../services/bestMatchService';
 import { IUser } from '../models/User';
 import { Types } from 'mongoose';
 
+/**
+ * Decode HTML entities (e.g., &#39; -> ', &amp; -> &)
+ * Handles data from YouTube API that may contain encoded entities
+ */
+const decodeHtmlEntities = (text: string): string => {
+  if (!text || typeof text !== 'string') return text;
+
+  // Decode numeric entities (&#39;, &#8217;, etc.)
+  let decoded = text.replace(/&#(\d+);/g, (_, dec) => {
+    return String.fromCharCode(parseInt(dec, 10));
+  });
+
+  // Decode hex entities (&#x27;, etc.)
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+    return String.fromCharCode(parseInt(hex, 16));
+  });
+
+  // Decode named entities
+  const entityMap: { [key: string]: string } = {
+    '&apos;': "'",
+    '&quot;': '"',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&nbsp;': ' ',
+  };
+
+  for (const [entity, char] of Object.entries(entityMap)) {
+    decoded = decoded.replace(new RegExp(entity, 'g'), char);
+  }
+
+  return decoded;
+};
+
 // Helper function to normalize song objects (convert _id to id for frontend)
+// Also decodes HTML entities in titles and other text fields
 const normalizeSong = (song: any): any => {
   if (!song) return song;
-  
+
   // If it's a Mongoose document, use toObject/toJSON
+  let normalized;
   if (song.toObject && typeof song.toObject === 'function') {
-    return song.toObject();
+    normalized = song.toObject();
+  } else {
+    // If it's a lean result or plain object, copy it
+    normalized = { ...song };
   }
-  
-  // If it's a lean result or plain object, convert _id to id
-  const normalized = { ...song };
+
+  // Convert _id to id
   if (normalized._id) {
     normalized.id = normalized._id.toString();
     delete normalized._id;
@@ -29,7 +67,24 @@ const normalizeSong = (song: any): any => {
     // Fallback: use youtubeId as id if _id is missing
     normalized.id = normalized.youtubeId;
   }
-  
+
+  // Decode HTML entities in text fields (fixes &#39; etc.)
+  if (normalized.title) {
+    normalized.title = decodeHtmlEntities(normalized.title);
+  }
+  if (normalized.artist) {
+    normalized.artist = decodeHtmlEntities(normalized.artist);
+  }
+  if (normalized.channelTitle) {
+    normalized.channelTitle = decodeHtmlEntities(normalized.channelTitle);
+  }
+  if (normalized.description) {
+    normalized.description = decodeHtmlEntities(normalized.description);
+  }
+  if (normalized.album) {
+    normalized.album = decodeHtmlEntities(normalized.album);
+  }
+
   return normalized;
 };
 
