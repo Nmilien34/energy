@@ -7,54 +7,63 @@ const generateSessionId = (): string => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
+// Check if we're on a mobile device
+const isMobileDevice = (): boolean => {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+};
+
 // Track if audio has been unlocked (required for iOS Safari)
 let audioUnlocked = false;
 
-// Unlock audio on first user interaction (required for iOS Safari)
+// Unlock audio on first user interaction (required for iOS Safari only)
 const unlockAudio = (audioElement: HTMLAudioElement | null): Promise<void> => {
+  // Skip unlock on desktop - not needed and can cause issues
+  if (!isMobileDevice()) {
+    console.log('[Audio] Desktop detected, skipping audio unlock');
+    return Promise.resolve();
+  }
+
   if (audioUnlocked) return Promise.resolve();
 
   return new Promise((resolve) => {
-    const unlock = () => {
-      if (audioUnlocked) {
-        resolve();
-        return;
-      }
+    console.log('[Mobile] Attempting to unlock audio...');
 
-      console.log('[Mobile] Attempting to unlock audio...');
+    if (!audioElement) {
+      resolve();
+      return;
+    }
 
-      // Try to play a silent sound to unlock audio context
-      if (audioElement) {
-        // Create a short silence and try to play it
-        audioElement.volume = 0;
-        audioElement.muted = true;
+    // Store original values
+    const originalVolume = audioElement.volume;
+    const originalMuted = audioElement.muted;
 
-        const playPromise = audioElement.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              audioElement.pause();
-              audioElement.muted = false;
-              audioElement.volume = 0.8;
-              audioUnlocked = true;
-              console.log('[Mobile] Audio unlocked successfully');
-              resolve();
-            })
-            .catch(() => {
-              // Couldn't play, audio is still locked
-              console.log('[Mobile] Audio still locked, will try again on next interaction');
-              resolve();
-            });
-        } else {
+    // Try to play a silent sound to unlock audio context
+    audioElement.volume = 0;
+    audioElement.muted = true;
+
+    const playPromise = audioElement.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          audioElement.pause();
+          // Restore original values
+          audioElement.muted = originalMuted;
+          audioElement.volume = originalVolume;
           audioUnlocked = true;
+          console.log('[Mobile] Audio unlocked successfully');
           resolve();
-        }
-      } else {
-        resolve();
-      }
-    };
-
-    unlock();
+        })
+        .catch(() => {
+          // Restore original values
+          audioElement.muted = originalMuted;
+          audioElement.volume = originalVolume;
+          console.log('[Mobile] Audio still locked, will try again on next interaction');
+          resolve();
+        });
+    } else {
+      audioUnlocked = true;
+      resolve();
+    }
   });
 };
 
