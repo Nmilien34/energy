@@ -262,9 +262,10 @@ class MusicService {
 
   async getRecentlyPlayed(limit = 50): Promise<ApiResponse<Song[]>> {
     const response = await api.get(`/api/users/library/recent?limit=${limit}`);
-    
+
     // Decode HTML entities in recently played songs (safety measure)
-    if (response.data.success && response.data.data) {
+    // Handle case where data might be null, undefined, or not an array
+    if (response.data.success && response.data.data && Array.isArray(response.data.data)) {
       response.data.data = response.data.data.map((song: Song) => ({
         ...song,
         title: decodeHtmlEntities(song.title),
@@ -272,8 +273,11 @@ class MusicService {
         channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
         description: song.description ? decodeHtmlEntities(song.description) : song.description,
       }));
+    } else if (response.data.success && !Array.isArray(response.data.data)) {
+      // If data is not an array, set it to empty array
+      response.data.data = [];
     }
-    
+
     return response.data;
   }
 

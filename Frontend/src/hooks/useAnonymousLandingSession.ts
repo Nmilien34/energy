@@ -31,15 +31,18 @@ export const useAnonymousLandingSession = (): UseAnonymousLandingSessionReturn =
 
       // Check if we have an existing session in localStorage
       const existingSessionId = getStoredSessionId();
+      console.log('[AnonSession] Initializing session, existing ID:', existingSessionId);
 
       // Initialize session (will create new or retrieve existing)
       const sessionData = await initializeAnonymousSession(existingSessionId || undefined);
+      console.log('[AnonSession] Session initialized:', sessionData?.sessionId);
 
       // Store the session ID
       storeSessionId(sessionData.sessionId);
       setSession(sessionData);
     } catch (err: any) {
-      console.error('Failed to initialize session:', err);
+      console.error('[AnonSession] Failed to initialize session:', err);
+      console.error('[AnonSession] Error details:', err.response?.status, err.response?.data);
       setError(err.response?.data?.error || 'Failed to initialize session');
 
       // If session not found or expired, clear stored session and try again

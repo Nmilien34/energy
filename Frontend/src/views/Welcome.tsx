@@ -69,34 +69,54 @@ const Welcome: React.FC = () => {
 
   // Handle song play with anonymous session tracking
   const handlePlaySong = useCallback(async (song: Song) => {
+    console.log('[Welcome] handlePlaySong called:', { songId: song.id, songTitle: song.title, hasUser: !!user, hasSession: !!session });
+
+    // Validate song has required properties
+    if (!song.id && song.youtubeId) {
+      song.id = song.youtubeId;
+      console.log('[Welcome] Using youtubeId as id:', song.id);
+    }
+
+    if (!song.id) {
+      console.error('[Welcome] Song has no ID, cannot play:', song);
+      return;
+    }
+
     // If user is authenticated, play normally
     if (user) {
+      console.log('[Welcome] User authenticated, playing directly');
       play(song);
       return;
     }
 
     // For anonymous users, check and track the play
     if (!session) {
-      console.error('No session available');
+      console.warn('[Welcome] No session available, playing anyway (session may still be initializing)');
+      // Play anyway - session might still be initializing
+      play(song);
       return;
     }
 
     // Check if already at limit
     if (session.hasReachedLimit) {
+      console.log('[Welcome] Session limit reached, showing modal');
       setIsLimitModalOpen(true);
       return;
     }
 
     // Track the play
+    console.log('[Welcome] Tracking play for song:', song.id);
     const success = await trackPlay(song.id);
 
     if (!success) {
       // Play limit reached
+      console.log('[Welcome] trackPlay returned false, showing modal');
       setIsLimitModalOpen(true);
       return;
     }
 
     // Play the song
+    console.log('[Welcome] Playing song:', song.title);
     play(song);
   }, [user, session, trackPlay, play]);
 
