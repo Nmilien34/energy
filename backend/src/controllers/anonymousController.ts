@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AnonymousSession } from '../models/AnonymousSession';
+import { AnonymousSession, IAnonymousSession } from '../models/AnonymousSession';
 import crypto from 'crypto';
 
 /**
@@ -10,8 +10,32 @@ const generateSessionId = (): string => {
 };
 
 /**
+ * Helper to get session response data with daily reset check
+ */
+const getSessionResponseData = (session: IAnonymousSession) => {
+  // Call reset check to ensure counts are accurate
+  session.resetDailyPlaysIfNeeded();
+
+  return {
+    sessionId: session.sessionId,
+    playCount: session.dailyPlayCount,
+    totalPlayed: session.totalSongsPlayed,
+    canPlayMore: session.canPlayMore(),
+    hasReachedLimit: session.dailyPlayCount >= session.dailyLimit,
+    remainingPlays: session.getRemainingPlays(),
+    dailyLimit: session.dailyLimit,
+    songsPlayedToday: session.songsPlayedToday
+  };
+};
+
+/**
  * Create or retrieve an anonymous session for landing page
  * POST /api/anonymous/session
+ *
+ * Frontend should:
+ * 1. Check localStorage for existing sessionId
+ * 2. If exists, send it in request body
+ * 3. Store returned sessionId in localStorage
  */
 export const createOrGetSession = async (req: Request, res: Response) => {
   try {
@@ -27,29 +51,32 @@ export const createOrGetSession = async (req: Request, res: Response) => {
       });
 
       if (existingSession && new Date() < existingSession.expiresAt) {
+        console.log(`[Anonymous] Existing session found: ${existingSessionId.substring(0, 8)}...`);
+
         return res.status(200).json({
           success: true,
-          data: {
-            sessionId: existingSession.sessionId,
-            playCount: existingSession.playCount,
-            canPlayMore: existingSession.canPlayMore(),
-            hasReachedLimit: existingSession.hasReachedLimit,
-            remainingPlays: Math.max(0, existingSession.playLimit - existingSession.playCount),
-            songsPlayed: existingSession.songsPlayed
-          }
+          data: getSessionResponseData(existingSession),
+          message: 'Session retrieved'
         });
+      } else if (existingSession) {
+        // Session expired, delete it
+        await AnonymousSession.deleteOne({ sessionId: existingSessionId });
+        console.log(`[Anonymous] Expired session deleted: ${existingSessionId.substring(0, 8)}...`);
       }
     }
 
-    // Create new session
+    // Create new session (expires in 30 days)
     const sessionId = generateSessionId();
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // Session expires in 24 hours
+    expiresAt.setDate(expiresAt.getDate() + 30);
 
     const session = new AnonymousSession({
       sessionId,
       sessionType: 'landing',
-      playLimit: 5, // 5 songs for landing page
+      dailyLimit: 5, // 5 songs per day
+      songsPlayedToday: [],
+      dailyPlayCount: 0,
+      totalSongsPlayed: 0,
       ipAddress,
       userAgent,
       expiresAt
@@ -57,19 +84,24 @@ export const createOrGetSession = async (req: Request, res: Response) => {
 
     await session.save();
 
+    console.log(`[Anonymous] New session created: ${sessionId.substring(0, 8)}...`);
+
     res.status(201).json({
       success: true,
       data: {
         sessionId: session.sessionId,
         playCount: 0,
+        totalPlayed: 0,
         canPlayMore: true,
         hasReachedLimit: false,
         remainingPlays: 5,
-        songsPlayed: []
-      }
+        dailyLimit: 5,
+        songsPlayedToday: []
+      },
+      message: 'New session created'
     });
   } catch (error) {
-    console.error('Error creating/retrieving anonymous session:', error);
+    console.error('[Anonymous] Error creating/retrieving session:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to create session'
@@ -80,6 +112,9 @@ export const createOrGetSession = async (req: Request, res: Response) => {
 /**
  * Track song play for anonymous session
  * POST /api/anonymous/play
+ *
+ * Call this BEFORE playing a song to check if allowed
+ * Returns whether play is allowed and remaining count
  */
 export const trackPlay = async (req: Request, res: Response) => {
   try {
@@ -101,75 +136,62 @@ export const trackPlay = async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({
         success: false,
-        error: 'Session not found'
+        error: 'Session not found. Please refresh the page.',
+        requiresNewSession: true
       });
     }
 
     // Check if session expired
     if (new Date() >= session.expiresAt) {
+      await AnonymousSession.deleteOne({ sessionId });
       return res.status(410).json({
         success: false,
-        error: 'Session expired',
-        requiresAuth: true
+        error: 'Session expired. Please refresh the page.',
+        requiresNewSession: true
       });
     }
 
-    // Check if limit already reached
-    if (session.hasReachedLimit) {
-      return res.status(403).json({
-        success: false,
-        error: 'Play limit reached. Please sign up to continue.',
-        requiresAuth: true,
-        data: {
-          sessionId: session.sessionId,
-          playCount: session.playCount,
-          canPlayMore: false,
-          hasReachedLimit: true,
-          remainingPlays: 0,
-          songsPlayed: session.songsPlayed
-        }
+    // Reset daily plays if it's a new day
+    session.resetDailyPlaysIfNeeded();
+
+    // Check if this song was already played today (doesn't count against limit)
+    if (session.hasPlayedSongToday(songId)) {
+      return res.json({
+        success: true,
+        data: getSessionResponseData(session),
+        message: 'Song already played today - replaying is free!'
       });
     }
 
-    // Check if can play more
+    // Check if user can play more songs today
     if (!session.canPlayMore()) {
-      session.hasReachedLimit = true;
-      await session.save();
+      await session.save(); // Save any daily reset that occurred
 
       return res.status(403).json({
         success: false,
-        error: 'Play limit reached. Please sign up to continue.',
+        error: 'You\'ve reached your daily limit of 5 free songs. Sign up to listen to unlimited music!',
         requiresAuth: true,
-        data: {
-          sessionId: session.sessionId,
-          playCount: session.playCount,
-          canPlayMore: false,
-          hasReachedLimit: true,
-          remainingPlays: 0,
-          songsPlayed: session.songsPlayed
-        }
+        data: getSessionResponseData(session)
       });
     }
 
-    // Add song play (only counts unique songs)
+    // Add song play
     await session.addSongPlay(songId);
 
-    // Refresh session from DB
-    const updatedSession = await AnonymousSession.findById(session._id);
+    // Get updated session data
+    const remainingPlays = session.getRemainingPlays();
+
+    console.log(`[Anonymous] Session ${sessionId.substring(0, 8)}... played song. Remaining: ${remainingPlays}`);
 
     res.json({
       success: true,
-      data: {
-        sessionId: updatedSession!.sessionId,
-        playCount: updatedSession!.playCount,
-        canPlayMore: updatedSession!.canPlayMore(),
-        hasReachedLimit: updatedSession!.hasReachedLimit,
-        remainingPlays: Math.max(0, updatedSession!.playLimit - updatedSession!.playCount),
-        songsPlayed: updatedSession!.songsPlayed
-      }
+      data: getSessionResponseData(session),
+      message: remainingPlays > 0
+        ? `Enjoy! You have ${remainingPlays} free song${remainingPlays === 1 ? '' : 's'} left today.`
+        : 'This is your last free song today. Sign up for unlimited music!'
     });
   } catch (error) {
-    console.error('Error tracking anonymous play:', error);
+    console.error('[Anonymous] Error tracking play:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to track play'
@@ -178,7 +200,7 @@ export const trackPlay = async (req: Request, res: Response) => {
 };
 
 /**
- * Check session status
+ * Check session status (can user play more songs?)
  * GET /api/anonymous/session/:sessionId
  */
 export const getSessionStatus = async (req: Request, res: Response) => {
@@ -193,32 +215,27 @@ export const getSessionStatus = async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({
         success: false,
-        error: 'Session not found'
+        error: 'Session not found',
+        requiresNewSession: true
       });
     }
 
     // Check if session expired
     if (new Date() >= session.expiresAt) {
+      await AnonymousSession.deleteOne({ sessionId });
       return res.status(410).json({
         success: false,
         error: 'Session expired',
-        requiresAuth: true
+        requiresNewSession: true
       });
     }
 
     res.json({
       success: true,
-      data: {
-        sessionId: session.sessionId,
-        playCount: session.playCount,
-        canPlayMore: session.canPlayMore(),
-        hasReachedLimit: session.hasReachedLimit,
-        remainingPlays: Math.max(0, session.playLimit - session.playCount),
-        songsPlayed: session.songsPlayed
-      }
+      data: getSessionResponseData(session)
     });
   } catch (error) {
-    console.error('Error getting session status:', error);
+    console.error('[Anonymous] Error getting session status:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get session status'
@@ -226,3 +243,61 @@ export const getSessionStatus = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Check if a specific song can be played (pre-flight check)
+ * GET /api/anonymous/can-play/:sessionId/:songId
+ */
+export const canPlaySong = async (req: Request, res: Response) => {
+  try {
+    const { sessionId, songId } = req.params;
+
+    const session = await AnonymousSession.findOne({
+      sessionId,
+      sessionType: 'landing'
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        canPlay: false,
+        error: 'Session not found',
+        requiresNewSession: true
+      });
+    }
+
+    if (new Date() >= session.expiresAt) {
+      return res.status(410).json({
+        success: false,
+        canPlay: false,
+        error: 'Session expired',
+        requiresNewSession: true
+      });
+    }
+
+    // Reset if new day
+    session.resetDailyPlaysIfNeeded();
+
+    // Can play if: already played today (free replay) OR under daily limit
+    const alreadyPlayedToday = session.hasPlayedSongToday(songId);
+    const canPlay = alreadyPlayedToday || session.canPlayMore();
+
+    res.json({
+      success: true,
+      canPlay,
+      alreadyPlayedToday,
+      data: getSessionResponseData(session),
+      message: !canPlay
+        ? 'Daily limit reached. Sign up for unlimited music!'
+        : alreadyPlayedToday
+          ? 'Replaying this song is free!'
+          : undefined
+    });
+  } catch (error) {
+    console.error('[Anonymous] Error checking if can play:', error);
+    res.status(500).json({
+      success: false,
+      canPlay: false,
+      error: 'Failed to check play status'
+    });
+  }
+};

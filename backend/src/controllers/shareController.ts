@@ -276,9 +276,9 @@ export const initializeAnonymousSession = async (req: Request, res: Response) =>
           success: true,
           data: {
             sessionId: existingSession.sessionId,
-            playCount: existingSession.playCount,
+            playCount: existingSession.dailyPlayCount,
             canPlayMore: existingSession.canPlayMore(),
-            hasReachedLimit: existingSession.hasReachedLimit
+            hasReachedLimit: existingSession.dailyPlayCount >= existingSession.dailyLimit
           }
         });
       }
@@ -293,7 +293,10 @@ export const initializeAnonymousSession = async (req: Request, res: Response) =>
       sessionId,
       shareId,
       sessionType: 'share',
-      playLimit: 3, // 3 songs for share sessions
+      dailyLimit: 3, // 3 songs for share sessions (no daily reset for shares)
+      songsPlayedToday: [],
+      dailyPlayCount: 0,
+      totalSongsPlayed: 0,
       ipAddress,
       userAgent,
       expiresAt
@@ -354,7 +357,7 @@ export const trackAnonymousPlay = async (req: Request, res: Response) => {
     }
 
     // Check if limit is already reached
-    if (session.hasReachedLimit) {
+    if (session.dailyPlayCount >= session.dailyLimit) {
       return res.status(403).json({
         success: false,
         error: 'Play limit reached. Please create an account to continue listening.',
@@ -374,10 +377,10 @@ export const trackAnonymousPlay = async (req: Request, res: Response) => {
     res.status(200).json({
       success: true,
       data: {
-        playCount: session.playCount,
+        playCount: session.dailyPlayCount,
         canPlayMore: session.canPlayMore(),
-        hasReachedLimit: session.hasReachedLimit,
-        remainingPlays: Math.max(0, 3 - session.playCount)
+        hasReachedLimit: session.dailyPlayCount >= session.dailyLimit,
+        remainingPlays: Math.max(0, session.dailyLimit - session.dailyPlayCount)
       }
     });
   } catch (error) {
@@ -418,11 +421,11 @@ export const checkSessionStatus = async (req: Request, res: Response) => {
       success: true,
       data: {
         sessionId: session.sessionId,
-        playCount: session.playCount,
+        playCount: session.dailyPlayCount,
         canPlayMore: session.canPlayMore(),
-        hasReachedLimit: session.hasReachedLimit,
-        remainingPlays: Math.max(0, 3 - session.playCount),
-        songsPlayed: session.songsPlayed
+        hasReachedLimit: session.dailyPlayCount >= session.dailyLimit,
+        remainingPlays: Math.max(0, session.dailyLimit - session.dailyPlayCount),
+        songsPlayed: session.songsPlayedToday
       }
     });
   } catch (error) {

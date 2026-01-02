@@ -5,26 +5,31 @@ export interface IAnonymousSession extends Document {
   shareId?: string; // which share link they're accessing (optional for landing page sessions)
   sessionType: 'share' | 'landing'; // type of session
 
-  // Track plays
-  songsPlayed: string[]; // array of song IDs that have been played
-  playCount: number; // total number of songs played
+  // Track plays - daily reset
+  songsPlayedToday: string[]; // array of song IDs played TODAY
+  dailyPlayCount: number; // plays today (resets daily)
+  lastPlayDate: Date; // date of last play (used for daily reset check)
+
+  // Lifetime stats (optional, for analytics)
+  totalSongsPlayed: number; // total songs ever played in this session
 
   // Session metadata
   ipAddress?: string;
   userAgent?: string;
 
   // Restrictions
-  hasReachedLimit: boolean; // true if they've hit the limit (3 for share, 5 for landing)
-  playLimit: number; // maximum plays allowed (3 for share, 5 for landing)
+  dailyLimit: number; // maximum plays allowed per day (5 for landing, 3 for share)
 
   createdAt: Date;
   updatedAt: Date;
-  expiresAt: Date; // sessions expire after 24 hours
+  expiresAt: Date; // sessions expire after 30 days of inactivity
 
   // Methods
   addSongPlay(songId: string): Promise<IAnonymousSession>;
-  hasPlayedSong(songId: string): boolean;
+  hasPlayedSongToday(songId: string): boolean;
   canPlayMore(): boolean;
+  getRemainingPlays(): number;
+  resetDailyPlaysIfNeeded(): void;
 }
 
 const anonymousSessionSchema = new Schema<IAnonymousSession>({
@@ -36,19 +41,27 @@ const anonymousSessionSchema = new Schema<IAnonymousSession>({
   },
   shareId: {
     type: String,
-    required: false, // Optional for landing page sessions
+    required: false,
     index: true
   },
   sessionType: {
     type: String,
     enum: ['share', 'landing'],
-    default: 'share',
+    default: 'landing',
     index: true
   },
-  songsPlayed: [{
+  songsPlayedToday: [{
     type: String
   }],
-  playCount: {
+  dailyPlayCount: {
+    type: Number,
+    default: 0
+  },
+  lastPlayDate: {
+    type: Date,
+    default: null
+  },
+  totalSongsPlayed: {
     type: Number,
     default: 0
   },
@@ -58,13 +71,9 @@ const anonymousSessionSchema = new Schema<IAnonymousSession>({
   userAgent: {
     type: String
   },
-  hasReachedLimit: {
-    type: Boolean,
-    default: false
-  },
-  playLimit: {
+  dailyLimit: {
     type: Number,
-    default: 3 // Default 3 for share sessions, 5 for landing
+    default: 5 // 5 songs per day for landing page
   },
   expiresAt: {
     type: Date,
@@ -83,38 +92,80 @@ const anonymousSessionSchema = new Schema<IAnonymousSession>({
   }
 });
 
-// Indexes for efficient querying
-anonymousSessionSchema.index({ sessionId: 1, shareId: 1 });
-anonymousSessionSchema.index({ sessionId: 1, sessionType: 1 }); // For landing page sessions
-anonymousSessionSchema.index({ expiresAt: 1 }); // For automatic cleanup via TTL
+// Indexes
+anonymousSessionSchema.index({ sessionId: 1, sessionType: 1 });
+anonymousSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
 
-// TTL index to automatically delete expired sessions after 24 hours
-anonymousSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+/**
+ * Check if it's a new day and reset plays if needed
+ */
+anonymousSessionSchema.methods.resetDailyPlaysIfNeeded = function(): void {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today (midnight)
 
-// Method to add a song play
-anonymousSessionSchema.methods.addSongPlay = function(songId: string) {
-  // Only count unique songs
-  if (!this.songsPlayed.includes(songId)) {
-    this.songsPlayed.push(songId);
-    this.playCount += 1;
-
-    // Check if limit is reached (based on playLimit)
-    if (this.playCount >= this.playLimit) {
-      this.hasReachedLimit = true;
-    }
+  if (!this.lastPlayDate) {
+    // First time playing - no reset needed, will be set on first play
+    return;
   }
+
+  const lastPlay = new Date(this.lastPlayDate);
+  const lastPlayDay = new Date(lastPlay.getFullYear(), lastPlay.getMonth(), lastPlay.getDate());
+
+  // If last play was on a different day, reset daily counts
+  if (lastPlayDay.getTime() < today.getTime()) {
+    console.log(`[AnonymousSession] New day detected, resetting daily plays for session ${this.sessionId.substring(0, 8)}...`);
+    this.songsPlayedToday = [];
+    this.dailyPlayCount = 0;
+  }
+};
+
+/**
+ * Add a song play (tracks daily unique plays)
+ */
+anonymousSessionSchema.methods.addSongPlay = async function(songId: string): Promise<IAnonymousSession> {
+  // First, check if we need to reset for a new day
+  this.resetDailyPlaysIfNeeded();
+
+  // Only count if this song hasn't been played today
+  if (!this.songsPlayedToday.includes(songId)) {
+    this.songsPlayedToday.push(songId);
+    this.dailyPlayCount += 1;
+    this.totalSongsPlayed += 1;
+  }
+
+  // Update last play date
+  this.lastPlayDate = new Date();
+
+  // Extend session expiry (30 days from now) - keeps session alive while user is active
+  const newExpiry = new Date();
+  newExpiry.setDate(newExpiry.getDate() + 30);
+  this.expiresAt = newExpiry;
 
   return this.save();
 };
 
-// Method to check if a song has been played
-anonymousSessionSchema.methods.hasPlayedSong = function(songId: string): boolean {
-  return this.songsPlayed.includes(songId);
+/**
+ * Check if a song has been played today
+ */
+anonymousSessionSchema.methods.hasPlayedSongToday = function(songId: string): boolean {
+  this.resetDailyPlaysIfNeeded();
+  return this.songsPlayedToday.includes(songId);
 };
 
-// Method to check if user can play more songs
+/**
+ * Check if user can play more songs today
+ */
 anonymousSessionSchema.methods.canPlayMore = function(): boolean {
-  return this.playCount < this.playLimit;
+  this.resetDailyPlaysIfNeeded();
+  return this.dailyPlayCount < this.dailyLimit;
+};
+
+/**
+ * Get remaining plays for today
+ */
+anonymousSessionSchema.methods.getRemainingPlays = function(): number {
+  this.resetDailyPlaysIfNeeded();
+  return Math.max(0, this.dailyLimit - this.dailyPlayCount);
 };
 
 export const AnonymousSession = mongoose.model<IAnonymousSession>('AnonymousSession', anonymousSessionSchema);
