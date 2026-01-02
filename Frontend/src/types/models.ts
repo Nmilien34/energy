@@ -206,10 +206,11 @@ export interface ShareContent {
 export interface AnonymousSession {
   sessionId: string;
   playCount: number;
+  remainingPlays: number;
   canPlayMore: boolean;
   hasReachedLimit: boolean;
-  remainingPlays?: number;
-  songsPlayed?: string[];
+  dailyLimit: number;
+  songsPlayedToday: string[];
 }
 
 export interface CreateShareResponse {

@@ -1,4 +1,6 @@
 import React from 'react';
+import { X, Check, Music, ListMusic, Share2, Infinity } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface AnonymousLimitModalProps {
   isOpen: boolean;
@@ -17,125 +19,102 @@ const AnonymousLimitModal: React.FC<AnonymousLimitModalProps> = ({
   message,
   title = 'Create an Account to Continue'
 }) => {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
   if (!isOpen) return null;
 
+  const benefits = [
+    { icon: Infinity, text: 'Unlimited song plays', color: 'text-purple-400' },
+    { icon: ListMusic, text: 'Create your own playlists', color: 'text-blue-400' },
+    { icon: Music, text: 'Access the full platform', color: 'text-cyan-400' },
+    { icon: Share2, text: 'Share music with friends', color: 'text-purple-400' },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-music-black-light rounded-xl p-6 max-w-md w-full mx-4 border border-white/10">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-music-purple to-music-blue rounded-full mx-auto mb-4 flex items-center justify-center">
-            <svg
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-white text-center mb-2 font-display">
-            {title}
-          </h2>
-          <p className="text-music-gray text-center">{message}</p>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 backdrop-blur-sm ${isLight ? 'bg-black/40' : 'bg-black/70'}`}
+        onClick={onClose}
+      />
 
-        {/* Benefits */}
-        <div className="mb-6 space-y-3">
-          <div className="flex items-start space-x-3">
-            <svg
-              className="w-5 h-5 text-music-blue mt-0.5 flex-shrink-0"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span className="text-sm text-gray-300">Unlimited song plays</span>
-          </div>
-          <div className="flex items-start space-x-3">
-            <svg
-              className="w-5 h-5 text-music-purple mt-0.5 flex-shrink-0"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span className="text-sm text-gray-300">Create your own playlists</span>
-          </div>
-          <div className="flex items-start space-x-3">
-            <svg
-              className="w-5 h-5 text-music-blue mt-0.5 flex-shrink-0"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span className="text-sm text-gray-300">Access the full music platform</span>
-          </div>
-          <div className="flex items-start space-x-3">
-            <svg
-              className="w-5 h-5 text-music-purple mt-0.5 flex-shrink-0"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span className="text-sm text-gray-300">Share music with friends</span>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          <button
-            onClick={onSignup}
-            className="w-full bg-gradient-to-r from-music-purple to-music-blue hover:from-music-purple-hover hover:to-music-blue-hover text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 font-display"
-          >
-            Create Account
-          </button>
-          <button
-            onClick={onLogin}
-            className="w-full bg-music-black-lighter hover:bg-white/10 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 border border-white/10"
-          >
-            I Already Have an Account
-          </button>
-        </div>
-
+      {/* Modal */}
+      <div className={`relative w-full max-w-md rounded-2xl border backdrop-blur-2xl shadow-2xl ${
+        isLight
+          ? 'bg-white/90 border-black/10'
+          : 'bg-zinc-900/90 border-white/10'
+      }`}>
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-music-gray hover:text-white transition-colors"
+          className={`absolute top-4 right-4 p-1 rounded-full transition-colors ${
+            isLight
+              ? 'text-black/40 hover:text-black/70 hover:bg-black/5'
+              : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+          }`}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <X className="w-5 h-5" />
         </button>
+
+        <div className="p-6">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className={`w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center ${
+              isLight ? 'bg-purple-100' : 'bg-purple-500/20'
+            }`}>
+              <Music className={`w-7 h-7 ${isLight ? 'text-purple-600' : 'text-purple-400'}`} />
+            </div>
+            <h2 className={`text-xl font-bold mb-2 ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>
+              {title}
+            </h2>
+            <p className={`text-sm ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/60'}`}>
+              {message}
+            </p>
+          </div>
+
+          {/* Benefits */}
+          <div className={`rounded-xl p-4 mb-6 space-y-3 ${
+            isLight ? 'bg-black/5' : 'bg-white/5'
+          }`}>
+            {benefits.map((benefit, index) => (
+              <div key={index} className="flex items-center space-x-3">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                  isLight ? 'bg-green-100' : 'bg-green-500/20'
+                }`}>
+                  <Check className={`w-3 h-3 ${isLight ? 'text-green-600' : 'text-green-400'}`} />
+                </div>
+                <span className={`text-sm ${isLight ? 'text-[var(--text-primary)]' : 'text-white/80'}`}>
+                  {benefit.text}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <button
+              onClick={onSignup}
+              className={`w-full py-3 px-4 rounded-xl font-semibold transition-all active:scale-[0.98] ${
+                isLight
+                  ? 'bg-[var(--text-primary)] text-white hover:bg-black/80'
+                  : 'bg-white text-zinc-900 hover:bg-white/90'
+              }`}
+            >
+              Create Free Account
+            </button>
+            <button
+              onClick={onLogin}
+              className={`w-full py-3 px-4 rounded-xl font-medium transition-all border ${
+                isLight
+                  ? 'bg-transparent border-black/10 text-[var(--text-primary)] hover:bg-black/5'
+                  : 'bg-transparent border-white/10 text-white hover:bg-white/5'
+              }`}
+            >
+              I Already Have an Account
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
