@@ -528,28 +528,74 @@ class RecommendationEngine {
 
   /**
    * Fallback recommendation when algorithm fails
+   * This should ALWAYS return something to keep the vibes going
    */
   private async getFallbackRecommendation(
     context: UserSessionContext
   ): Promise<RecommendationResponse> {
-    console.log('[Recommendation] Using fallback');
+    console.log('[Recommendation] Using fallback - keeping the vibes going!');
 
-    // Get popular songs that match the current genre
-    const inference = this.inferGenre({
-      title: context.currentTrack.title,
-      artist: context.currentTrack.artist,
-      tags: context.currentTrack.genres,
-      channelTitle: context.currentTrack.artist
-    } as ISong);
+    // Build list of songs to exclude (recently played)
+    const excludeIds = [
+      context.currentTrack.youtubeId,
+      ...context.recentHistory
+    ];
 
-    const fallbackSongs = await Song.find({})
-      .sort({ playCount: -1 })
-      .limit(10)
-      .lean();
+    // Try to get songs matching the current genre first
+    const currentGenres = context.currentTrack.genres;
+    let fallbackSongs: any[] = [];
+
+    if (currentGenres.length > 0) {
+      // First try: genre-matched popular songs
+      fallbackSongs = await Song.find({
+        youtubeId: { $nin: excludeIds },
+        $or: currentGenres.map(genre => ({
+          $or: [
+            { tags: { $regex: genre, $options: 'i' } },
+            { title: { $regex: genre, $options: 'i' } }
+          ]
+        }))
+      })
+        .sort({ playCount: -1, viewCount: -1 })
+        .limit(20)
+        .lean();
+    }
+
+    // Second try: any popular songs not in history
+    if (fallbackSongs.length < 5) {
+      console.log('[Recommendation] Fallback: fetching popular songs...');
+      const popularSongs = await Song.find({
+        youtubeId: { $nin: excludeIds }
+      })
+        .sort({ playCount: -1, viewCount: -1 })
+        .limit(20)
+        .lean();
+
+      // Merge with genre-matched, avoiding duplicates
+      const existingIds = new Set(fallbackSongs.map(s => s.youtubeId));
+      for (const song of popularSongs) {
+        if (!existingIds.has(song.youtubeId)) {
+          fallbackSongs.push(song);
+          if (fallbackSongs.length >= 20) break;
+        }
+      }
+    }
+
+    // Third try: ANY songs if still empty (allow repeats)
+    if (fallbackSongs.length === 0) {
+      console.log('[Recommendation] Fallback: allowing repeats...');
+      fallbackSongs = await Song.find({})
+        .sort({ playCount: -1, viewCount: -1 })
+        .limit(20)
+        .lean();
+    }
 
     if (fallbackSongs.length > 0) {
-      const randomIndex = Math.floor(Math.random() * Math.min(5, fallbackSongs.length));
+      // Pick a random song from top 10
+      const randomIndex = Math.floor(Math.random() * Math.min(10, fallbackSongs.length));
       const selected = this.songToRecommendationTrack(fallbackSongs[randomIndex] as ISong);
+
+      console.log('[Recommendation] Fallback selected:', selected.title);
 
       return {
         nextTrack: selected,
@@ -557,6 +603,7 @@ class RecommendationEngine {
       };
     }
 
+    // This should never happen if there are ANY songs in the database
     throw new Error('No songs available for recommendation');
   }
 

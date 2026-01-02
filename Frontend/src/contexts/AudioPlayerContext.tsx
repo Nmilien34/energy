@@ -718,6 +718,41 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     dispatch({ type: 'SET_CURRENT_TIME', payload: 0 });
   };
 
+  // Fallback: fetch a random trending song when recommendation fails
+  const fetchTrendingFallback = useCallback(async (): Promise<Song | null> => {
+    console.log('[AutoPlay] Fetching trending fallback...');
+    try {
+      const response = await musicService.getTrendingSongs(20);
+      const songs = response.data?.songs;
+
+      if (response.success && songs && songs.length > 0) {
+        // Filter out songs already in session history
+        const availableSongs = songs.filter(
+          (song: Song) => !sessionHistoryRef.current.includes(song.youtubeId || song.id)
+        );
+
+        if (availableSongs.length > 0) {
+          // Pick a random song from available trending
+          const randomIndex = Math.floor(Math.random() * Math.min(10, availableSongs.length));
+          const song = availableSongs[randomIndex];
+          console.log('[AutoPlay] Trending fallback:', song.title);
+          return song;
+        } else {
+          // All trending songs played, just pick a random one anyway
+          const randomIndex = Math.floor(Math.random() * Math.min(10, songs.length));
+          const song = songs[randomIndex];
+          console.log('[AutoPlay] Trending fallback (repeat):', song.title);
+          return song;
+        }
+      }
+      console.warn('[AutoPlay] No trending songs available');
+      return null;
+    } catch (error) {
+      console.error('[AutoPlay] Trending fallback failed:', error);
+      return null;
+    }
+  }, []);
+
   // Fetch next recommendation from the API
   const fetchNextRecommendation = useCallback(async (currentSong: Song): Promise<Song | null> => {
     if (isLoadingRecommendation.current) {
@@ -745,16 +780,19 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
         console.log('[AutoPlay] Got recommendation:', nextTrack.title);
         return nextTrack;
       } else {
-        console.warn('[AutoPlay] No recommendation returned:', response);
-        return null;
+        console.warn('[AutoPlay] No recommendation returned, trying trending fallback...');
+        // Fallback to trending songs
+        return await fetchTrendingFallback();
       }
     } catch (error) {
       console.error('[AutoPlay] Failed to fetch recommendation:', error);
-      return null;
+      // Fallback to trending on error too
+      console.log('[AutoPlay] Trying trending fallback after error...');
+      return await fetchTrendingFallback();
     } finally {
       isLoadingRecommendation.current = false;
     }
-  }, []);
+  }, [fetchTrendingFallback]);
 
   // Record a transition between two tracks
   const recordTransition = useCallback(async (fromSong: Song, toSong: Song, source: 'auto' | 'manual' | 'shuffle' = 'auto') => {
