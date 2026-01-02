@@ -308,6 +308,154 @@ class MusicService {
     return response.data;
   }
 
+  // ============================================================
+  // RECOMMENDATION API (Infinite Context Shuffle)
+  // ============================================================
+
+  /**
+   * Get the next track recommendation based on current track
+   * This is the core of the auto-play feature
+   */
+  async getNextRecommendation(
+    currentTrackId: string,
+    sessionId?: string,
+    sessionHistory?: string[]
+  ): Promise<ApiResponse<{
+    nextTrack: Song;
+    alternatives: Song[];
+    sessionId: string;
+  }>> {
+    const response = await api.post('/api/recommend/next', {
+      currentTrackId,
+      sessionId,
+      sessionHistory
+    });
+
+    // Decode HTML entities in recommended tracks
+    if (response.data.success && response.data.data) {
+      const data = response.data.data;
+      if (data.nextTrack) {
+        data.nextTrack = {
+          ...data.nextTrack,
+          title: decodeHtmlEntities(data.nextTrack.title),
+          artist: decodeHtmlEntities(data.nextTrack.artist),
+        };
+      }
+      if (data.alternatives) {
+        data.alternatives = data.alternatives.map((song: Song) => ({
+          ...song,
+          title: decodeHtmlEntities(song.title),
+          artist: decodeHtmlEntities(song.artist),
+        }));
+      }
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Record a transition between two tracks (for improving recommendations)
+   */
+  async recordTransition(
+    fromTrackId: string,
+    toTrackId: string,
+    sessionId: string,
+    options?: {
+      completed?: boolean;
+      skipped?: boolean;
+      source?: 'auto' | 'manual' | 'shuffle';
+    }
+  ): Promise<ApiResponse<{ transitionId: string }>> {
+    const response = await api.post('/api/recommend/transition', {
+      fromTrackId,
+      toTrackId,
+      sessionId,
+      ...options
+    });
+    return response.data;
+  }
+
+  /**
+   * Start a radio station based on a seed track
+   * Returns the seed track plus 5 recommended follow-up tracks
+   */
+  async startRadio(
+    seedTrackId: string,
+    sessionId?: string
+  ): Promise<ApiResponse<{
+    sessionId: string;
+    seedTrack: Song;
+    queue: Song[];
+  }>> {
+    const response = await api.post('/api/recommend/radio', {
+      seedTrackId,
+      sessionId
+    });
+
+    // Decode HTML entities
+    if (response.data.success && response.data.data) {
+      const data = response.data.data;
+      if (data.seedTrack) {
+        data.seedTrack = {
+          ...data.seedTrack,
+          title: decodeHtmlEntities(data.seedTrack.title),
+          artist: decodeHtmlEntities(data.seedTrack.artist),
+        };
+      }
+      if (data.queue) {
+        data.queue = data.queue.map((song: Song) => ({
+          ...song,
+          title: decodeHtmlEntities(song.title),
+          artist: decodeHtmlEntities(song.artist),
+        }));
+      }
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Get similar tracks to a given track
+   */
+  async getSimilarTracks(trackId: string, limit = 10): Promise<ApiResponse<{
+    tracks: Song[];
+    sourceTrack: { id: string; title: string; artist: string };
+  }>> {
+    const response = await api.get(`/api/recommend/similar/${trackId}?limit=${limit}`);
+
+    // Decode HTML entities
+    if (response.data.success && response.data.data?.tracks) {
+      response.data.data.tracks = response.data.data.tracks.map((song: Song) => ({
+        ...song,
+        title: decodeHtmlEntities(song.title),
+        artist: decodeHtmlEntities(song.artist),
+      }));
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Get personalized "For You" recommendations
+   */
+  async getForYouRecommendations(limit = 20): Promise<ApiResponse<{
+    tracks: Song[];
+    type: 'personalized' | 'trending';
+  }>> {
+    const response = await api.get(`/api/recommend/for-you?limit=${limit}`);
+
+    // Decode HTML entities
+    if (response.data.success && response.data.data?.tracks) {
+      response.data.data.tracks = response.data.data.tracks.map((song: Song) => ({
+        ...song,
+        title: decodeHtmlEntities(song.title),
+        artist: decodeHtmlEntities(song.artist),
+      }));
+    }
+
+    return response.data;
+  }
+
   // Authentication OAuth
   initiateGoogleOAuth(): void {
     window.location.href = '/api/auth/oauth/google';

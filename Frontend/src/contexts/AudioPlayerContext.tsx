@@ -1,6 +1,11 @@
-import React, { createContext, useContext, useReducer, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useRef, useEffect, useCallback } from 'react';
 import { Song, PlayerState, YouTubeMode } from '../types/models';
 import { musicService } from '../services/musicService';
+
+// Generate a unique session ID for recommendation tracking
+const generateSessionId = (): string => {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
 
 interface AudioPlayerContextType {
   state: PlayerState;
@@ -140,6 +145,15 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   const maxRetries = 3;
   const shuffleSourceRef = useRef<Song[]>([]);
 
+  // Session tracking for recommendations
+  const sessionIdRef = useRef<string>(generateSessionId());
+  const sessionHistoryRef = useRef<string[]>([]);
+  const isLoadingRecommendation = useRef<boolean>(false);
+  const autoPlayEnabled = useRef<boolean>(true); // Enable auto-play by default
+
+  // Ref to hold the latest next function (for use in event handlers)
+  const nextRef = useRef<() => void>(() => {});
+
   // Keep a ref of latest YouTube mode for event handlers
   useEffect(() => {
     youtubeModeRef.current = state.youtubeMode || { isYoutube: false };
@@ -188,7 +202,9 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           audio.play();
         }
       } else {
-        next();
+        // Use nextRef to always call the latest version of next()
+        // This is important because next() may be async and fetch recommendations
+        nextRef.current();
       }
     };
 
@@ -294,7 +310,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title || 'Unknown Title',
       artist: currentSong.artist || 'Unknown Artist',
-      album: currentSong.album || 'NRGFLOW',
+      album: (currentSong as any).album || 'NRGFLOW',
       artwork: currentSong.thumbnail ? [
         { src: currentSong.thumbnail, sizes: '96x96', type: 'image/jpeg' },
         { src: currentSong.thumbnail, sizes: '128x128', type: 'image/jpeg' },
@@ -636,18 +652,75 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     dispatch({ type: 'SET_CURRENT_TIME', payload: 0 });
   };
 
-  const next = () => {
+  // Fetch next recommendation from the API
+  const fetchNextRecommendation = useCallback(async (currentSong: Song): Promise<Song | null> => {
+    if (isLoadingRecommendation.current) {
+      console.log('[AutoPlay] Already loading recommendation, skipping');
+      return null;
+    }
+
+    isLoadingRecommendation.current = true;
+    console.log('[AutoPlay] Fetching next recommendation for:', currentSong.title);
+
+    try {
+      const trackId = currentSong.youtubeId || currentSong.id;
+      const response = await musicService.getNextRecommendation(
+        trackId,
+        sessionIdRef.current,
+        sessionHistoryRef.current.slice(-20) // Send last 20 tracks for context
+      );
+
+      if (response.success && response.data?.nextTrack) {
+        const nextTrack = response.data.nextTrack;
+        // Update session ID if returned
+        if (response.data.sessionId) {
+          sessionIdRef.current = response.data.sessionId;
+        }
+        console.log('[AutoPlay] Got recommendation:', nextTrack.title);
+        return nextTrack;
+      } else {
+        console.warn('[AutoPlay] No recommendation returned:', response);
+        return null;
+      }
+    } catch (error) {
+      console.error('[AutoPlay] Failed to fetch recommendation:', error);
+      return null;
+    } finally {
+      isLoadingRecommendation.current = false;
+    }
+  }, []);
+
+  // Record a transition between two tracks
+  const recordTransition = useCallback(async (fromSong: Song, toSong: Song, source: 'auto' | 'manual' | 'shuffle' = 'auto') => {
+    try {
+      const fromId = fromSong.youtubeId || fromSong.id;
+      const toId = toSong.youtubeId || toSong.id;
+
+      await musicService.recordTransition(fromId, toId, sessionIdRef.current, {
+        completed: true,
+        skipped: false,
+        source
+      });
+      console.log('[Transition] Recorded:', fromSong.title, '->', toSong.title);
+    } catch (error) {
+      // Don't fail playback if transition recording fails
+      console.warn('[Transition] Failed to record:', error);
+    }
+  }, []);
+
+  const next = async () => {
     if (state.queue.length === 0) return;
 
+    const currentSong = state.queue[state.currentIndex];
     let nextIndex = state.currentIndex + 1;
-    
+
     // If we're approaching the end of the queue and have shuffle source, add more songs
     if (nextIndex >= state.queue.length - 1 && shuffleSourceRef.current.length > 0) {
       // Add a random song from the shuffle source to the end of the queue
       const availableSongs = shuffleSourceRef.current.filter(
         song => !state.queue.some(queueSong => queueSong.id === song.id)
       );
-      
+
       if (availableSongs.length > 0) {
         const randomSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
         dispatch({ type: 'ADD_TO_QUEUE', payload: randomSong });
@@ -657,20 +730,66 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
         dispatch({ type: 'ADD_TO_QUEUE', payload: randomSong });
       }
     }
-    
+
     if (nextIndex >= state.queue.length) {
       if (state.repeatMode === 'all') {
         nextIndex = 0;
       } else if (shuffleSourceRef.current.length > 0) {
         // In shuffle mode, we should have added a song above, so continue
         nextIndex = state.currentIndex + 1;
+      } else if (autoPlayEnabled.current && currentSong) {
+        // *** AUTO-PLAY: Fetch next recommendation when queue ends ***
+        console.log('[AutoPlay] Queue ended, fetching recommendation...');
+
+        const recommendedSong = await fetchNextRecommendation(currentSong);
+
+        if (recommendedSong) {
+          // Ensure the song has an ID (use youtubeId as fallback)
+          if (!recommendedSong.id && recommendedSong.youtubeId) {
+            recommendedSong.id = recommendedSong.youtubeId;
+          }
+
+          // Add to session history
+          const currentId = currentSong.youtubeId || currentSong.id;
+          if (currentId && !sessionHistoryRef.current.includes(currentId)) {
+            sessionHistoryRef.current.push(currentId);
+            // Keep history at reasonable size
+            if (sessionHistoryRef.current.length > 50) {
+              sessionHistoryRef.current = sessionHistoryRef.current.slice(-50);
+            }
+          }
+
+          // Record the transition for future recommendations
+          recordTransition(currentSong, recommendedSong, 'auto');
+
+          // Add to queue and play
+          dispatch({ type: 'ADD_TO_QUEUE', payload: recommendedSong });
+          nextIndex = state.queue.length; // Will be the new song's index
+          shouldAutoplayNextLoad.current = true;
+
+          console.log('[AutoPlay] Added to queue:', recommendedSong.title);
+        } else {
+          console.log('[AutoPlay] No recommendation available, stopping playback');
+          return; // No recommendation available, stop playback
+        }
       } else {
         return; // Don't advance if we're at the end and not repeating
       }
     }
 
+    // Record transition if moving to an existing song in queue
+    if (currentSong && state.queue[nextIndex]) {
+      recordTransition(currentSong, state.queue[nextIndex], 'auto');
+    }
+
     dispatch({ type: 'SET_CURRENT_INDEX', payload: nextIndex });
+    shouldAutoplayNextLoad.current = true;
   };
+
+  // Keep the nextRef updated so event handlers use the latest version
+  useEffect(() => {
+    nextRef.current = next;
+  });
 
   const previous = () => {
     if (state.queue.length === 0) return;
