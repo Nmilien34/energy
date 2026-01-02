@@ -7,6 +7,57 @@ const generateSessionId = (): string => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
+// Track if audio has been unlocked (required for iOS Safari)
+let audioUnlocked = false;
+
+// Unlock audio on first user interaction (required for iOS Safari)
+const unlockAudio = (audioElement: HTMLAudioElement | null): Promise<void> => {
+  if (audioUnlocked) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const unlock = () => {
+      if (audioUnlocked) {
+        resolve();
+        return;
+      }
+
+      console.log('[Mobile] Attempting to unlock audio...');
+
+      // Try to play a silent sound to unlock audio context
+      if (audioElement) {
+        // Create a short silence and try to play it
+        audioElement.volume = 0;
+        audioElement.muted = true;
+
+        const playPromise = audioElement.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              audioElement.pause();
+              audioElement.muted = false;
+              audioElement.volume = 0.8;
+              audioUnlocked = true;
+              console.log('[Mobile] Audio unlocked successfully');
+              resolve();
+            })
+            .catch(() => {
+              // Couldn't play, audio is still locked
+              console.log('[Mobile] Audio still locked, will try again on next interaction');
+              resolve();
+            });
+        } else {
+          audioUnlocked = true;
+          resolve();
+        }
+      } else {
+        resolve();
+      }
+    };
+
+    unlock();
+  });
+};
+
 interface AudioPlayerContextType {
   state: PlayerState;
   play: (song?: Song) => void;
@@ -463,9 +514,12 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
-      console.log('Fetching audio stream for song:', song.id);
+      console.log('[LoadSong] Fetching audio stream for song:', song.id);
+      console.log('[LoadSong] User agent:', navigator.userAgent);
+      console.log('[LoadSong] Is mobile:', /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+
       const streamResponse = await musicService.getSongAudioStream(song.id);
-      console.log('Stream response received:', streamResponse);
+      console.log('[LoadSong] Stream response received:', streamResponse);
 
       // Defensive extraction of possible URL fields from backend
       const data = streamResponse?.data as any;
@@ -587,6 +641,9 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       console.error('Audio ref is null in play()');
       return;
     }
+
+    // Try to unlock audio on mobile (must happen on user gesture)
+    await unlockAudio(audioRef.current);
 
     console.log('Play called with song:', song?.title || 'current song', 'YouTube mode:', state.youtubeMode?.isYoutube);
 
