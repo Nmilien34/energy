@@ -525,6 +525,14 @@ export const getSong = async (req: Request, res: Response) => {
   }
 };
 
+// Validate YouTube video ID format
+// Real YouTube IDs are 11 characters: letters, numbers, underscores, hyphens
+const isValidYouTubeId = (id: string): boolean => {
+  // YouTube video IDs are typically 11 characters
+  // They can contain: A-Z, a-z, 0-9, _, -
+  return /^[A-Za-z0-9_-]{10,12}$/.test(id);
+};
+
 export const getAudioStream = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -546,6 +554,24 @@ export const getAudioStream = async (req: Request, res: Response) => {
         });
       }
       youtubeId = song.youtubeId;
+
+      // Validate that the stored youtubeId is actually a valid YouTube video ID
+      if (!isValidYouTubeId(youtubeId)) {
+        console.error(`[AudioStream] Invalid YouTube ID stored in database for song ${id}: "${youtubeId}"`);
+        console.error(`[AudioStream] This song has corrupt data - youtubeId looks like a MongoDB ID`);
+
+        // Return error with helpful message
+        return res.status(400).json({
+          success: false,
+          error: 'This song has invalid YouTube data. Please search for it again.',
+          debug: {
+            storedYoutubeId: youtubeId,
+            mongoId: id,
+            songTitle: song.title,
+            issue: 'The stored YouTube ID is not a valid YouTube video ID'
+          }
+        });
+      }
     } else {
       // Find song by YouTube ID
       song = await Song.findOne({ youtubeId: id });
