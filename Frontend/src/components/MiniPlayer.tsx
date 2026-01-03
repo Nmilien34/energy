@@ -70,11 +70,9 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     // Start interval to update time from YouTube player
     if (!timeUpdateIntervalRef.current) {
       timeUpdateIntervalRef.current = setInterval(() => {
-        const wrapper = youtubeWrapperRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
-        const container = youtubeWrapperRef.current?.querySelector('[data-yt-container="true"]') as any;
-        const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
+        const ytPlayer = youtubePlayerRef.current;
 
-        if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function' && typeof ytPlayer.getDuration === 'function') {
+        if (ytPlayer && ytPlayer.isReady()) {
           try {
             const currentTime = ytPlayer.getCurrentTime();
             const duration = ytPlayer.getDuration();
@@ -103,35 +101,30 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
   // Effect to sync YouTube player with state
   useEffect(() => {
-    if (!state.youtubeMode?.isYoutube || !youtubeWrapperRef.current) return;
+    if (!state.youtubeMode?.isYoutube) return;
 
-    // Wait a bit for DOM to be ready and retry if player methods aren't available
+    // Wait a bit for player to be ready and retry if methods aren't available
     const syncPlayer = (retryCount = 0) => {
-      // Try wrapper first, then container
-      const wrapper = youtubeWrapperRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
-      const container = youtubeWrapperRef.current?.querySelector('[data-yt-container="true"]') as any;
-      const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
+      const ytPlayer = youtubePlayerRef.current;
 
       console.log('YouTube sync effect (attempt', retryCount + 1, '):', {
         hasPlayer: !!ytPlayer,
-        hasPlayMethod: !!(ytPlayer?.playVideo),
-        hasPauseMethod: !!(ytPlayer?.pauseVideo),
-        hasGetStateMethod: !!(ytPlayer?.getPlayerState),
+        isReady: ytPlayer?.isReady?.() ?? false,
         isPlaying: state.isPlaying,
         youtubeId: state.youtubeMode?.youtubeId
       });
 
       if (!ytPlayer) {
-        console.log('YouTube player not found');
+        console.log('YouTube player ref not available');
         if (retryCount < 10) {
           setTimeout(() => syncPlayer(retryCount + 1), 200);
         }
         return;
       }
 
-      // Check if essential methods are available
-      if (!ytPlayer.getPlayerState || !ytPlayer.playVideo || !ytPlayer.pauseVideo) {
-        console.log('YouTube player methods not ready yet');
+      // Check if player is ready
+      if (!ytPlayer.isReady()) {
+        console.log('YouTube player not ready yet');
         if (retryCount < 10) {
           setTimeout(() => syncPlayer(retryCount + 1), 200);
         }
@@ -146,25 +139,16 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
         if (playerState !== -1) {
           if (state.isPlaying && playerState !== 1) { // 1 = playing
             console.log('Starting YouTube playback');
-            // Start playback first
-            if (typeof ytPlayer.playVideo === 'function') {
-              ytPlayer.playVideo();
-            }
+            ytPlayer.playVideo();
             // Unmute after starting (YouTube requires muted autoplay, but we unmute immediately after)
             setTimeout(() => {
-              if (typeof ytPlayer.unMute === 'function') {
-                console.log('Unmuting YouTube player in sync effect');
-                ytPlayer.unMute();
-                if (typeof ytPlayer.setVolume === 'function') {
-                  ytPlayer.setVolume(100);
-                }
-              }
+              console.log('Unmuting YouTube player in sync effect');
+              ytPlayer.unMute();
+              ytPlayer.setVolume(100);
             }, 100);
           } else if (!state.isPlaying && playerState === 1) {
             console.log('Pausing YouTube playback');
-            if (typeof ytPlayer.pauseVideo === 'function') {
-              ytPlayer.pauseVideo();
-            }
+            ytPlayer.pauseVideo();
           }
         } else {
           console.log('Player not ready yet, state:', playerState);
@@ -231,14 +215,12 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
     // For YouTube videos, we need to seek using the YouTube player API
     if (state.youtubeMode?.isYoutube) {
-      const wrapper = youtubeWrapperRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
-      const container = youtubeWrapperRef.current?.querySelector('[data-yt-container="true"]') as any;
-      const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
+      const ytPlayer = youtubePlayerRef.current;
 
-      if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
+      if (ytPlayer && ytPlayer.isReady()) {
         try {
           console.log('Seeking YouTube video to:', time);
-          ytPlayer.seekTo(time, true); // true = allowSeekAhead
+          ytPlayer.seekTo(time);
         } catch (error) {
           console.warn('Failed to seek YouTube video:', error);
         }
@@ -716,44 +698,29 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
               // Wait a moment for methods to be fully available, then sync state
               setTimeout(() => {
-                // Try wrapper first, then container
-                const wrapper = youtubeWrapperRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
-                const container = youtubeWrapperRef.current?.querySelector('[data-yt-container="true"]') as any;
-                const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
+                const ytPlayer = youtubePlayerRef.current;
 
                 console.log('Player ready - checking methods:', {
                   hasPlayer: !!ytPlayer,
-                  playVideo: typeof ytPlayer?.playVideo,
-                  pauseVideo: typeof ytPlayer?.pauseVideo,
-                  unMute: typeof ytPlayer?.unMute,
-                  getPlayerState: typeof ytPlayer?.getPlayerState
+                  isReady: ytPlayer?.isReady?.() ?? false
                 });
 
-                if (state.isPlaying && ytPlayer) {
+                if (state.isPlaying && ytPlayer && ytPlayer.isReady()) {
                   console.log('Player is ready and should be playing, starting playback');
-                  if (typeof ytPlayer.unMute === 'function') {
-                    ytPlayer.unMute();
-                  }
-                  if (typeof ytPlayer.playVideo === 'function') {
-                    ytPlayer.playVideo();
-                  }
+                  ytPlayer.unMute();
+                  ytPlayer.playVideo();
                 }
               }, 150);
             }}
             onPlay={() => {
               console.log('YouTube player onPlay event fired');
               // Unmute the player as soon as it starts playing
-              const wrapper = youtubeWrapperRef.current?.querySelector('[data-yt-wrapper="true"]') as any;
-              const container = youtubeWrapperRef.current?.querySelector('[data-yt-container="true"]') as any;
-              const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
+              const ytPlayer = youtubePlayerRef.current;
 
-              if (ytPlayer && typeof ytPlayer.unMute === 'function') {
+              if (ytPlayer && ytPlayer.isReady()) {
                 console.log('Unmuting YouTube player');
                 ytPlayer.unMute();
-                // Also set volume to ensure it's audible
-                if (typeof ytPlayer.setVolume === 'function') {
-                  ytPlayer.setVolume(100);
-                }
+                ytPlayer.setVolume(100);
               }
 
               // Sync state when YouTube player starts playing

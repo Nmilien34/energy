@@ -19,13 +19,18 @@ export interface YouTubePlayerHandle {
   unMute: () => void;
   mute: () => void;
   setVolume: (volume: number) => void;
+  seekTo: (seconds: number) => void;
+  getCurrentTime: () => number;
+  getDuration: () => number;
+  getPlayerState: () => number;
+  isReady: () => boolean;
 }
 
 interface YouTubePlayerApi {
   playVideo: () => void;
   pauseVideo: () => void;
   stopVideo: () => void;
-  seekTo: (seconds: number) => void;
+  seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
   setVolume: (volume: number) => void;
   mute: () => void;
   unMute: () => void;
@@ -100,6 +105,32 @@ const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(({
       if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
         playerRef.current.setVolume(volume);
       }
+    },
+    seekTo: (seconds: number) => {
+      if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
+        playerRef.current.seekTo(seconds, true); // true = allowSeekAhead
+      }
+    },
+    getCurrentTime: () => {
+      if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
+        return playerRef.current.getCurrentTime();
+      }
+      return 0;
+    },
+    getDuration: () => {
+      if (playerRef.current && typeof playerRef.current.getDuration === 'function') {
+        return playerRef.current.getDuration();
+      }
+      return 0;
+    },
+    getPlayerState: () => {
+      if (playerRef.current && typeof playerRef.current.getPlayerState === 'function') {
+        return playerRef.current.getPlayerState();
+      }
+      return -1; // -1 = unstarted/not ready
+    },
+    isReady: () => {
+      return !!(playerRef.current && typeof playerRef.current.getPlayerState === 'function');
     }
   }), []);
 
