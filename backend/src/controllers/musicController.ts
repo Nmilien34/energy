@@ -176,7 +176,8 @@ export const searchMusic = async (req: Request, res: Response) => {
         cacheSource = 'database-search';
 
         // Cache these results for future searches
-        const youtubeIds = results.map(r => r.id);
+        // IMPORTANT: Use youtubeId (not id) for cache - id is MongoDB _id after normalization
+        const youtubeIds = results.map(r => r.youtubeId);
         await Promise.all([
           (SearchCache as any).upsertCache(q, youtubeIds, type, 1),
           redisService.isAvailable() ? redisService.cacheSearchResults(q, results) : Promise.resolve()
@@ -248,6 +249,7 @@ export const searchMusic = async (req: Request, res: Response) => {
         }
 
         // Cache the fresh results in all layers
+        // YouTube API results use 'id' field which IS the YouTube video ID
         const youtubeIds = results.map(r => r.id);
         await Promise.all([
           (SearchCache as any).upsertCache(q, youtubeIds, type, 1),
@@ -323,6 +325,16 @@ export const searchMusic = async (req: Request, res: Response) => {
     // Filter out any null results from invalid YouTube IDs
     const validSavedSongs = savedSongs.filter(song => song !== null);
 
+    // Deduplicate results by youtubeId (in case of overlapping sources)
+    const seenYoutubeIds = new Set<string>();
+    const uniqueSongs = validSavedSongs.filter(song => {
+      if (seenYoutubeIds.has(song.youtubeId)) {
+        return false; // Skip duplicate
+      }
+      seenYoutubeIds.add(song.youtubeId);
+      return true;
+    });
+
     // Add cache headers based on cache source
     if (cacheSource === 'redis' || cacheSource === 'database') {
       res.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour if from cache
@@ -333,8 +345,8 @@ export const searchMusic = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: {
-        songs: validSavedSongs,
-        total: validSavedSongs.length,
+        songs: uniqueSongs,
+        total: uniqueSongs.length,
         query: q,
         type,
         cacheSource,
