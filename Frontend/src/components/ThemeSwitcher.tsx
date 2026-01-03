@@ -47,10 +47,10 @@ const ThemeSwitcher: React.FC = () => {
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className={`absolute right-0 top-full mt-2 backdrop-blur-2xl rounded-xl border shadow-xl overflow-hidden min-w-[140px] z-50 ${
+          <div className={`absolute right-0 top-full mt-2 rounded-xl border shadow-2xl overflow-hidden min-w-[140px] z-[100] ${
             isLight
-              ? 'bg-white/80 border-black/10 shadow-black/10'
-              : 'bg-zinc-900/90 border-white/10 shadow-black/20'
+              ? 'bg-[#f5f4f1] border-black/10 shadow-black/20'
+              : 'bg-[#1a1a1a] border-white/10 shadow-black/40'
           }`}>
             {themes.map((t) => {
               const Icon = t.icon;
