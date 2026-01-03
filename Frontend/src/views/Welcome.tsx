@@ -131,17 +131,17 @@ const Welcome: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen overflow-hidden transition-colors ${
+    <div className={`min-h-screen overflow-hidden transition-colors pb-safe ${
       isLight
         ? 'bg-[var(--bg-primary)] text-[var(--text-primary)]'
         : 'bg-gradient-to-b from-music-black via-music-black-light to-music-black text-white'
     }`}>
-      {/* Gradient blobs for glass effect */}
+      {/* Gradient blobs for glass effect - smaller on mobile for performance */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full blur-[120px] ${isLight ? 'bg-purple-400/30' : 'bg-purple-600/20'}`}></div>
-        <div className={`absolute top-1/4 -right-20 w-[400px] h-[400px] rounded-full blur-[120px] ${isLight ? 'bg-blue-400/25' : 'bg-blue-600/20'}`}></div>
-        <div className={`absolute bottom-0 left-1/3 w-[600px] h-[400px] rounded-full blur-[120px] ${isLight ? 'bg-purple-300/20' : 'bg-purple-500/15'}`}></div>
-        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[100px] ${isLight ? 'bg-cyan-400/15' : 'bg-cyan-500/10'}`}></div>
+        <div className={`absolute -top-20 -left-20 sm:-top-40 sm:-left-40 w-[250px] h-[250px] sm:w-[500px] sm:h-[500px] rounded-full blur-[80px] sm:blur-[120px] ${isLight ? 'bg-purple-400/30' : 'bg-purple-600/20'}`}></div>
+        <div className={`absolute top-1/4 -right-10 sm:-right-20 w-[200px] h-[200px] sm:w-[400px] sm:h-[400px] rounded-full blur-[80px] sm:blur-[120px] ${isLight ? 'bg-blue-400/25' : 'bg-blue-600/20'}`}></div>
+        <div className={`absolute bottom-0 left-1/4 sm:left-1/3 w-[300px] h-[200px] sm:w-[600px] sm:h-[400px] rounded-full blur-[80px] sm:blur-[120px] ${isLight ? 'bg-purple-300/20' : 'bg-purple-500/15'}`}></div>
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 w-[150px] h-[150px] sm:w-[300px] sm:h-[300px] rounded-full blur-[60px] sm:blur-[100px] ${isLight ? 'bg-cyan-400/15' : 'bg-cyan-500/10'}`}></div>
       </div>
 
       {/* Navigation - Glass */}
@@ -150,73 +150,87 @@ const Welcome: React.FC = () => {
           ? 'bg-black/5 border-black/10 shadow-black/5'
           : 'bg-white/5 border-white/10 shadow-black/5'
       }`}>
-        <div className="container mx-auto px-6 py-5 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <img 
-              src="/logofortheapp.png" 
-              alt="NRGFLOW Logo" 
-              className="w-10 h-10 rounded-lg shadow-lg"
+        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-5 flex justify-between items-center">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <img
+              src="/logofortheapp.png"
+              alt="NRGFLOW Logo"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg shadow-lg"
             />
-            <h1 className="text-2xl font-black tracking-tight font-display">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight font-display">
               <span className="bg-gradient-to-r from-music-purple to-music-blue bg-clip-text text-transparent">
                 NRG
               </span>
               <span className={isLight ? 'text-[var(--text-primary)]' : 'text-white'}>FLOW</span>
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <ThemeSwitcher />
             {user ? (
               <UserMenu />
             ) : (
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-full backdrop-blur-xl font-medium transition-all ${
-                  isLight
-                    ? 'bg-black/5 border border-black/10 text-[var(--text-primary)] hover:bg-black/10'
-                    : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
-                }`}
-              >
-                <User className="h-4 w-4" />
-                <span>Log in</span>
-              </button>
+              <>
+                {/* Mobile: Icon only */}
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className={`sm:hidden p-2.5 rounded-full backdrop-blur-xl border transition-all ${
+                    isLight
+                      ? 'bg-black/5 border-black/10 text-[var(--text-primary)] hover:bg-black/10'
+                      : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <User className="h-4 w-4" />
+                </button>
+                {/* Desktop: Full button */}
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className={`hidden sm:flex items-center space-x-2 px-4 py-2 rounded-full backdrop-blur-xl font-medium transition-all ${
+                    isLight
+                      ? 'bg-black/5 border border-black/10 text-[var(--text-primary)] hover:bg-black/10'
+                      : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <User className="h-4 w-4" />
+                  <span>Log in</span>
+                </button>
+              </>
             )}
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 py-12 sm:py-20">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 py-8 sm:py-20">
         <div className="max-w-4xl mx-auto text-center animate-fade-in">
-          <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full backdrop-blur-xl border mb-6 ${
+          <div className={`inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-xl border mb-4 sm:mb-6 ${
             isLight ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'
           }`}>
-            <span className={`text-xs font-medium tracking-wide uppercase ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/60'}`}>Your Music, Your Way</span>
+            <span className={`text-[10px] sm:text-xs font-medium tracking-wide uppercase ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/60'}`}>Your Music, Your Way</span>
           </div>
-          
-          <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black mb-4 sm:mb-6 leading-tight font-display tracking-tight px-2">
+
+          <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-black mb-3 sm:mb-6 leading-[1.1] font-display tracking-tight">
             <span className="block">Music for</span>
             <span className="block bg-gradient-to-r from-music-purple via-purple-400 to-music-blue bg-clip-text text-transparent">
               Everyone
             </span>
           </h1>
-          
-          <p className={`text-base sm:text-lg md:text-xl lg:text-2xl mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed font-medium px-4 ${isLight ? 'text-[var(--text-secondary)]' : 'text-gray-400'}`}>
+
+          <p className={`text-sm sm:text-lg md:text-xl lg:text-2xl mb-6 sm:mb-12 max-w-2xl mx-auto leading-relaxed font-medium px-2 ${isLight ? 'text-[var(--text-secondary)]' : 'text-gray-400'}`}>
             Discover, convert, and manage your music collection.
             <span className={isLight ? 'text-[var(--text-primary)] font-medium' : 'text-white font-medium'}> All in one place.</span>
           </p>
 
           {/* Search Bar */}
-          <div className="relative max-w-2xl mx-auto mb-8 sm:mb-12 px-4">
+          <div className="relative max-w-2xl mx-auto mb-6 sm:mb-12 px-2 sm:px-4">
             <div className="relative">
-              <Search className={`absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 ${isLight ? 'text-[var(--text-tertiary)]' : 'text-gray-400'}`} />
+              <Search className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 ${isLight ? 'text-[var(--text-tertiary)]' : 'text-gray-400'}`} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchQuery && setShowSearchResults(true)}
-                placeholder="Search for songs, artists, or albums..."
-                className={`w-full backdrop-blur-2xl pl-12 pr-12 py-3.5 sm:py-4 rounded-2xl focus:outline-none focus:ring-2 border transition-all text-sm sm:text-base shadow-lg ${
+                placeholder="Search songs, artists..."
+                className={`w-full backdrop-blur-2xl pl-10 pr-10 sm:pl-12 sm:pr-12 py-3 sm:py-4 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 border transition-all text-sm shadow-lg ${
                   isLight
                     ? 'bg-black/5 text-[var(--text-primary)] border-black/10 hover:border-black/20 hover:bg-black/10 focus:ring-black/10 placeholder:text-black/30 shadow-black/5'
                     : 'bg-white/5 text-white border-white/10 hover:border-white/20 hover:bg-white/10 focus:ring-white/20 placeholder:text-white/40 shadow-black/10'
@@ -228,16 +242,16 @@ const Welcome: React.FC = () => {
                     setSearchQuery('');
                     setShowSearchResults(false);
                   }}
-                  className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${
+                  className={`absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 transition-colors ${
                     isLight ? 'text-black/40 hover:text-black/70' : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               )}
               {isSearching && (
-                <div className="absolute right-12 top-1/2 -translate-y-1/2">
-                  <div className={`animate-spin w-4 h-4 border-2 rounded-full ${
+                <div className="absolute right-10 sm:right-12 top-1/2 -translate-y-1/2">
+                  <div className={`animate-spin w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 rounded-full ${
                     isLight ? 'border-black/20 border-t-black/60' : 'border-white/20 border-t-white/60'
                   }`}></div>
                 </div>
@@ -246,8 +260,8 @@ const Welcome: React.FC = () => {
 
             {/* Search Results Dropdown */}
             {showSearchResults && (searchQuery || searchResults.length > 0) && (
-              <div className={`absolute top-full left-4 right-4 mt-2 backdrop-blur-2xl rounded-2xl shadow-2xl border max-h-[60vh] sm:max-h-96 overflow-y-auto z-50 ${
-                isLight ? 'bg-white/80 border-black/10' : 'bg-white/5 border-white/10'
+              <div className={`absolute top-full left-0 right-0 sm:left-4 sm:right-4 mt-2 backdrop-blur-2xl rounded-xl sm:rounded-2xl shadow-2xl border max-h-[50vh] sm:max-h-96 overflow-y-auto z-50 ${
+                isLight ? 'bg-white/90 border-black/10' : 'bg-zinc-900/95 border-white/10'
               }`}>
                 {searchError && (
                   <div className="p-4 text-red-500/80 text-center text-sm">
@@ -300,10 +314,10 @@ const Welcome: React.FC = () => {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-12 sm:mb-20 px-4">
+          <div className="flex flex-col sm:flex-row justify-center gap-2.5 sm:gap-4 mb-10 sm:mb-20 px-2 sm:px-4">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className={`group relative px-6 py-3 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl font-semibold text-sm sm:text-base active:scale-[0.98] transition-all font-display touch-manipulation shadow-lg ${
+              className={`group relative px-5 py-2.5 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl font-semibold text-sm active:scale-[0.98] transition-all font-display touch-manipulation shadow-lg ${
                 isLight
                   ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-black/80 shadow-black/10'
                   : 'bg-white/90 text-zinc-900 hover:bg-white shadow-white/10'
@@ -316,7 +330,7 @@ const Welcome: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/platform')}
-              className={`px-6 py-3 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl border font-medium text-sm sm:text-base active:scale-[0.98] transition-all font-display touch-manipulation ${
+              className={`px-5 py-2.5 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl border font-medium text-sm active:scale-[0.98] transition-all font-display touch-manipulation ${
                 isLight
                   ? 'bg-black/5 border-black/20 text-[var(--text-primary)] hover:bg-black/10 hover:border-black/30'
                   : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
@@ -328,65 +342,65 @@ const Welcome: React.FC = () => {
         </div>
 
         {/* Feature Cards - Glass */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 max-w-5xl mx-auto animate-slide-up px-4">
-          <div className={`group backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5 max-w-5xl mx-auto animate-slide-up px-2 sm:px-4">
+          <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
             isLight
               ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
               : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
           }`}>
-            <div className="flex items-center space-x-3 mb-3">
-              <div className={`w-9 h-9 rounded-xl backdrop-blur-xl border flex items-center justify-center ${
+            <div className="flex items-center space-x-3 mb-2 sm:mb-3">
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${
                 isLight ? 'bg-purple-500/10 border-purple-500/20' : 'bg-purple-500/20 border-purple-400/20'
               }`}>
-                <Download className={`h-4 w-4 ${isLight ? 'text-purple-600' : 'text-purple-300'}`} />
+                <Download className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isLight ? 'text-purple-600' : 'text-purple-300'}`} />
               </div>
-              <h3 className={`text-base sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>YouTube to MP3</h3>
+              <h3 className={`text-sm sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>YouTube to MP3</h3>
             </div>
-            <p className={`text-sm leading-relaxed ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/50'}`}>
+            <p className={`text-xs sm:text-sm leading-relaxed ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/50'}`}>
               Convert YouTube videos to high-quality MP3 files. No limits.
             </p>
           </div>
 
-          <div className={`group backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
+          <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
             isLight
               ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
               : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
           }`}>
-            <div className="flex items-center space-x-3 mb-3">
-              <div className={`w-9 h-9 rounded-xl backdrop-blur-xl border flex items-center justify-center ${
+            <div className="flex items-center space-x-3 mb-2 sm:mb-3">
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${
                 isLight ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-500/20 border-blue-400/20'
               }`}>
-                <Music className={`h-4 w-4 ${isLight ? 'text-blue-600' : 'text-blue-300'}`} />
+                <Music className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isLight ? 'text-blue-600' : 'text-blue-300'}`} />
               </div>
-              <h3 className={`text-base sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>Song Recognition</h3>
+              <h3 className={`text-sm sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>Song Recognition</h3>
             </div>
-            <p className={`text-sm leading-relaxed ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/50'}`}>
+            <p className={`text-xs sm:text-sm leading-relaxed ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/50'}`}>
               Identify any song instantly by uploading a short clip.
             </p>
           </div>
 
-          <div className={`group backdrop-blur-2xl p-5 sm:p-6 rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
+          <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
             isLight
               ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
               : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
           }`}>
-            <div className="flex items-center space-x-3 mb-3">
-              <div className={`w-9 h-9 rounded-xl backdrop-blur-xl border flex items-center justify-center ${
+            <div className="flex items-center space-x-3 mb-2 sm:mb-3">
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${
                 isLight ? 'bg-cyan-500/10 border-cyan-500/20' : 'bg-cyan-500/20 border-cyan-400/20'
               }`}>
-                <Heart className={`h-4 w-4 ${isLight ? 'text-cyan-600' : 'text-cyan-300'}`} />
+                <Heart className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isLight ? 'text-cyan-600' : 'text-cyan-300'}`} />
               </div>
-              <h3 className={`text-base sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>Personal Library</h3>
+              <h3 className={`text-sm sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>Personal Library</h3>
             </div>
-            <p className={`text-sm leading-relaxed ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/50'}`}>
+            <p className={`text-xs sm:text-sm leading-relaxed ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/50'}`}>
               Organize your music with playlists and favorites.
             </p>
           </div>
         </div>
 
         {/* Footer */}
-        <footer className="mt-20 sm:mt-32 pb-8 text-center">
-          <p className={`text-xs ${isLight ? 'text-black/30' : 'text-white/30'}`}>
+        <footer className="mt-12 sm:mt-32 pb-6 sm:pb-8 text-center">
+          <p className={`text-[10px] sm:text-xs ${isLight ? 'text-black/30' : 'text-white/30'}`}>
             Built for music lovers
           </p>
         </footer>
