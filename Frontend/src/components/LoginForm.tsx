@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface LoginFormProps {
@@ -7,13 +7,57 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
-  const { login, loginWithGoogle } = useAuth();
+  const {
+    login,
+    loginWithGoogle,
+    sessionExpired,
+    sessionExpiredReason,
+    lastLoggedInUser,
+    clearSessionExpired,
+    continueAsLastUser,
+    clearLastLoggedInUser,
+  } = useAuth();
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     rememberMe: false,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showContinueAs, setShowContinueAs] = useState(!!lastLoggedInUser);
+  const [continuePassword, setContinuePassword] = useState('');
+
+  // Pre-fill email if we have a last logged in user and they're not using "Continue as"
+  useEffect(() => {
+    if (lastLoggedInUser && !showContinueAs) {
+      setFormData(prev => ({ ...prev, email: lastLoggedInUser.email }));
+    }
+  }, [lastLoggedInUser, showContinueAs]);
+
+  // Clear session expired when component mounts (user is back on login page)
+  useEffect(() => {
+    if (sessionExpired) {
+      // Don't clear immediately - let the message show
+      const timer = setTimeout(() => {
+        clearSessionExpired();
+      }, 10000); // Clear after 10 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [sessionExpired, clearSessionExpired]);
+
+  // Get session expired message
+  const getSessionExpiredMessage = () => {
+    switch (sessionExpiredReason) {
+      case 'token_expired':
+        return 'Your session has expired. Please log in again to continue.';
+      case 'invalid_token':
+        return 'Your session is no longer valid. Please log in again.';
+      case 'user_not_found':
+        return 'Account not found. Please log in again.';
+      default:
+        return 'You have been logged out. Please log in again.';
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -47,8 +91,146 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
     }
   };
 
+  // Handle "Continue as" login
+  const handleContinueAs = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lastLoggedInUser) return;
+
+    setIsLoading(true);
+    try {
+      await continueAsLastUser(continuePassword);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      onSuccess();
+    } catch (error: any) {
+      onError(error);
+      setContinuePassword('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Switch to different account
+  const handleUseDifferentAccount = () => {
+    setShowContinueAs(false);
+    clearLastLoggedInUser();
+    setFormData({ email: '', password: '', rememberMe: false });
+  };
+
+  // If we have a returning user, show "Continue as" option
+  if (showContinueAs && lastLoggedInUser) {
+    return (
+      <div className="space-y-4">
+        {/* Session Expired Notice */}
+        {sessionExpired && (
+          <div className="bg-amber-500/10 border border-amber-500/50 rounded-lg p-4 mb-4">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-amber-500 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <p className="text-amber-500 text-sm font-medium">Session Expired</p>
+                <p className="text-amber-400/80 text-sm mt-1">{getSessionExpiredMessage()}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Welcome Back Card */}
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+            {lastLoggedInUser.profilePicture ? (
+              <img
+                src={lastLoggedInUser.profilePicture}
+                alt={lastLoggedInUser.username}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-2xl font-bold text-white">
+                {lastLoggedInUser.username.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <h3 className="text-lg font-semibold text-white">Welcome back!</h3>
+          <p className="text-zinc-400 text-sm mt-1">{lastLoggedInUser.username}</p>
+          <p className="text-zinc-500 text-xs">{lastLoggedInUser.email}</p>
+        </div>
+
+        {/* Continue As Form */}
+        <form onSubmit={handleContinueAs} className="space-y-4">
+          <div>
+            <label htmlFor="continuePassword" className="block text-sm font-medium text-[var(--text-secondary)]">
+              Enter your password to continue
+            </label>
+            <input
+              type="password"
+              id="continuePassword"
+              value={continuePassword}
+              onChange={(e) => setContinuePassword(e.target.value)}
+              className="mt-1 block w-full rounded-md bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Password"
+              required
+              disabled={isLoading}
+              autoFocus
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading || !continuePassword}
+            className="w-full rounded-md bg-blue-500 px-4 py-2 text-white font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all"
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Logging in...
+              </span>
+            ) : (
+              `Continue as ${lastLoggedInUser.username}`
+            )}
+          </button>
+        </form>
+
+        {/* Use Different Account */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-zinc-600"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-zinc-900 text-zinc-400">or</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleUseDifferentAccount}
+          className="w-full text-center text-sm text-zinc-400 hover:text-white transition-colors py-2"
+        >
+          Use a different account
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+      {/* Session Expired Notice */}
+      {sessionExpired && (
+        <div className="bg-amber-500/10 border border-amber-500/50 rounded-lg p-4 mb-4">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-amber-500 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="text-amber-500 text-sm font-medium">Session Expired</p>
+              <p className="text-amber-400/80 text-sm mt-1">{getSessionExpiredMessage()}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Google Login Button */}
       <button
         type="button"

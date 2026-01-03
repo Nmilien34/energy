@@ -26,7 +26,9 @@ export const config = {
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'fallback-secret-change-in-production',
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+    // Extended to 30 days for better UX - users don't have to login as often
+    // Session expiry is handled gracefully on the frontend with "Continue as" flow
+    expiresIn: process.env.JWT_EXPIRES_IN || '30d'
   },
   youtube: {
     apiKey: process.env.YOUTUBE_API_KEY || '',

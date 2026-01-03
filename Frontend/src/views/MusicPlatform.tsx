@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -10,6 +10,7 @@ import {
   Library,
   ListMusic,
   Youtube,
+  AlertTriangle,
 } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
 import UserMenu from '../components/UserMenu';
@@ -26,11 +27,39 @@ import { useAuth } from '../contexts/AuthContext';
 type ActiveView = 'dashboard' | 'search' | 'library' | 'playlists' | 'youtube' | 'settings';
 
 const MusicPlatform: React.FC = () => {
-  const { user } = useAuth();
+  const { user, sessionExpired, sessionExpiredReason } = useAuth();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
+
+  // Handle session expiry - show modal and redirect to home
+  useEffect(() => {
+    if (sessionExpired) {
+      setShowSessionExpiredModal(true);
+    }
+  }, [sessionExpired]);
+
+  // Get session expired message
+  const getSessionExpiredMessage = () => {
+    switch (sessionExpiredReason) {
+      case 'token_expired':
+        return 'Your session has expired due to inactivity.';
+      case 'invalid_token':
+        return 'Your session is no longer valid.';
+      case 'user_not_found':
+        return 'Your account could not be found.';
+      default:
+        return 'You have been logged out.';
+    }
+  };
+
+  // Handle session expired modal close - redirect to login
+  const handleSessionExpiredClose = () => {
+    setShowSessionExpiredModal(false);
+    navigate('/');
+  };
 
   const sidebarItems = [
     { id: 'dashboard' as ActiveView, icon: Home, label: 'Home', requiresAuth: false },
@@ -202,6 +231,29 @@ const MusicPlatform: React.FC = () => {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
       />
+
+      {/* Session Expired Modal */}
+      {showSessionExpiredModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-zinc-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-zinc-700">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/10">
+              <AlertTriangle className="w-8 h-8 text-amber-500" />
+            </div>
+            <h2 className="text-xl font-bold text-white text-center mb-2">Session Expired</h2>
+            <p className="text-zinc-400 text-center mb-6">
+              {getSessionExpiredMessage()}
+              <br />
+              <span className="text-sm">Please log in again to continue.</span>
+            </p>
+            <button
+              onClick={handleSessionExpiredClose}
+              className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
