@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { Sun, Moon, Monitor } from 'lucide-react';
 
@@ -49,6 +50,58 @@ const ThemeSwitcher: React.FC = () => {
     }
   }, [isOpen]);
 
+  // Close on scroll
+  useEffect(() => {
+    if (isOpen) {
+      const handleScroll = () => setIsOpen(false);
+      window.addEventListener('scroll', handleScroll, true);
+      return () => window.removeEventListener('scroll', handleScroll, true);
+    }
+  }, [isOpen]);
+
+  const dropdownContent = isOpen ? (
+    <div
+      ref={dropdownRef}
+      style={{
+        position: 'fixed',
+        top: dropdownPosition.top,
+        right: dropdownPosition.right,
+        zIndex: 99999,
+      }}
+      className={`rounded-xl border-2 shadow-2xl overflow-hidden min-w-[150px] ${
+        isLight
+          ? 'bg-[#f5f4f1] border-neutral-300'
+          : 'bg-[#1c1c1c] border-neutral-700'
+      }`}
+    >
+      {themes.map((t) => {
+        const Icon = t.icon;
+        return (
+          <button
+            key={t.id}
+            onClick={() => {
+              setTheme(t.id);
+              setIsOpen(false);
+            }}
+            disabled={loading}
+            className={`w-full px-4 py-3 flex items-center gap-3 text-left text-sm font-medium transition-colors disabled:opacity-50 ${
+              theme === t.id
+                ? isLight
+                  ? 'bg-black/10 text-black'
+                  : 'bg-white/15 text-white'
+                : isLight
+                  ? 'text-neutral-700 hover:bg-black/5 hover:text-black'
+                  : 'text-neutral-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            <span>{t.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
   return (
     <>
       {/* Mobile: Dropdown */}
@@ -66,48 +119,8 @@ const ThemeSwitcher: React.FC = () => {
           <CurrentIcon className="h-4 w-4" />
         </button>
 
-        {/* Dropdown Menu - Fixed position to escape stacking context */}
-        {isOpen && (
-          <div
-            ref={dropdownRef}
-            style={{
-              position: 'fixed',
-              top: dropdownPosition.top,
-              right: dropdownPosition.right,
-            }}
-            className={`rounded-xl border shadow-2xl overflow-hidden min-w-[140px] z-[9999] ${
-              isLight
-                ? 'bg-[#f5f4f1] border-black/15 shadow-black/25'
-                : 'bg-[#1c1c1c] border-white/15 shadow-black/50'
-            }`}
-          >
-            {themes.map((t) => {
-              const Icon = t.icon;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    setTheme(t.id);
-                    setIsOpen(false);
-                  }}
-                  disabled={loading}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left text-sm font-medium transition-all disabled:opacity-50 ${
-                    theme === t.id
-                      ? isLight
-                        ? 'bg-black/10 text-[var(--text-primary)]'
-                        : 'bg-white/15 text-white'
-                      : isLight
-                        ? 'text-black/70 hover:bg-black/5 hover:text-black'
-                        : 'text-white/70 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{t.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* Portal dropdown to body */}
+        {createPortal(dropdownContent, document.body)}
       </div>
 
       {/* Desktop: Inline buttons */}
