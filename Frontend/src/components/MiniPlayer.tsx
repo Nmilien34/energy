@@ -50,11 +50,62 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
   const [isDragging, setIsDragging] = useState(false);
   const [dragTime, setDragTime] = useState(0);
   const [activeProgressBar, setActiveProgressBar] = useState<React.RefObject<HTMLDivElement> | null>(null);
+  const [showMobileTapToPlay, setShowMobileTapToPlay] = useState(false);
   const youtubePlayerRef = useRef<YouTubePlayerHandle>(null); // Direct player control ref
   const youtubeWrapperRef = useRef<HTMLDivElement>(null); // Wrapper div for DOM queries
   const timeUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mobilePlayCheckRef = useRef<NodeJS.Timeout | null>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const miniProgressBarRef = useRef<HTMLDivElement>(null);
+
+  // Check if we're on mobile
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  // Mobile-specific: Check if YouTube player is stuck and needs user interaction
+  useEffect(() => {
+    if (!isMobile || !state.youtubeMode?.isYoutube || !state.isPlaying) {
+      setShowMobileTapToPlay(false);
+      return;
+    }
+
+    // Clear any existing check
+    if (mobilePlayCheckRef.current) {
+      clearTimeout(mobilePlayCheckRef.current);
+    }
+
+    // Wait a bit for player to initialize, then check if it's stuck
+    mobilePlayCheckRef.current = setTimeout(() => {
+      const ytPlayer = youtubePlayerRef.current;
+      if (ytPlayer && ytPlayer.isReady()) {
+        const playerState = ytPlayer.getPlayerState();
+        // -1 = unstarted, 3 = buffering (stuck), 5 = cued
+        // If we're supposed to be playing but player isn't, show tap overlay
+        if (playerState === -1 || playerState === 5 || (state.isPlaying && playerState !== 1)) {
+          console.log('[Mobile] YouTube player stuck, showing tap to play overlay. State:', playerState);
+          setShowMobileTapToPlay(true);
+        }
+      }
+    }, 2000); // Give player 2 seconds to start
+
+    return () => {
+      if (mobilePlayCheckRef.current) {
+        clearTimeout(mobilePlayCheckRef.current);
+      }
+    };
+  }, [isMobile, state.youtubeMode?.isYoutube, state.isPlaying, state.youtubeMode?.youtubeId]);
+
+  // Handle mobile tap to play - MUST be synchronous with user gesture
+  const handleMobileTapToPlay = () => {
+    console.log('[Mobile] User tapped to play');
+    const ytPlayer = youtubePlayerRef.current;
+    if (ytPlayer) {
+      // Call play immediately in user gesture context
+      ytPlayer.playVideo();
+      ytPlayer.unMute();
+      ytPlayer.setVolume(100);
+    }
+    setShowMobileTapToPlay(false);
+  };
 
   // Effect to update progress from YouTube player
   useEffect(() => {
@@ -483,6 +534,17 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
         </div>
       )}
 
+      {/* Mobile Tap to Play Banner - shows above mini player when stuck */}
+      {showMobileTapToPlay && !isExpanded && (
+        <button
+          onClick={handleMobileTapToPlay}
+          className="fixed bottom-[72px] left-0 right-0 z-50 bg-gradient-to-r from-blue-600 to-purple-600 py-3 px-4 flex items-center justify-center space-x-2 animate-pulse"
+        >
+          <Play className="h-5 w-5 text-white fill-white" />
+          <span className="text-white font-medium">Tap to Start Playback</span>
+        </button>
+      )}
+
       {/* Mini player view (bottom bar) - hidden when expanded */}
       {!isExpanded && (
         <div className={`fixed bottom-0 left-0 right-0 bg-music-black-light border-t border-white/10 shadow-lg z-50 ${className}`}>
@@ -687,6 +749,19 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
           }}
         >
+          {/* Mobile Tap to Play Overlay */}
+          {showMobileTapToPlay && (
+            <button
+              onClick={handleMobileTapToPlay}
+              className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center cursor-pointer"
+              style={{ borderRadius: '8px' }}
+            >
+              <div className="flex flex-col items-center">
+                <Play className="h-8 w-8 text-white fill-white animate-pulse" />
+                <span className="text-[10px] text-white mt-1">Tap</span>
+              </div>
+            </button>
+          )}
           <YouTubePlayer
             ref={youtubePlayerRef}
             videoId={state.youtubeMode.youtubeId}
@@ -714,6 +789,9 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
             }}
             onPlay={() => {
               console.log('YouTube player onPlay event fired');
+              // Hide mobile tap overlay since playback started
+              setShowMobileTapToPlay(false);
+
               // Unmute the player as soon as it starts playing
               const ytPlayer = youtubePlayerRef.current;
 
