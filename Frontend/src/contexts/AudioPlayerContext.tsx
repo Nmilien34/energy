@@ -229,6 +229,12 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     audioRef.current = new Audio();
     audioRef.current.volume = state.volume;
 
+    // Configure for better mobile/background playback
+    audioRef.current.preload = 'auto';
+    // @ts-ignore - webkitPreservesPitch is a Safari-specific property
+    audioRef.current.webkitPreservesPitch = true;
+    audioRef.current.preservesPitch = true;
+
     const audio = audioRef.current;
 
     // Event listeners
@@ -484,6 +490,62 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
     navigator.mediaSession.playbackState = state.isPlaying ? 'playing' : 'paused';
   }, [state.isPlaying]);
+
+  // Handle visibility change to maintain background playback
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // When page becomes hidden (minimized, tab switch, phone locked)
+      if (document.hidden) {
+        console.log('[Background] Page hidden, maintaining playback...');
+
+        // For HTML5 audio, ensure it keeps playing
+        if (!state.youtubeMode?.isYoutube && audioRef.current && state.isPlaying) {
+          // Check if audio was paused by the browser
+          if (audioRef.current.paused) {
+            console.log('[Background] Audio was paused, resuming...');
+            audioRef.current.play().catch(err => {
+              console.warn('[Background] Failed to resume audio:', err);
+            });
+          }
+        }
+      } else {
+        // Page became visible again
+        console.log('[Background] Page visible again');
+
+        // Sync state with actual audio state
+        if (!state.youtubeMode?.isYoutube && audioRef.current) {
+          const isActuallyPlaying = !audioRef.current.paused;
+          if (state.isPlaying && !isActuallyPlaying) {
+            // State says playing but audio is paused - resume
+            console.log('[Background] Resuming audio after returning to foreground');
+            audioRef.current.play().catch(err => {
+              console.warn('[Background] Failed to resume:', err);
+            });
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [state.isPlaying, state.youtubeMode?.isYoutube]);
+
+  // Keep audio alive with periodic check (helps on some mobile browsers)
+  useEffect(() => {
+    if (!state.isPlaying || state.youtubeMode?.isYoutube) return;
+
+    const keepAliveInterval = setInterval(() => {
+      if (audioRef.current && state.isPlaying && audioRef.current.paused) {
+        console.log('[KeepAlive] Audio paused unexpectedly, resuming...');
+        audioRef.current.play().catch(() => {});
+      }
+    }, 1000);
+
+    return () => clearInterval(keepAliveInterval);
+  }, [state.isPlaying, state.youtubeMode?.isYoutube]);
 
   const startTimeUpdateInterval = () => {
     if (timeUpdateInterval.current) return;
