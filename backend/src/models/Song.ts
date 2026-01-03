@@ -1,5 +1,25 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+/**
+ * Validate YouTube video ID format
+ * Real YouTube IDs are 11 characters: A-Z, a-z, 0-9, underscore, hyphen
+ * MongoDB ObjectIds are 24 hex characters - we explicitly reject these
+ */
+const YOUTUBE_ID_REGEX = /^[A-Za-z0-9_-]{10,12}$/;
+const MONGO_ID_REGEX = /^[0-9a-fA-F]{24}$/;
+
+export function isValidYouTubeId(id: string): boolean {
+  if (!id || typeof id !== 'string') return false;
+  // Explicitly reject MongoDB ObjectId format
+  if (MONGO_ID_REGEX.test(id)) return false;
+  // Must match YouTube ID format
+  return YOUTUBE_ID_REGEX.test(id);
+}
+
+export function looksLikeMongoId(id: string): boolean {
+  return MONGO_ID_REGEX.test(id);
+}
+
 export interface ISong extends Document {
   youtubeId: string;
   title: string;
@@ -33,9 +53,20 @@ export interface ISong extends Document {
 const songSchema = new Schema<ISong>({
   youtubeId: {
     type: String,
-    required: true,
+    required: [true, 'YouTube ID is required'],
     unique: true,
-    index: true
+    index: true,
+    validate: {
+      validator: function(v: string) {
+        return isValidYouTubeId(v);
+      },
+      message: (props: { value: string }) => {
+        if (MONGO_ID_REGEX.test(props.value)) {
+          return `CRITICAL: Attempted to save MongoDB ObjectId "${props.value}" as youtubeId. This is a bug - the real YouTube video ID should be used.`;
+        }
+        return `"${props.value}" is not a valid YouTube video ID. YouTube IDs are 10-12 characters (letters, numbers, underscore, hyphen).`;
+      }
+    }
   },
   title: {
     type: String,
@@ -130,6 +161,37 @@ const songSchema = new Schema<ISong>({
       return ret;
     }
   }
+});
+
+// Pre-save hook to validate YouTube ID (extra safety layer)
+songSchema.pre('save', function(next) {
+  if (!isValidYouTubeId(this.youtubeId)) {
+    const isMongoid = MONGO_ID_REGEX.test(this.youtubeId);
+    const errorMsg = isMongoid
+      ? `CRITICAL BUG PREVENTED: Attempted to save song with MongoDB ObjectId "${this.youtubeId}" as youtubeId. Title: "${this.title}". This indicates a bug in the code that needs to be fixed.`
+      : `Invalid YouTube ID "${this.youtubeId}" for song "${this.title}". YouTube IDs must be 10-12 alphanumeric characters.`;
+
+    console.error(`[Song Model] ${errorMsg}`);
+    return next(new Error(errorMsg));
+  }
+  next();
+});
+
+// Pre-update hook to validate YouTube ID on updates
+songSchema.pre('findOneAndUpdate', function(next) {
+  const update = this.getUpdate() as any;
+  const newYoutubeId = update?.youtubeId || update?.$set?.youtubeId;
+
+  if (newYoutubeId && !isValidYouTubeId(newYoutubeId)) {
+    const isMongoid = MONGO_ID_REGEX.test(newYoutubeId);
+    const errorMsg = isMongoid
+      ? `CRITICAL BUG PREVENTED: Attempted to update youtubeId to MongoDB ObjectId "${newYoutubeId}".`
+      : `Invalid YouTube ID "${newYoutubeId}" in update operation.`;
+
+    console.error(`[Song Model] ${errorMsg}`);
+    return next(new Error(errorMsg));
+  }
+  next();
 });
 
 // Indexes for efficient searching

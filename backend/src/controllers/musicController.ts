@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Song, ISong } from '../models/Song';
+import { Song, ISong, isValidYouTubeId } from '../models/Song';
 import { UserLibrary } from '../models/UserLibrary';
 import { SearchCache } from '../models/SearchCache';
 import { youtubeService } from '../services/youtubeService';
@@ -269,16 +269,27 @@ export const searchMusic = async (req: Request, res: Response) => {
     }
 
     // Save new songs to database (upsert) - optimized batch operation
+    // IMPORTANT: Use result.youtubeId (the real YouTube video ID) NOT result.id
+    // When results come from database cache, result.id is the MongoDB _id, not the YouTube ID
     const savedSongs = await Promise.all(
       results.map(async (result) => {
+        // Get the real YouTube video ID - prefer youtubeId field, fall back to id only for API results
+        const realYoutubeId = result.youtubeId || result.id;
+
+        // Validate the YouTube ID format before proceeding
+        if (!isValidYouTubeId(realYoutubeId)) {
+          console.warn(`[SearchMusic] Skipping result with invalid YouTube ID: "${realYoutubeId}" (title: ${result.title})`);
+          return null; // Skip invalid results
+        }
+
         // Use findOne without lean first to check if exists
-        let song = await Song.findOne({ youtubeId: result.id })
+        let song = await Song.findOne({ youtubeId: realYoutubeId })
           .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId description');
 
         if (!song) {
-          // Create new song
+          // Create new song with validated YouTube ID
           const newSong = new Song({
-            youtubeId: result.id,
+            youtubeId: realYoutubeId,
             title: result.title,
             artist: result.artist,
             duration: result.duration,
@@ -297,7 +308,7 @@ export const searchMusic = async (req: Request, res: Response) => {
           // Update view count if it's higher (use updateOne for better performance)
           if (result.viewCount && result.viewCount > (song.viewCount || 0)) {
             await Song.updateOne(
-              { youtubeId: result.id },
+              { youtubeId: realYoutubeId },
               { $set: { viewCount: result.viewCount } }
             );
             song.viewCount = result.viewCount;
@@ -309,6 +320,9 @@ export const searchMusic = async (req: Request, res: Response) => {
       })
     );
 
+    // Filter out any null results from invalid YouTube IDs
+    const validSavedSongs = savedSongs.filter(song => song !== null);
+
     // Add cache headers based on cache source
     if (cacheSource === 'redis' || cacheSource === 'database') {
       res.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour if from cache
@@ -319,12 +333,12 @@ export const searchMusic = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: {
-        songs: savedSongs,
-        total: savedSongs.length,
+        songs: validSavedSongs,
+        total: validSavedSongs.length,
         query: q,
         type,
         cacheSource,
-        isMockData: results.length > 0 && results[0].id.startsWith('mock_')
+        isMockData: results.length > 0 && (results[0].youtubeId || results[0].id)?.startsWith('mock_')
       }
     });
   } catch (error) {
@@ -525,13 +539,8 @@ export const getSong = async (req: Request, res: Response) => {
   }
 };
 
-// Validate YouTube video ID format
-// Real YouTube IDs are 11 characters: letters, numbers, underscores, hyphens
-const isValidYouTubeId = (id: string): boolean => {
-  // YouTube video IDs are typically 11 characters
-  // They can contain: A-Z, a-z, 0-9, _, -
-  return /^[A-Za-z0-9_-]{10,12}$/.test(id);
-};
+// isValidYouTubeId is now imported from '../models/Song'
+// This provides consistent validation across the entire codebase
 
 export const getAudioStream = async (req: Request, res: Response) => {
   try {
@@ -642,13 +651,21 @@ export const getTrendingMusic = async (req: Request, res: Response) => {
     // Save trending songs to database (optimized with selective fields)
     const savedSongs = await Promise.all(
       trending.map(async (result) => {
+        // Validate YouTube ID format (trending comes from YouTube API, so result.id is the YouTube ID)
+        if (!isValidYouTubeId(result.id)) {
+          console.warn(`[TrendingMusic] Skipping result with invalid YouTube ID: "${result.id}"`);
+          return null;
+        }
+
+        const realYoutubeId = result.id;
+
         // Use select only needed fields for faster queries
-        let song = await Song.findOne({ youtubeId: result.id })
+        let song = await Song.findOne({ youtubeId: realYoutubeId })
           .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId');
 
         if (!song) {
           const newSong = new Song({
-            youtubeId: result.id,
+            youtubeId: realYoutubeId,
             title: result.title,
             artist: result.artist,
             duration: result.duration,
@@ -670,13 +687,16 @@ export const getTrendingMusic = async (req: Request, res: Response) => {
       })
     );
 
+    // Filter out null results
+    const validSavedSongs = savedSongs.filter(song => song !== null);
+
     // Add cache headers for trending music (cache for 1 hour)
     res.set('Cache-Control', 'public, max-age=3600');
     res.json({
       success: true,
       data: {
-        songs: savedSongs,
-        total: savedSongs.length
+        songs: validSavedSongs,
+        total: validSavedSongs.length
       }
     });
   } catch (error) {
@@ -874,11 +894,18 @@ export const getRelatedSongs = async (req: Request, res: Response) => {
     // Save related songs to database
     const savedSongs = await Promise.all(
       relatedSongs.map(async (result) => {
-        let song = await Song.findOne({ youtubeId: result.id });
+        // Validate YouTube ID format (related songs come from YouTube API, so result.id is the YouTube ID)
+        if (!isValidYouTubeId(result.id)) {
+          console.warn(`[RelatedSongs] Skipping result with invalid YouTube ID: "${result.id}"`);
+          return null;
+        }
+
+        const realYoutubeId = result.id;
+        let song = await Song.findOne({ youtubeId: realYoutubeId });
 
         if (!song) {
           song = new Song({
-            youtubeId: result.id,
+            youtubeId: realYoutubeId,
             title: result.title,
             artist: result.artist,
             duration: result.duration,
@@ -898,11 +925,14 @@ export const getRelatedSongs = async (req: Request, res: Response) => {
       })
     );
 
+    // Filter out null results
+    const validSavedSongs = savedSongs.filter(song => song !== null);
+
     res.json({
       success: true,
       data: {
-        songs: savedSongs,
-        total: savedSongs.length,
+        songs: validSavedSongs,
+        total: validSavedSongs.length,
         baseSong: id
       }
     });
