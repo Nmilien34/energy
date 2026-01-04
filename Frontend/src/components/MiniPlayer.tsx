@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Play,
   Pause,
@@ -60,6 +60,25 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
   // Check if we're on mobile
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  // Keep a ref to the next function to ensure YouTube callbacks always use the latest version
+  const nextRef = useRef(next);
+  useEffect(() => {
+    nextRef.current = next;
+  });
+
+  // Stable callback for YouTube player end event
+  const handleYouTubeEnd = useCallback(() => {
+    console.log('[MiniPlayer] YouTube video ended, calling next()');
+    nextRef.current();
+  }, []);
+
+  // Stable callback for YouTube player error event
+  const handleYouTubeError = useCallback((error: any) => {
+    console.warn('[MiniPlayer] YouTube player error:', error);
+    // Fallback to next song on error
+    nextRef.current();
+  }, []);
 
   // Mobile-specific: Check if YouTube player is stuck and needs user interaction
   useEffect(() => {
@@ -812,15 +831,8 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
                 pause();
               }
             }}
-            onEnd={() => {
-              // Handle song end
-              next();
-            }}
-            onError={(error) => {
-              console.warn('YouTube player error in MiniPlayer:', error);
-              // Fallback to next song on error
-              next();
-            }}
+            onEnd={handleYouTubeEnd}
+            onError={handleYouTubeError}
           />
         </div>
       )}

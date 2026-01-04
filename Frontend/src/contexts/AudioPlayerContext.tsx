@@ -875,7 +875,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   }, []);
 
   const next = async () => {
-    console.log('[Next] Called. Queue:', state.queue.length, 'CurrentIndex:', state.currentIndex);
+    console.log('[Next] Called. Queue:', state.queue.length, 'CurrentIndex:', state.currentIndex, 'Time:', new Date().toISOString());
 
     if (state.queue.length === 0) {
       console.log('[Next] Queue is empty, returning');

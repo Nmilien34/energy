@@ -79,6 +79,23 @@ const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(({
   const currentVideoIdRef = useRef<string | null>(null);
   const [isAPIReady, setIsAPIReady] = useState(false);
 
+  // Store callbacks in refs so event handlers always use the latest versions
+  // This fixes the stale closure issue where YouTube API events would call old callbacks
+  const onReadyRef = useRef(onReady);
+  const onPlayRef = useRef(onPlay);
+  const onPauseRef = useRef(onPause);
+  const onEndRef = useRef(onEnd);
+  const onErrorRef = useRef(onError);
+
+  // Keep refs updated with latest callbacks
+  useEffect(() => {
+    onReadyRef.current = onReady;
+    onPlayRef.current = onPlay;
+    onPauseRef.current = onPause;
+    onEndRef.current = onEnd;
+    onErrorRef.current = onError;
+  });
+
   // Expose player controls to parent via ref
   useImperativeHandle(ref, () => ({
     playVideo: () => {
@@ -251,25 +268,30 @@ const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(({
                 console.warn('Error in YouTube player onReady:', error);
               }
 
-              onReady?.();
+              // Use ref to always call the latest callback
+              onReadyRef.current?.();
             }, 100);
           },
           onStateChange: (event: any) => {
             const state = event.data;
-            console.log('YouTube player state changed to:', state, 'for video:', videoId);
+            console.log('YouTube player state changed to:', state, 'for video:', currentVideoIdRef.current);
             try {
               switch (state) {
                 case window.YT.PlayerState.PLAYING:
                   console.log('YouTube player started playing');
-                  onPlay?.();
+                  // Use ref to always call the latest callback
+                  onPlayRef.current?.();
                   break;
                 case window.YT.PlayerState.PAUSED:
                   console.log('YouTube player paused');
-                  onPause?.();
+                  // Use ref to always call the latest callback
+                  onPauseRef.current?.();
                   break;
                 case window.YT.PlayerState.ENDED:
-                  console.log('YouTube player ended');
-                  onEnd?.();
+                  console.log('YouTube player ended - calling onEnd callback');
+                  // Use ref to always call the latest callback
+                  // This is critical for auto-play to work after video changes
+                  onEndRef.current?.();
                   break;
                 case window.YT.PlayerState.BUFFERING:
                   console.log('YouTube player buffering');
@@ -284,7 +306,8 @@ const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(({
           },
           onError: (event: any) => {
             console.warn('YouTube player error:', event.data);
-            onError?.(event.data);
+            // Use ref to always call the latest callback
+            onErrorRef.current?.(event.data);
           },
         },
       });
