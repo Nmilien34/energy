@@ -875,10 +875,16 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   }, []);
 
   const next = async () => {
-    if (state.queue.length === 0) return;
+    console.log('[Next] Called. Queue:', state.queue.length, 'CurrentIndex:', state.currentIndex);
+
+    if (state.queue.length === 0) {
+      console.log('[Next] Queue is empty, returning');
+      return;
+    }
 
     const currentSong = state.queue[state.currentIndex];
     let nextIndex = state.currentIndex + 1;
+    console.log('[Next] Current song:', currentSong?.title, 'NextIndex:', nextIndex);
 
     // If we're approaching the end of the queue and have shuffle source, add more songs
     if (nextIndex >= state.queue.length - 1 && shuffleSourceRef.current.length > 0) {
@@ -898,47 +904,66 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     }
 
     if (nextIndex >= state.queue.length) {
+      console.log('[Next] Reached end of queue. NextIndex:', nextIndex, 'QueueLength:', state.queue.length);
+      console.log('[Next] RepeatMode:', state.repeatMode, 'ShuffleSource:', shuffleSourceRef.current.length, 'AutoPlayEnabled:', autoPlayEnabled.current);
+
       if (state.repeatMode === 'all') {
+        console.log('[Next] Repeat all - wrapping to start');
         nextIndex = 0;
       } else if (shuffleSourceRef.current.length > 0) {
         // In shuffle mode, we should have added a song above, so continue
+        console.log('[Next] Shuffle mode - continuing');
         nextIndex = state.currentIndex + 1;
       } else if (autoPlayEnabled.current && currentSong) {
         // *** AUTO-PLAY: Fetch next recommendation when queue ends ***
-        console.log('[AutoPlay] Queue ended, fetching recommendation...');
+        console.log('[AutoPlay] Queue ended, fetching recommendation for:', currentSong.title);
+        console.log('[AutoPlay] Current song details:', {
+          id: currentSong.id,
+          youtubeId: currentSong.youtubeId,
+          title: currentSong.title
+        });
 
-        const recommendedSong = await fetchNextRecommendation(currentSong);
+        try {
+          const recommendedSong = await fetchNextRecommendation(currentSong);
+          console.log('[AutoPlay] Recommendation result:', recommendedSong ? recommendedSong.title : 'null');
 
-        if (recommendedSong) {
-          // Ensure the song has an ID (use youtubeId as fallback)
-          if (!recommendedSong.id && recommendedSong.youtubeId) {
-            recommendedSong.id = recommendedSong.youtubeId;
-          }
-
-          // Add to session history
-          const currentId = currentSong.youtubeId || currentSong.id;
-          if (currentId && !sessionHistoryRef.current.includes(currentId)) {
-            sessionHistoryRef.current.push(currentId);
-            // Keep history at reasonable size
-            if (sessionHistoryRef.current.length > 50) {
-              sessionHistoryRef.current = sessionHistoryRef.current.slice(-50);
+          if (recommendedSong) {
+            // Ensure the song has an ID (use youtubeId as fallback)
+            if (!recommendedSong.id && recommendedSong.youtubeId) {
+              recommendedSong.id = recommendedSong.youtubeId;
+              console.log('[AutoPlay] Set id from youtubeId:', recommendedSong.id);
             }
+
+            // Add to session history
+            const currentId = currentSong.youtubeId || currentSong.id;
+            if (currentId && !sessionHistoryRef.current.includes(currentId)) {
+              sessionHistoryRef.current.push(currentId);
+              // Keep history at reasonable size
+              if (sessionHistoryRef.current.length > 50) {
+                sessionHistoryRef.current = sessionHistoryRef.current.slice(-50);
+              }
+            }
+
+            // Record the transition for future recommendations
+            recordTransition(currentSong, recommendedSong, 'auto');
+
+            // Add to queue and play
+            console.log('[AutoPlay] Adding to queue. Current queue length:', state.queue.length);
+            dispatch({ type: 'ADD_TO_QUEUE', payload: recommendedSong });
+            nextIndex = state.queue.length; // Will be the new song's index
+            shouldAutoplayNextLoad.current = true;
+
+            console.log('[AutoPlay] Added to queue:', recommendedSong.title, 'at index:', nextIndex);
+          } else {
+            console.log('[AutoPlay] No recommendation available, stopping playback');
+            return; // No recommendation available, stop playback
           }
-
-          // Record the transition for future recommendations
-          recordTransition(currentSong, recommendedSong, 'auto');
-
-          // Add to queue and play
-          dispatch({ type: 'ADD_TO_QUEUE', payload: recommendedSong });
-          nextIndex = state.queue.length; // Will be the new song's index
-          shouldAutoplayNextLoad.current = true;
-
-          console.log('[AutoPlay] Added to queue:', recommendedSong.title);
-        } else {
-          console.log('[AutoPlay] No recommendation available, stopping playback');
-          return; // No recommendation available, stop playback
+        } catch (error) {
+          console.error('[AutoPlay] Error fetching recommendation:', error);
+          return; // Stop on error
         }
       } else {
+        console.log('[Next] Not auto-playing. autoPlayEnabled:', autoPlayEnabled.current, 'currentSong:', !!currentSong);
         return; // Don't advance if we're at the end and not repeating
       }
     }
