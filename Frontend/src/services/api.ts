@@ -1,9 +1,12 @@
-import axios, { InternalAxiosRequestConfig } from 'axios';
+import axios, { InternalAxiosRequestConfig, AxiosError } from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5003';
 
 // Session expiry event - components can listen to this
 export const SESSION_EXPIRED_EVENT = 'session:expired';
+
+// Track if we're currently retrying to prevent loops
+let isRetrying = false;
 
 // Dispatch session expired event with reason
 export const dispatchSessionExpired = (reason: 'token_expired' | 'invalid_token' | 'user_not_found') => {
@@ -42,10 +45,23 @@ export const getTokenExpiryTime = (): Date | null => {
   }
 };
 
+// Check if error is retryable (timeout or network error)
+const isRetryableError = (error: AxiosError): boolean => {
+  return (
+    error.code === 'ECONNABORTED' ||
+    error.code === 'ERR_NETWORK' ||
+    error.code === 'ETIMEDOUT' ||
+    !error.response
+  );
+};
+
+// Sleep helper for retry delays
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
-  timeout: 30000, // 30 second timeout
+  timeout: 60000, // 60 second timeout (handles Render cold starts)
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -76,28 +92,55 @@ api.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
 
+    // Retry logic for timeout/network errors (handles Render cold starts)
+    if (isRetryableError(error) && !originalRequest._retryCount) {
+      originalRequest._retryCount = 0;
+    }
+
+    if (isRetryableError(error) && originalRequest._retryCount < 2) {
+      originalRequest._retryCount++;
+      console.log(`[API] Retrying request (attempt ${originalRequest._retryCount}/2): ${originalRequest.url}`);
+
+      // Wait before retrying (exponential backoff)
+      await sleep(1000 * originalRequest._retryCount);
+
+      return api(originalRequest);
+    }
+
     // Handle 401 Unauthorized errors
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const errorMessage = error.response?.data?.error || '';
+      const requestUrl = originalRequest?.url || '';
+      const isAuthEndpoint = requestUrl.includes('/auth/login') ||
+                             requestUrl.includes('/auth/register') ||
+                             requestUrl.includes('/auth/oauth');
 
-      // Determine the reason for the 401
-      let reason: 'token_expired' | 'invalid_token' | 'user_not_found' = 'invalid_token';
-      if (errorMessage.toLowerCase().includes('expired')) {
-        reason = 'token_expired';
-      } else if (errorMessage.toLowerCase().includes('not found')) {
-        reason = 'user_not_found';
+      // Only dispatch session expired if:
+      // 1. User had a token (was logged in)
+      // 2. This is NOT a login/register attempt (those should just fail normally)
+      const hadToken = localStorage.getItem('token') !== null;
+
+      if (hadToken && !isAuthEndpoint) {
+        const errorMessage = error.response?.data?.error || '';
+
+        // Determine the reason for the 401
+        let reason: 'token_expired' | 'invalid_token' | 'user_not_found' = 'invalid_token';
+        if (errorMessage.toLowerCase().includes('expired')) {
+          reason = 'token_expired';
+        } else if (errorMessage.toLowerCase().includes('not found')) {
+          reason = 'user_not_found';
+        }
+
+        // Clear the invalid token
+        localStorage.removeItem('token');
+
+        // Dispatch session expired event so UI can react
+        dispatchSessionExpired(reason);
+
+        // Don't redirect here - let the AuthContext handle it
+        // This prevents the gray loading page issue
       }
-
-      // Clear the invalid token
-      localStorage.removeItem('token');
-
-      // Dispatch session expired event so UI can react
-      dispatchSessionExpired(reason);
-
-      // Don't redirect here - let the AuthContext handle it
-      // This prevents the gray loading page issue
     }
 
     return Promise.reject(error);

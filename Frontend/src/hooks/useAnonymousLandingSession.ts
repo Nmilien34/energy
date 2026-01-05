@@ -24,7 +24,9 @@ export const useAnonymousLandingSession = (): UseAnonymousLandingSessionReturn =
   const [error, setError] = useState<string | null>(null);
 
   // Initialize or retrieve session
-  const initSession = useCallback(async () => {
+  const initSession = useCallback(async (retryCount = 0) => {
+    const maxRetries = 2;
+
     try {
       setIsLoading(true);
       setError(null);
@@ -41,9 +43,18 @@ export const useAnonymousLandingSession = (): UseAnonymousLandingSessionReturn =
       storeSessionId(sessionData.sessionId);
       setSession(sessionData);
     } catch (err: any) {
-      console.error('[AnonSession] Failed to initialize session:', err);
-      console.error('[AnonSession] Error details:', err.response?.status, err.response?.data);
-      setError(err.response?.data?.error || 'Failed to initialize session');
+      // Only log errors, don't show them to users for anonymous sessions
+      // Anonymous sessions are optional - the app should work without them
+      console.warn('[AnonSession] Session initialization failed (non-blocking):', err?.message || 'Unknown error');
+
+      // Check if it's a network/timeout error and retry
+      const isNetworkError = !err.response || err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK';
+
+      if (isNetworkError && retryCount < maxRetries) {
+        console.log(`[AnonSession] Retrying in ${(retryCount + 1) * 2}s (attempt ${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => initSession(retryCount + 1), (retryCount + 1) * 2000);
+        return; // Don't set loading to false yet
+      }
 
       // If session not found or expired, clear stored session and try again
       if (err.response?.status === 404 || err.response?.status === 410) {
@@ -54,9 +65,13 @@ export const useAnonymousLandingSession = (): UseAnonymousLandingSessionReturn =
           setSession(sessionData);
           setError(null);
         } catch (retryErr: any) {
-          console.error('Failed to create new session:', retryErr);
+          // Silent fail - anonymous session is optional
+          console.warn('[AnonSession] Could not create session, continuing without it');
         }
       }
+
+      // Don't set error state for network issues - just continue without session
+      // This prevents blocking the UI for anonymous users
     } finally {
       setIsLoading(false);
     }

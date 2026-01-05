@@ -5,7 +5,7 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
       const response = await api.post<ApiResponse<User & { token: string }>>('/api/auth/login', credentials);
-      
+
       // Check if we have a response
       if (!response.data) {
         throw new Error('No response received from server');
@@ -23,7 +23,7 @@ class AuthService {
 
       const userData = response.data.data;
       const { token, ...user } = userData;
-      
+
       // Validate user and token
       if (!user || !token) {
         throw new Error('Invalid response structure from server');
@@ -32,34 +32,27 @@ class AuthService {
       localStorage.setItem('token', token);
       return { user, token };
     } catch (error: any) {
-      // Handle timeout errors
+      // Handle timeout errors - these are already retried by the API interceptor
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        console.error('Login timeout:', error);
-        throw new Error('Login request timed out. Please check your connection and try again.');
+        throw new Error('The server is starting up. Please try again in a few seconds.');
       }
-      
-      // Handle network errors
+
+      // Handle network errors - these are already retried by the API interceptor
       if (error.code === 'ERR_NETWORK' || !error.response) {
-        console.error('Network error during login:', error);
-        throw new Error('Network error. Please check your connection and try again.');
+        throw new Error('Unable to connect to server. Please check your internet connection.');
       }
-      
+
       // Handle HTTP errors
       const errorMessage = error.response?.data?.error || error.message || 'Login failed';
       const statusCode = error.response?.status;
-      
-      console.error('Login error:', {
-        status: statusCode,
-        error: errorMessage,
-        fullError: error.response?.data,
-        message: error.message
-      });
-      
+
       // Provide more specific error messages based on status code
       if (statusCode === 500) {
-        throw new Error('Server error during login. Please try again later or contact support.');
+        throw new Error('Server error. Please try again in a moment.');
       } else if (statusCode === 401) {
-        throw new Error('Invalid email or password. Please check your credentials and try again.');
+        throw new Error('Invalid email or password.');
+      } else if (statusCode === 429) {
+        throw new Error('Too many login attempts. Please wait a moment and try again.');
       } else {
         throw new Error(errorMessage);
       }
