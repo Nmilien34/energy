@@ -43,6 +43,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     setRepeatMode,
     updateCurrentTime,
     updateDuration,
+    registerYouTubeUnlock,
   } = useAudioPlayer();
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
@@ -58,8 +59,13 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
   const progressBarRef = useRef<HTMLDivElement>(null);
   const miniProgressBarRef = useRef<HTMLDivElement>(null);
 
-  // Check if we're on mobile
+  // Check if we're on mobile/iOS
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  // Track if audio has been unlocked by user gesture
+  const audioUnlockedRef = useRef(false);
+  const pendingVideoIdRef = useRef<string | null>(null);
 
   // Keep a ref to the next function to ensure YouTube callbacks always use the latest version
   const nextRef = useRef(next);
@@ -80,6 +86,49 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     nextRef.current();
   }, []);
 
+  // iOS Audio Unlock: Must be called synchronously during user gesture
+  const unlockAudioAndPlay = useCallback(() => {
+    const ytPlayer = youtubePlayerRef.current;
+    if (!ytPlayer) return false;
+
+    console.log('[iOS] Unlocking audio with user gesture');
+
+    try {
+      // These calls must happen synchronously within user gesture
+      ytPlayer.playVideo();
+      ytPlayer.unMute();
+      ytPlayer.setVolume(100);
+      audioUnlockedRef.current = true;
+
+      // If there's a pending video to load, load it now
+      if (pendingVideoIdRef.current && ytPlayer.isReady()) {
+        console.log('[iOS] Loading pending video:', pendingVideoIdRef.current);
+        // Small delay to ensure play started first
+        setTimeout(() => {
+          const player = youtubePlayerRef.current;
+          if (player && pendingVideoIdRef.current) {
+            (player as any).loadVideoById?.({ videoId: pendingVideoIdRef.current });
+            pendingVideoIdRef.current = null;
+          }
+        }, 100);
+      }
+
+      return true;
+    } catch (error) {
+      console.warn('[iOS] Failed to unlock audio:', error);
+      return false;
+    }
+  }, []);
+
+  // Register the iOS unlock callback with the audio player context
+  // This gets called synchronously when play() is triggered by user gesture
+  useEffect(() => {
+    if (isIOS) {
+      console.log('[iOS] Registering YouTube unlock callback');
+      registerYouTubeUnlock(unlockAudioAndPlay);
+    }
+  }, [isIOS, registerYouTubeUnlock, unlockAudioAndPlay]);
+
   // Mobile-specific: Check if YouTube player is stuck and needs user interaction
   useEffect(() => {
     if (!isMobile || !state.youtubeMode?.isYoutube || !state.isPlaying) {
@@ -92,39 +141,81 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
       clearTimeout(mobilePlayCheckRef.current);
     }
 
+    // On iOS, check more quickly (1 second) since we know it often gets stuck
+    const checkDelay = isIOS ? 1000 : 2000;
+
     // Wait a bit for player to initialize, then check if it's stuck
     mobilePlayCheckRef.current = setTimeout(() => {
       const ytPlayer = youtubePlayerRef.current;
       if (ytPlayer && ytPlayer.isReady()) {
         const playerState = ytPlayer.getPlayerState();
-        // -1 = unstarted, 3 = buffering (stuck), 5 = cued
-        // If we're supposed to be playing but player isn't, show tap overlay
-        if (playerState === -1 || playerState === 5 || (state.isPlaying && playerState !== 1)) {
+        // -1 = unstarted, 5 = cued - these are stuck states
+        // Also check if we should be playing but aren't
+        if (playerState === -1 || playerState === 5) {
           console.log('[Mobile] YouTube player stuck, showing tap to play overlay. State:', playerState);
+          setShowMobileTapToPlay(true);
+        } else if (state.isPlaying && playerState !== 1 && playerState !== 3) {
+          // 1 = playing, 3 = buffering (ok)
+          console.log('[Mobile] Player should be playing but state is:', playerState);
+          setShowMobileTapToPlay(true);
+        }
+      } else if (!ytPlayer?.isReady()) {
+        // Player not ready yet, show overlay anyway on iOS
+        if (isIOS) {
+          console.log('[iOS] Player not ready, showing tap to play');
           setShowMobileTapToPlay(true);
         }
       }
-    }, 2000); // Give player 2 seconds to start
+    }, checkDelay);
 
     return () => {
       if (mobilePlayCheckRef.current) {
         clearTimeout(mobilePlayCheckRef.current);
       }
     };
-  }, [isMobile, state.youtubeMode?.isYoutube, state.isPlaying, state.youtubeMode?.youtubeId]);
+  }, [isMobile, isIOS, state.youtubeMode?.isYoutube, state.isPlaying, state.youtubeMode?.youtubeId]);
 
   // Handle mobile tap to play - MUST be synchronous with user gesture
-  const handleMobileTapToPlay = () => {
+  const handleMobileTapToPlay = useCallback(() => {
     console.log('[Mobile] User tapped to play');
+    setShowMobileTapToPlay(false);
+
     const ytPlayer = youtubePlayerRef.current;
-    if (ytPlayer) {
-      // Call play immediately in user gesture context
+    if (!ytPlayer) {
+      console.log('[Mobile] No player ref available');
+      return;
+    }
+
+    // Mark audio as unlocked
+    audioUnlockedRef.current = true;
+
+    // CRITICAL: All these calls must be synchronous within user gesture context
+    try {
+      // First, try to play
       ytPlayer.playVideo();
+
+      // Unmute immediately
       ytPlayer.unMute();
       ytPlayer.setVolume(100);
+
+      // If player is still stuck after 500ms, try reloading the video
+      setTimeout(() => {
+        const currentState = ytPlayer.getPlayerState?.();
+        if (currentState === -1 || currentState === 5) {
+          console.log('[Mobile] Player still stuck after tap, reloading video');
+          const videoId = state.youtubeMode?.youtubeId;
+          if (videoId && (ytPlayer as any).loadVideoById) {
+            (ytPlayer as any).loadVideoById({ videoId });
+          }
+        }
+      }, 500);
+    } catch (error) {
+      console.error('[Mobile] Error during tap to play:', error);
     }
-    setShowMobileTapToPlay(false);
-  };
+
+    // Also try to resume via the play function
+    play();
+  }, [state.youtubeMode?.youtubeId, play]);
 
   // Effect to update progress from YouTube player
   useEffect(() => {
@@ -177,15 +268,18 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     const syncPlayer = (retryCount = 0) => {
       const ytPlayer = youtubePlayerRef.current;
 
-      console.log('YouTube sync effect (attempt', retryCount + 1, '):', {
-        hasPlayer: !!ytPlayer,
-        isReady: ytPlayer?.isReady?.() ?? false,
-        isPlaying: state.isPlaying,
-        youtubeId: state.youtubeMode?.youtubeId
-      });
+      // Only log on first attempt or when something changes
+      if (retryCount === 0 || retryCount === 5) {
+        console.log('YouTube sync effect (attempt', retryCount + 1, '):', {
+          hasPlayer: !!ytPlayer,
+          isReady: ytPlayer?.isReady?.() ?? false,
+          isPlaying: state.isPlaying,
+          youtubeId: state.youtubeMode?.youtubeId,
+          audioUnlocked: audioUnlockedRef.current
+        });
+      }
 
       if (!ytPlayer) {
-        console.log('YouTube player ref not available');
         if (retryCount < 10) {
           setTimeout(() => syncPlayer(retryCount + 1), 200);
         }
@@ -194,7 +288,6 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
       // Check if player is ready
       if (!ytPlayer.isReady()) {
-        console.log('YouTube player not ready yet');
         if (retryCount < 10) {
           setTimeout(() => syncPlayer(retryCount + 1), 200);
         }
@@ -203,16 +296,22 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
       try {
         const playerState = ytPlayer.getPlayerState();
-        console.log('Current YouTube player state:', playerState);
 
-        // Only sync if player is ready (state !== -1)
-        if (playerState !== -1) {
-          if (state.isPlaying && playerState !== 1) { // 1 = playing
-            console.log('Starting YouTube playback');
+        // On iOS, if audio hasn't been unlocked and we're trying to play,
+        // don't try to auto-play - show the tap overlay instead
+        if (isIOS && !audioUnlockedRef.current && state.isPlaying && playerState !== 1) {
+          console.log('[iOS] Audio not unlocked, showing tap to play');
+          setShowMobileTapToPlay(true);
+          return;
+        }
+
+        // Only sync if player is ready (state !== -1) or audio is unlocked
+        if (playerState !== -1 || audioUnlockedRef.current) {
+          if (state.isPlaying && playerState !== 1 && playerState !== 3) { // 1 = playing, 3 = buffering
+            console.log('Starting YouTube playback, current state:', playerState);
             ytPlayer.playVideo();
-            // Unmute after starting (YouTube requires muted autoplay, but we unmute immediately after)
+            // Unmute after starting
             setTimeout(() => {
-              console.log('Unmuting YouTube player in sync effect');
               ytPlayer.unMute();
               ytPlayer.setVolume(100);
             }, 100);
@@ -221,8 +320,11 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
             ytPlayer.pauseVideo();
           }
         } else {
-          console.log('Player not ready yet, state:', playerState);
-          if (retryCount < 5) {
+          // Player stuck in -1 state
+          if (isIOS && state.isPlaying) {
+            // On iOS, show tap overlay
+            setShowMobileTapToPlay(true);
+          } else if (retryCount < 5) {
             setTimeout(() => syncPlayer(retryCount + 1), 500);
           }
         }
@@ -232,7 +334,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     };
 
     syncPlayer();
-  }, [state.isPlaying, state.youtubeMode?.isYoutube, state.youtubeMode?.youtubeId]);
+  }, [state.isPlaying, state.youtubeMode?.isYoutube, state.youtubeMode?.youtubeId, isIOS]);
 
   // Add global mouse event listeners for dragging
   useEffect(() => {
@@ -249,9 +351,15 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
   if (!state.currentSong) return null;
 
   const handlePlayPause = () => {
+    // Hide tap to play overlay if it was showing
+    setShowMobileTapToPlay(false);
+
     // CRITICAL for iOS Safari: Call YouTube player IMMEDIATELY (synchronous with user gesture)
     // before ANY state updates or async operations
     if (state.youtubeMode?.isYoutube && youtubePlayerRef.current) {
+      // Mark audio as unlocked since this is a user gesture
+      audioUnlockedRef.current = true;
+
       if (state.isPlaying) {
         // Pause YouTube player synchronously
         youtubePlayerRef.current.pauseVideo();
@@ -259,6 +367,24 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
         // Play YouTube player synchronously - this is the iOS Safari fix!
         youtubePlayerRef.current.playVideo();
         youtubePlayerRef.current.unMute();
+        youtubePlayerRef.current.setVolume(100);
+
+        // On iOS, if player is stuck, try reloading
+        if (isIOS) {
+          setTimeout(() => {
+            const ytPlayer = youtubePlayerRef.current;
+            if (ytPlayer) {
+              const currentState = ytPlayer.getPlayerState?.();
+              if (currentState === -1 || currentState === 5) {
+                console.log('[iOS] Player stuck after play tap, reloading video');
+                const videoId = state.youtubeMode?.youtubeId;
+                if (videoId && (ytPlayer as any).loadVideoById) {
+                  (ytPlayer as any).loadVideoById({ videoId });
+                }
+              }
+            }
+          }, 300);
+        }
       }
     }
 

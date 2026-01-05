@@ -67,6 +67,11 @@ const unlockAudio = (audioElement: HTMLAudioElement | null): Promise<void> => {
   });
 };
 
+// Check if we're on iOS
+const isIOSDevice = (): boolean => {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+};
+
 interface AudioPlayerContextType {
   state: PlayerState;
   play: (song?: Song) => void;
@@ -86,6 +91,8 @@ interface AudioPlayerContextType {
   playShuffleMode: (songs: Song[]) => void;
   updateCurrentTime: (time: number) => void;
   updateDuration: (duration: number) => void;
+  // iOS audio unlock mechanism - MiniPlayer registers a callback to unlock YouTube player
+  registerYouTubeUnlock: (callback: () => void) => void;
 }
 
 type AudioPlayerAction =
@@ -213,6 +220,13 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
   // Ref to hold the latest next function (for use in event handlers)
   const nextRef = useRef<() => void>(() => {});
+
+  // iOS YouTube unlock callback - MiniPlayer registers this to prime the player synchronously
+  const youtubeUnlockCallbackRef = useRef<(() => void) | null>(null);
+
+  const registerYouTubeUnlock = useCallback((callback: () => void) => {
+    youtubeUnlockCallbackRef.current = callback;
+  }, []);
 
   // Keep a ref of latest YouTube mode for event handlers
   useEffect(() => {
@@ -718,6 +732,13 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       return;
     }
 
+    // CRITICAL for iOS Safari: Call YouTube unlock callback SYNCHRONOUSLY before any async work
+    // This must happen in the same call stack as the user gesture
+    if (isIOSDevice() && youtubeUnlockCallbackRef.current) {
+      console.log('[iOS] Calling YouTube unlock callback synchronously');
+      youtubeUnlockCallbackRef.current();
+    }
+
     // Try to unlock audio on mobile (must happen on user gesture)
     await unlockAudio(audioRef.current);
 
@@ -1099,6 +1120,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     playShuffleMode,
     updateCurrentTime,
     updateDuration,
+    registerYouTubeUnlock,
   };
 
   return (
