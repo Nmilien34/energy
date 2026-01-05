@@ -93,6 +93,8 @@ interface AudioPlayerContextType {
   updateDuration: (duration: number) => void;
   // iOS audio unlock mechanism - MiniPlayer registers a callback to unlock YouTube player
   registerYouTubeUnlock: (callback: () => void) => void;
+  // YouTube resume mechanism - MiniPlayer registers a callback to resume after background
+  registerYouTubeResume: (callback: () => void) => void;
 }
 
 type AudioPlayerAction =
@@ -224,8 +226,18 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   // iOS YouTube unlock callback - MiniPlayer registers this to prime the player synchronously
   const youtubeUnlockCallbackRef = useRef<(() => void) | null>(null);
 
+  // YouTube resume callback - MiniPlayer registers this to resume after background
+  const youtubeResumeCallbackRef = useRef<(() => void) | null>(null);
+
+  // Track if we were playing before going to background (for YouTube resume)
+  const wasPlayingBeforeBackgroundRef = useRef<boolean>(false);
+
   const registerYouTubeUnlock = useCallback((callback: () => void) => {
     youtubeUnlockCallbackRef.current = callback;
+  }, []);
+
+  const registerYouTubeResume = useCallback((callback: () => void) => {
+    youtubeResumeCallbackRef.current = callback;
   }, []);
 
   // Keep a ref of latest YouTube mode for event handlers
@@ -510,7 +522,10 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     const handleVisibilityChange = () => {
       // When page becomes hidden (minimized, tab switch, phone locked)
       if (document.hidden) {
-        console.log('[Background] Page hidden, maintaining playback...');
+        console.log('[Background] Page hidden, isPlaying:', state.isPlaying, 'youtubeMode:', state.youtubeMode?.isYoutube);
+
+        // Track if we were playing before going to background (for YouTube resume)
+        wasPlayingBeforeBackgroundRef.current = state.isPlaying;
 
         // For HTML5 audio, ensure it keeps playing
         if (!state.youtubeMode?.isYoutube && audioRef.current && state.isPlaying) {
@@ -524,14 +539,31 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
         }
       } else {
         // Page became visible again
-        console.log('[Background] Page visible again');
+        console.log('[Background] Page visible again, wasPlaying:', wasPlayingBeforeBackgroundRef.current);
 
-        // Sync state with actual audio state
+        // For YouTube mode, try to resume playback if we were playing before
+        if (state.youtubeMode?.isYoutube && wasPlayingBeforeBackgroundRef.current) {
+          console.log('[Background] Resuming YouTube playback after returning to foreground');
+
+          // Call the YouTube resume callback (registered by MiniPlayer)
+          if (youtubeResumeCallbackRef.current) {
+            // Small delay to let the page fully restore
+            setTimeout(() => {
+              console.log('[Background] Calling YouTube resume callback');
+              youtubeResumeCallbackRef.current?.();
+            }, 300);
+          }
+
+          // Also ensure state is set to playing
+          dispatch({ type: 'SET_PLAYING', payload: true });
+        }
+
+        // For HTML5 audio, sync state
         if (!state.youtubeMode?.isYoutube && audioRef.current) {
           const isActuallyPlaying = !audioRef.current.paused;
           if (state.isPlaying && !isActuallyPlaying) {
             // State says playing but audio is paused - resume
-            console.log('[Background] Resuming audio after returning to foreground');
+            console.log('[Background] Resuming HTML5 audio after returning to foreground');
             audioRef.current.play().catch(err => {
               console.warn('[Background] Failed to resume:', err);
             });
@@ -1121,6 +1153,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     updateCurrentTime,
     updateDuration,
     registerYouTubeUnlock,
+    registerYouTubeResume,
   };
 
   return (

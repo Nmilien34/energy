@@ -44,6 +44,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     updateCurrentTime,
     updateDuration,
     registerYouTubeUnlock,
+    registerYouTubeResume,
   } = useAudioPlayer();
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
@@ -120,6 +121,43 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
     }
   }, []);
 
+  // Resume YouTube playback after returning from background
+  const resumeYouTubePlayback = useCallback(() => {
+    const ytPlayer = youtubePlayerRef.current;
+    if (!ytPlayer) {
+      console.log('[Resume] No YouTube player ref available');
+      return;
+    }
+
+    console.log('[Resume] Attempting to resume YouTube playback');
+
+    try {
+      if (ytPlayer.isReady()) {
+        const playerState = ytPlayer.getPlayerState();
+        console.log('[Resume] YouTube player state:', playerState);
+
+        // If player is not playing (state !== 1) and not buffering (state !== 3), resume
+        if (playerState !== 1 && playerState !== 3) {
+          ytPlayer.playVideo();
+          ytPlayer.unMute();
+          ytPlayer.setVolume(100);
+          console.log('[Resume] Playback resumed');
+        }
+      } else {
+        // Player not ready, retry in a moment
+        setTimeout(() => {
+          const player = youtubePlayerRef.current;
+          if (player?.isReady()) {
+            player.playVideo();
+            player.unMute();
+          }
+        }, 500);
+      }
+    } catch (error) {
+      console.warn('[Resume] Failed to resume:', error);
+    }
+  }, []);
+
   // Register the iOS unlock callback with the audio player context
   // This gets called synchronously when play() is triggered by user gesture
   useEffect(() => {
@@ -128,6 +166,12 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
       registerYouTubeUnlock(unlockAudioAndPlay);
     }
   }, [isIOS, registerYouTubeUnlock, unlockAudioAndPlay]);
+
+  // Register the YouTube resume callback for visibility change handling
+  useEffect(() => {
+    console.log('[MiniPlayer] Registering YouTube resume callback');
+    registerYouTubeResume(resumeYouTubePlayback);
+  }, [registerYouTubeResume, resumeYouTubePlayback]);
 
   // Mobile-specific: Check if YouTube player is stuck and needs user interaction
   useEffect(() => {
