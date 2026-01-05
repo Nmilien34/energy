@@ -53,5 +53,8 @@ export const config = {
   frontend: {
     url: process.env.FRONTEND_URL || 'http://localhost:3000'
   },
+  backend: {
+    url: process.env.BACKEND_URL || 'http://localhost:5003'
+  },
   env: process.env.NODE_ENV || 'development'
 }; 
