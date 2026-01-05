@@ -635,9 +635,11 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           // Increment play count after a delay to ensure YouTube player is ready
           setTimeout(async () => {
             try {
-              await musicService.incrementPlayCount(song.id, song.duration);
+              // Prefer youtubeId for more reliable lookup
+              const trackId = song.youtubeId || song.id;
+              await musicService.incrementPlayCount(trackId, song.duration);
             } catch (error) {
-              console.warn('Failed to increment play count:', error);
+              // Non-critical - don't log errors for play count
             }
           }, 1000);
 
@@ -672,8 +674,11 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           }
         }
 
-        // Increment play count
-        await musicService.incrementPlayCount(song.id, song.duration);
+        // Increment play count (prefer youtubeId for reliable lookup)
+        const trackId = song.youtubeId || song.id;
+        await musicService.incrementPlayCount(trackId, song.duration).catch(() => {
+          // Non-critical - silently ignore errors
+        });
         dispatch({ type: 'SET_LOADING', payload: false });
       } else {
         console.error('Failed to get stream data - missing audio URL. Response:', streamResponse);

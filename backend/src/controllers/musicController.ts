@@ -1113,9 +1113,24 @@ export const recordPlay = async (req: Request, res: Response) => {
     const { songId, duration, completed = false } = req.body;
     const userId = (req as any).user?._id;
 
+    // Helper to find song by either MongoDB ObjectId or youtubeId
+    const findSong = async (id: string) => {
+      // Check if it's a valid MongoDB ObjectId (24 hex characters)
+      const isMongoId = /^[0-9a-fA-F]{24}$/.test(id);
+
+      if (isMongoId) {
+        // Try MongoDB ID first
+        const songById = await Song.findById(id);
+        if (songById) return songById;
+      }
+
+      // Fall back to youtubeId lookup
+      return await Song.findOne({ youtubeId: id });
+    };
+
     if (!userId) {
       // Allow anonymous play tracking for basic functionality
-      const song = await Song.findOne({ youtubeId: songId });
+      const song = await findSong(songId);
       if (song) {
         await song.incrementPlayCount();
       }
@@ -1126,11 +1141,14 @@ export const recordPlay = async (req: Request, res: Response) => {
       });
     }
 
-    const song = await Song.findOne({ youtubeId: songId });
+    const song = await findSong(songId);
     if (!song) {
-      return res.status(404).json({
-        success: false,
-        error: 'Song not found'
+      // Song not found is not critical - just log and return success
+      // This can happen for newly searched songs that aren't in the DB yet
+      console.warn(`Record play: Song not found for ID ${songId}`);
+      return res.json({
+        success: true,
+        data: { message: 'Play recorded (song not in database)' }
       });
     }
 
