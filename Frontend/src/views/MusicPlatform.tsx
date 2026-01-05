@@ -108,10 +108,10 @@ const MusicPlatform: React.FC = () => {
       {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-music-black-light transform transition-transform duration-300 ease-in-out
-        lg:relative lg:translate-x-0
+        lg:relative lg:translate-x-0 flex flex-col h-full
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex items-center justify-between p-6">
+        <div className="flex items-center justify-between p-6 flex-shrink-0">
           <button
             onClick={() => navigate('/')}
             className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group"
@@ -134,7 +134,7 @@ const MusicPlatform: React.FC = () => {
           </button>
         </div>
 
-        <nav className="px-2 sm:px-3 py-2 space-y-1">
+        <nav className="px-2 sm:px-3 py-2 space-y-1 flex-1 overflow-y-auto">
           {sidebarItems.map((item) => (
             <button
               key={item.id}
@@ -158,7 +158,7 @@ const MusicPlatform: React.FC = () => {
         </nav>
 
         {/* User Section */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 border-t border-white/10">
+        <div className="flex-shrink-0 p-3 sm:p-4 border-t border-white/10">
           {user ? (
             <UserMenu onNavigateToSettings={() => setActiveView('settings')} />
           ) : (
