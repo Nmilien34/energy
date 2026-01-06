@@ -668,13 +668,17 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           // For iOS Background Playback: Play silent audio in the background
           if (audioRef.current) {
             console.log('Starting silent audio keeper for YouTube background playback');
-            audioRef.current.src = SILENT_AUDIO_URI;
-            audioRef.current.loop = true;
-            audioRef.current.volume = 0; // Silent
-            // Essential for iOS: maintain playback rate
-            if ('webkitPreservesPitch' in audioRef.current) {
-              // @ts-ignore
-              audioRef.current.webkitPreservesPitch = true;
+
+            // Only reset if not already playing the silent track
+            if (audioRef.current.src !== SILENT_AUDIO_URI) {
+              audioRef.current.src = SILENT_AUDIO_URI;
+              audioRef.current.loop = true;
+              audioRef.current.volume = 0; // Silent
+              // Essential for iOS: maintain playback rate
+              if ('webkitPreservesPitch' in audioRef.current) {
+                // @ts-ignore
+                audioRef.current.webkitPreservesPitch = true;
+              }
             }
 
             if (autoPlay) {
@@ -783,8 +787,26 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       youtubeUnlockCallbackRef.current();
     }
 
-    // Try to unlock audio on mobile (must happen on user gesture)
-    await unlockAudio(audioRef.current);
+    // Instant unlock for iOS - Execute IMMEDIATELY on user gesture
+    // This is critical: we must start playback synchronously before any async operations
+    if (audioRef.current) {
+      if (song) {
+        // For new songs, start playing silence immediately to capture the Audio Session
+        // This bridges the gap while the async fetch happens
+        audioRef.current.src = SILENT_AUDIO_URI;
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0;
+        // @ts-ignore
+        if ('webkitPreservesPitch' in audioRef.current) audioRef.current.webkitPreservesPitch = true;
+
+        audioRef.current.play().catch(err => console.warn('Instant unlock failed:', err));
+        audioUnlocked = true;
+      } else {
+        // For resume, ensure we try to play immediately
+        audioRef.current.play().catch(() => { });
+        audioUnlocked = true;
+      }
+    }
 
     console.log('Play called with song:', song?.title || 'current song', 'YouTube mode:', state.youtubeMode?.isYoutube);
 
