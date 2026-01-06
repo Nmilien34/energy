@@ -12,6 +12,10 @@ const isMobileDevice = (): boolean => {
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 };
 
+// Silent audio track (1 second of silence) to keep iOS Audio Session active
+const SILENT_AUDIO_URI = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAgZGF0YQQAAAAAAA==';
+
+
 // Track if audio has been unlocked (required for iOS Safari)
 let audioUnlocked = false;
 
@@ -527,11 +531,11 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
         // Track if we were playing before going to background (for YouTube resume)
         wasPlayingBeforeBackgroundRef.current = state.isPlaying;
 
-        // For HTML5 audio, ensure it keeps playing
-        if (!state.youtubeMode?.isYoutube && audioRef.current && state.isPlaying) {
+        // Ensure audio keeper stays alive (for both HTML5 and YouTube/Silent mode)
+        if (state.isPlaying && audioRef.current) {
           // Check if audio was paused by the browser
           if (audioRef.current.paused) {
-            console.log('[Background] Audio was paused, resuming...');
+            console.log('[Background] Audio paused unexpectedly, resuming...');
             audioRef.current.play().catch(err => {
               console.warn('[Background] Failed to resume audio:', err);
             });
@@ -540,6 +544,14 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       } else {
         // Page became visible again
         console.log('[Background] Page visible again, wasPlaying:', wasPlayingBeforeBackgroundRef.current);
+
+        // Resume audio if we were playing
+        if (wasPlayingBeforeBackgroundRef.current && audioRef.current) {
+          if (audioRef.current.paused) {
+            console.log('[Background] Resuming audio keeper');
+            audioRef.current.play().catch(e => console.warn('Audio resume failed:', e));
+          }
+        }
 
         // For YouTube mode, try to resume playback if we were playing before
         if (state.youtubeMode?.isYoutube && wasPlayingBeforeBackgroundRef.current) {
@@ -556,18 +568,6 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
           // Also ensure state is set to playing
           dispatch({ type: 'SET_PLAYING', payload: true });
-        }
-
-        // For HTML5 audio, sync state
-        if (!state.youtubeMode?.isYoutube && audioRef.current) {
-          const isActuallyPlaying = !audioRef.current.paused;
-          if (state.isPlaying && !isActuallyPlaying) {
-            // State says playing but audio is paused - resume
-            console.log('[Background] Resuming HTML5 audio after returning to foreground');
-            audioRef.current.play().catch(err => {
-              console.warn('[Background] Failed to resume:', err);
-            });
-          }
         }
       }
     };
@@ -665,11 +665,21 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
             }
           });
 
-          // Clear any existing audio source and pause to prevent conflicts
-          if (audioRef.current.src) {
-            audioRef.current.pause();
-            audioRef.current.src = '';
-            audioRef.current.load();
+          // For iOS Background Playback: Play silent audio in the background
+          if (audioRef.current) {
+            console.log('Starting silent audio keeper for YouTube background playback');
+            audioRef.current.src = SILENT_AUDIO_URI;
+            audioRef.current.loop = true;
+            audioRef.current.volume = 0; // Silent
+            // Essential for iOS: maintain playback rate
+            if ('webkitPreservesPitch' in audioRef.current) {
+              // @ts-ignore
+              audioRef.current.webkitPreservesPitch = true;
+            }
+
+            if (autoPlay) {
+              audioRef.current.play().catch(e => console.warn('Silent audio play failed:', e));
+            }
           }
 
           if (autoPlay) {
@@ -809,6 +819,10 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       // Resume current song - check if it's YouTube mode
       if (state.youtubeMode?.isYoutube) {
         console.log('Resuming YouTube playback');
+        // Resume silent audio keeper if it exists
+        if (audioRef.current && audioRef.current.src === SILENT_AUDIO_URI) {
+          audioRef.current.play().catch(e => console.warn('Silent audio resume failed:', e));
+        }
         // For YouTube mode, we'll let the MiniPlayer handle it
         dispatch({ type: 'SET_PLAYING', payload: true });
       } else {
@@ -825,6 +839,10 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
   const pause = () => {
     if (state.youtubeMode?.isYoutube) {
+      // Pause silent audio keeper
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
       // For YouTube mode, we'll let the MiniPlayer handle it
       dispatch({ type: 'SET_PLAYING', payload: false });
     } else if (audioRef.current) {
