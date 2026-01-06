@@ -628,7 +628,8 @@ class MusicService {
 
   // Authentication OAuth
   initiateGoogleOAuth(): void {
-    window.location.href = '/api/auth/oauth/google';
+    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5003';
+    window.location.href = `${API_URL}/api/auth/oauth/google`;
   }
 
   // Utility methods
