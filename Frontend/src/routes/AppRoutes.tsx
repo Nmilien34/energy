@@ -10,7 +10,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<Welcome />} />
-      <Route path="/platform" element={<MusicPlatform />} />
+      <Route path="/platform/*" element={<MusicPlatform />} />
       <Route path="/playlist/:id" element={<PlaylistDetail />} />
       <Route path="/share/:shareId" element={<SharedContent />} />
       <Route path="/auth/success" element={<AuthSuccess />} />

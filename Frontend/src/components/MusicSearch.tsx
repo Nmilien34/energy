@@ -1,18 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Music, Clock, Eye, Play, Heart, MoreVertical, ListPlus, Cloud, CheckCircle2, Sparkles } from 'lucide-react';
 import { Song } from '../types/models';
 import { musicService } from '../services/musicService';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import FallbackImage from './FallbackImage';
 import PlaylistPicker from './PlaylistPicker';
+import { useAuth } from '../contexts/AuthContext';
+import { useAnonymousLandingSession } from '../hooks/useAnonymousLandingSession';
+import AnonymousLimitModal from './AnonymousLimitModal';
+import AuthModal from './AuthModal';
 
 interface MusicSearchProps {
   onSongSelect?: (song: Song) => void;
   className?: string;
 }
 
+
 const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' }) => {
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') || '');
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +27,10 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const { play, addToQueue, state } = useAudioPlayer();
+  const { user } = useAuth();
+  const { session, trackPlay } = useAnonymousLandingSession();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
 
   // Load liked songs from library on mount
   useEffect(() => {
@@ -72,9 +83,36 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
     return () => clearTimeout(debounceTimer);
   }, [query, searchMusic]);
 
-  const handlePlaySong = (song: Song) => {
+  const handlePlaySong = async (song: Song) => {
+    // If a parent handler is provided, delegate to it (e.g. Dashboard handles its own limits)
+    if (onSongSelect) {
+      onSongSelect(song);
+      return;
+    }
+
+    // If no parent handler, we must enforce limits internally
+    if (user) {
+      play(song);
+      return;
+    }
+
+    if (!session) {
+      play(song);
+      return;
+    }
+
+    if (session.hasReachedLimit) {
+      setIsLimitModalOpen(true);
+      return;
+    }
+
+    const success = await trackPlay(song.id);
+    if (!success) {
+      setIsLimitModalOpen(true);
+      return;
+    }
+
     play(song);
-    onSongSelect?.(song);
   };
 
   const handleAddToQueue = (song: Song) => {
@@ -83,14 +121,14 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
 
   const handleAddToFavorites = async (song: Song) => {
     const isLiked = likedSongs.has(song.id);
-    
+
     // Optimistic update
     if (!isLiked) {
       setLikedSongs(prev => new Set(prev).add(song.id));
       setShowSuccessMessage(true);
       setTimeout(() => setShowSuccessMessage(false), 3000);
     }
-    
+
     try {
       if (isLiked) {
         await musicService.removeFromFavorites(song.id);
@@ -215,6 +253,27 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
           <span className="font-semibold">Added to Liked Songs</span>
         </div>
       )}
+
+      {/* Modals for Anonymous Users */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      <AnonymousLimitModal
+        isOpen={isLimitModalOpen}
+        onClose={() => setIsLimitModalOpen(false)}
+        onSignup={() => {
+          setIsLimitModalOpen(false);
+          setIsAuthModalOpen(true);
+        }}
+        onLogin={() => {
+          setIsLimitModalOpen(false);
+          setIsAuthModalOpen(true);
+        }}
+        message={`You've reached your 5-song preview limit. Create an account to continue listening!`}
+        title="Create an Account to Continue"
+      />
     </div>
   );
 };
@@ -258,9 +317,8 @@ const SongItem: React.FC<SongItemProps> = ({
 
   return (
     <div
-      className={`group flex items-center p-3 hover:bg-zinc-700 transition-colors relative ${
-        isCurrentSong ? 'bg-zinc-700 border-l-4 border-blue-500' : ''
-      }`}
+      className={`group flex items-center p-3 hover:bg-zinc-700 transition-colors relative ${isCurrentSong ? 'bg-zinc-700 border-l-4 border-blue-500' : ''
+        }`}
     >
       {/* Thumbnail */}
       <div className="relative flex-shrink-0 mr-3">

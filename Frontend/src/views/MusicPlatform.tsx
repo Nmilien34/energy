@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Home,
   Search,
@@ -30,10 +30,29 @@ type ActiveView = 'dashboard' | 'search' | 'library' | 'playlists' | 'youtube' |
 const MusicPlatform: React.FC = () => {
   const { user, sessionExpired, sessionExpiredReason } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
+
+  // Sync active view with URL
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/platform' || path === '/platform/') {
+      setActiveView('dashboard');
+    } else if (path.includes('/platform/search')) {
+      setActiveView('search');
+    } else if (path.includes('/platform/library')) {
+      setActiveView('library');
+    } else if (path.includes('/platform/playlists')) {
+      setActiveView('playlists');
+    } else if (path.includes('/platform/youtube')) {
+      setActiveView('youtube');
+    } else if (path.includes('/platform/settings')) {
+      setActiveView('settings');
+    }
+  }, [location.pathname]);
 
   // Handle session expiry - show modal and redirect to home
   useEffect(() => {
@@ -63,11 +82,11 @@ const MusicPlatform: React.FC = () => {
   };
 
   const sidebarItems = [
-    { id: 'dashboard' as ActiveView, icon: Home, label: 'Home', requiresAuth: false },
-    { id: 'search' as ActiveView, icon: Search, label: 'Search', requiresAuth: false },
-    { id: 'library' as ActiveView, icon: Library, label: 'Your Library', requiresAuth: true },
-    { id: 'playlists' as ActiveView, icon: ListMusic, label: 'Playlists', requiresAuth: true },
-    { id: 'youtube' as ActiveView, icon: Youtube, label: 'YouTube', requiresAuth: true },
+    { id: 'dashboard' as ActiveView, icon: Home, label: 'Home', requiresAuth: false, path: '/platform' },
+    { id: 'search' as ActiveView, icon: Search, label: 'Search', requiresAuth: false, path: '/platform/search' },
+    { id: 'library' as ActiveView, icon: Library, label: 'Your Library', requiresAuth: true, path: '/platform/library' },
+    { id: 'playlists' as ActiveView, icon: ListMusic, label: 'Playlists', requiresAuth: true, path: '/platform/playlists' },
+    { id: 'youtube' as ActiveView, icon: Youtube, label: 'YouTube', requiresAuth: true, path: '/platform/youtube' },
   ];
 
   const handleViewChange = (view: ActiveView) => {
@@ -76,7 +95,14 @@ const MusicPlatform: React.FC = () => {
       setIsAuthModalOpen(true);
       return;
     }
-    setActiveView(view);
+
+    // Navigate to the correct path
+    if (item?.path) {
+      navigate(item.path);
+    } else if (view === 'settings') {
+      navigate('/platform/settings');
+    }
+
     setIsSidebarOpen(false);
   };
 
