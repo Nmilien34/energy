@@ -273,7 +273,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
               <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3 sm:gap-4">
             {userPlaylists.slice(0, 6).map((playlist) => (
               <EnhancedPlaylistCard
                 key={playlist.id}
@@ -294,7 +294,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
             </h2>
             <p className="text-sm sm:text-base text-gray-400 font-medium">Pick up where you left off</p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3 sm:gap-4">
             {recentlyPlayed.map((song) => (
               <EnhancedSongCard
                 key={song.id}
@@ -322,7 +322,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
               <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3 sm:gap-4">
             {trendingSongs.map((song) => (
               <EnhancedSongCard
                 key={song.id}
@@ -351,7 +351,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
               <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3 sm:gap-4">
             {trendingArtists.map((artist, index) => (
               <ArtistCard
                 key={artist.name || index}
