@@ -49,30 +49,56 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
     loadLikedSongs();
   }, []);
 
+  // Cache for search results
+  const searchCache = React.useRef<Map<string, Song[]>>(new Map());
+  const activeRequestRef = React.useRef<string>('');
+
   const searchMusic = useCallback(async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
+    const trimmedQuery = searchQuery.trim();
+    if (!trimmedQuery) {
       setSongs([]);
       setShowResults(false);
       return;
     }
 
+    // Check cache first
+    if (searchCache.current.has(trimmedQuery)) {
+      console.log('Search cache hit for:', trimmedQuery);
+      setSongs(searchCache.current.get(trimmedQuery) || []);
+      setShowResults(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    activeRequestRef.current = trimmedQuery;
 
     try {
-      const response = await musicService.searchMusic(searchQuery, 'song', 20);
-      if (response.success && response.data) {
-        setSongs(response.data.songs);
-        setShowResults(true);
-      } else {
-        setError(response.error || 'Failed to search music');
-        setSongs([]);
+      // Reduced limit to 10 for faster response
+      const response = await musicService.searchMusic(trimmedQuery, 'song', 10);
+
+      // Prevent race conditions - only update if this is still the active request
+      if (activeRequestRef.current === trimmedQuery) {
+        if (response.success && response.data) {
+          const results = response.data.songs;
+          setSongs(results);
+          setShowResults(true);
+          // Cache the results
+          searchCache.current.set(trimmedQuery, results);
+        } else {
+          setError(response.error || 'Failed to search music');
+          setSongs([]);
+        }
       }
     } catch (err) {
-      setError('Network error while searching');
-      setSongs([]);
+      if (activeRequestRef.current === trimmedQuery) {
+        setError('Network error while searching');
+        setSongs([]);
+      }
     } finally {
-      setLoading(false);
+      if (activeRequestRef.current === trimmedQuery) {
+        setLoading(false);
+      }
     }
   }, []);
 
