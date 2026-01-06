@@ -179,7 +179,7 @@ const SongRecognition: React.FC = () => {
                             setMode('idle');
                         }
                     } else {
-                        setError(response.data?.message || 'Recognition failed. Please try again.');
+                        setError(response.error || 'Recognition failed. Please try again.');
                         setMode('idle');
                     }
                 } catch (apiErr: any) {
