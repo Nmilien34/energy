@@ -166,6 +166,16 @@ class MusicService {
     }
   }
 
+  // Marketing stats for anonymous users
+  getPlatformStats() {
+    return {
+      songsPlayed: { value: 10000, label: "10k+" },
+      playlists: { value: 500, label: "500+" },
+      favorites: { value: 2500, label: "2.5k+" },
+      hoursListened: { value: 1000, label: "1k+" }
+    };
+  }
+
   async incrementPlayCount(songId: string, duration?: number, completed: boolean = true): Promise<ApiResponse<void>> {
     const response = await api.post('/api/music/play', {
       songId,

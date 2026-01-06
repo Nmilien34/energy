@@ -29,11 +29,19 @@ interface DashboardProps {
   className?: string;
 }
 
+interface PlatformStats {
+  songsPlayed: { value: number; label: string };
+  playlists: { value: number; label: string };
+  favorites: { value: number; label: string };
+  hoursListened: { value: number; label: string };
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
   const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
   const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
   const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
   const [trendingArtists, setTrendingArtists] = useState<Artist[]>([]);
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   const { user } = useAuth();
@@ -114,6 +122,9 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
         // Clear user data if logged out
         setRecentlyPlayed([]);
         setUserPlaylists([]);
+
+        // Load platform stats for anonymous users
+        setPlatformStats(musicService.getPlatformStats());
       }
 
       // ALWAYS Load trending music with error handling (Public Data)
@@ -358,25 +369,29 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
             <EnhancedStatCard
               icon={Headphones}
               label="Songs Played"
-              value={recentlyPlayed && Array.isArray(recentlyPlayed) ? recentlyPlayed.length.toString() : "0"}
+              value={user ? (recentlyPlayed && Array.isArray(recentlyPlayed) ? recentlyPlayed.length.toString() : "0") : (platformStats?.songsPlayed.label || "0")}
+              animateValue={!user && platformStats ? platformStats.songsPlayed.value : undefined}
               gradient="from-blue-500 to-blue-600"
             />
             <EnhancedStatCard
               icon={Music}
               label="Playlists"
-              value={userPlaylists && Array.isArray(userPlaylists) ? userPlaylists.length.toString() : "0"}
+              value={user ? (userPlaylists && Array.isArray(userPlaylists) ? userPlaylists.length.toString() : "0") : (platformStats?.playlists.label || "0")}
+              animateValue={!user && platformStats ? platformStats.playlists.value : undefined}
               gradient="from-purple-500 to-purple-600"
             />
             <EnhancedStatCard
               icon={Heart}
               label="Favorites"
-              value="0"
+              value={user ? "0" : (platformStats?.favorites.label || "0")}
+              animateValue={!user && platformStats ? platformStats.favorites.value : undefined}
               gradient="from-pink-500 to-red-500"
             />
             <EnhancedStatCard
               icon={Star}
               label="Hours Listened"
-              value="0"
+              value={user ? "0" : (platformStats?.hoursListened.label || "0")}
+              animateValue={!user && platformStats ? platformStats.hoursListened.value : undefined}
               gradient="from-yellow-500 to-orange-500"
             />
           </div>
@@ -628,16 +643,86 @@ interface EnhancedStatCardProps {
   icon: React.ComponentType<any>;
   label: string;
   value: string;
+  animateValue?: number;
   gradient: string;
 }
 
-const EnhancedStatCard: React.FC<EnhancedStatCardProps> = ({ icon: Icon, label, value, gradient }) => {
+const EnhancedStatCard: React.FC<EnhancedStatCardProps> = ({ icon: Icon, label, value, animateValue, gradient }) => {
+  const [displayValue, setDisplayValue] = useState(value);
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const cardRef = React.useRef<HTMLDivElement>(null);
+
+  // Intersection Observer for scroll trigger
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !hasAnimated) {
+          setHasAnimated(true);
+        }
+      },
+      { threshold: 0.1 } // Trigger when 10% visible
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasAnimated]);
+
+  // Count up animation
+  useEffect(() => {
+    // Only animate if we have a value, have triggered animation, and haven't finished it
+    if (animateValue === undefined || !hasAnimated) {
+      // If waiting to animate, show start value (or could show initial '0'?)
+      // For now, let's just keep previous value or handle it in rendering
+      if (!hasAnimated && animateValue !== undefined) {
+        const startValue = Math.floor(animateValue * 0.9);
+        if (animateValue >= 1000) {
+          setDisplayValue((startValue / 1000).toFixed(1) + 'k+');
+        } else {
+          setDisplayValue(Math.floor(startValue).toString());
+        }
+      }
+      return;
+    }
+
+    const startValue = Math.floor(animateValue * 0.9); // Start from 90%
+    const duration = 2000; // 2 seconds
+    const fps = 60;
+    const interval = 1000 / fps;
+    const steps = duration / interval;
+    const increment = (animateValue - startValue) / steps;
+
+    let current = startValue;
+    let step = 0;
+
+    const timer = setInterval(() => {
+      step++;
+      current += increment;
+
+      if (step >= steps) {
+        setDisplayValue(value); // Ensure specific formatted end value (e.g. "10k+")
+        clearInterval(timer);
+      } else {
+        // Format intermediate values
+        if (current >= 1000) {
+          setDisplayValue((current / 1000).toFixed(1) + 'k+');
+        } else {
+          setDisplayValue(Math.floor(current).toString());
+        }
+      }
+    }, interval);
+
+    return () => clearInterval(timer);
+  }, [animateValue, value, hasAnimated]);
+
   return (
-    <div className="group text-center p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-zinc-900/40 hover:bg-zinc-900/60 transition-all duration-500 hover:scale-105 border border-zinc-700/30 hover:border-zinc-600/50 backdrop-blur-sm">
+    <div ref={cardRef} className="group text-center p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-zinc-900/40 hover:bg-zinc-900/60 transition-all duration-500 hover:scale-105 border border-zinc-700/30 hover:border-zinc-600/50 backdrop-blur-sm">
       <div className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 mx-auto mb-3 sm:mb-4 rounded-xl sm:rounded-2xl bg-gradient-to-r ${gradient} flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-500`}>
         <Icon className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-white" />
       </div>
-      <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-1 sm:mb-2 bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">{value}</div>
+      <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-white mb-1 sm:mb-2 bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">{displayValue}</div>
       <div className="text-xs sm:text-sm text-zinc-400 font-semibold uppercase tracking-wide">{label}</div>
     </div>
   );
