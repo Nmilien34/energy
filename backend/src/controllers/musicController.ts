@@ -8,7 +8,7 @@ import { audioService } from '../services/audioService';
 import { redisService } from '../services/redisService';
 import { s3Service } from '../services/s3Service';
 import { bestMatchService } from '../services/bestMatchService';
-import { IUser } from '../models/User';
+import { User, IUser } from '../models/User';
 import { Types } from 'mongoose';
 
 /**
@@ -164,11 +164,11 @@ export const searchMusic = async (req: Request, res: Response) => {
           { channelTitle: { $regex: q, $options: 'i' } }
         ]
       })
-      .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId description playCount')
-      .sort({ playCount: -1, viewCount: -1 })
-      .limit(limitNum)
-      .lean()
-      .maxTimeMS(5000);
+        .select('youtubeId title artist duration thumbnail thumbnailHd viewCount publishedAt channelTitle channelId description playCount')
+        .sort({ playCount: -1, viewCount: -1 })
+        .limit(limitNum)
+        .lean()
+        .maxTimeMS(5000);
 
       if (existingSongs.length >= 5) {
         console.log(`✓ Found ${existingSongs.length} songs in database for query "${q}"`);
@@ -202,11 +202,11 @@ export const searchMusic = async (req: Request, res: Response) => {
               try {
                 console.log(`🎯 Using Musi Algorithm for best match`);
                 const bestMatch = await bestMatchService.findBestMatch(q);
-                
+
                 if (bestMatch && bestMatch.isBestMatch && bestMatch.id && bestMatch.title) {
                   const score = typeof bestMatch.matchScore === 'number' ? bestMatch.matchScore.toFixed(1) : 'N/A';
                   console.log(`✅ Best match found: "${bestMatch.title}" (Score: ${score})`);
-                  
+
                   try {
                     // Get additional results using regular search
                     const additionalResults = await youtubeService.searchSongs(q, Math.max(1, limitNum - 1));
@@ -369,8 +369,8 @@ async function getTrendingMusicFallback(limit: number): Promise<any[]> {
     const cachedTrending = await Song.find({
       viewCount: { $gt: 100000 } // Songs with more than 100k views
     })
-    .sort({ viewCount: -1, createdAt: -1 })
-    .limit(limit);
+      .sort({ viewCount: -1, createdAt: -1 })
+      .limit(limit);
 
     if (cachedTrending.length >= 5) {
       console.log('Using cached trending songs from database');
@@ -533,7 +533,7 @@ export const getSong = async (req: Request, res: Response) => {
 
     // Add cache headers (cache individual songs for 1 hour)
     res.set('Cache-Control', 'public, max-age=3600');
-    
+
     res.json({
       success: true,
       data: {
@@ -602,19 +602,30 @@ export const getAudioStream = async (req: Request, res: Response) => {
     if (sessionId && typeof sessionId === 'string') {
       try {
         const { AnonymousSession } = await import('../models/AnonymousSession');
-        const session = await AnonymousSession.findOne({
-          sessionId,
-          sessionType: 'landing'
-        });
 
-        if (session && new Date() < session.expiresAt) {
+        // 1. Check strict limits for share/landing sessions
+        let session = await AnonymousSession.findOne({ sessionId });
+
+        // If no session found but sessionId is provided, we might need to create one (handled by frontend usually)
+        // For enforcement, if we find a session and it's over limit, we BLOCK.
+
+        if (session) {
+          if (!session.canPlayMore()) {
+            console.warn(`[AudioStream] Anonymous session limit reached for ${sessionId}`);
+            return res.status(403).json({
+              success: false,
+              error: 'Daily limit reached',
+              code: 'LIMIT_REACHED'
+            });
+          }
+
           // Track play in background (don't await to avoid blocking)
           session.addSongPlay(song?._id?.toString() || youtubeId).catch(err => {
             console.error('Error tracking anonymous play:', err);
           });
         }
       } catch (err) {
-        // Silently fail - don't block audio streaming if session tracking fails
+        // Silently fail - don't block audio streaming if session tracking fails UNLESS it was the rejection above
         console.error('Error in anonymous session tracking:', err);
       }
     }
@@ -1166,6 +1177,16 @@ export const recordPlay = async (req: Request, res: Response) => {
     await userLibrary.addToRecentlyPlayed(song._id as Types.ObjectId);
     await userLibrary.addToHistory(song._id as Types.ObjectId, duration || 0, completed);
 
+    // Update User lifetime stats
+    if (userId) {
+      await User.findByIdAndUpdate(userId, {
+        $inc: {
+          totalSongsPlayed: 1,
+          totalSecondsListened: Math.max(0, duration || 0)
+        }
+      });
+    }
+
     res.json({
       success: true,
       data: {
@@ -1287,10 +1308,10 @@ export const getAudioStreamWithFallback = async (req: Request, res: Response) =>
       });
     } catch (audioError) {
       console.warn(`Audio stream failed for ${id}, providing fallback:`, audioError);
-      
+
       // Provide YouTube embed as fallback
       const embedUrl = `https://www.youtube.com/embed/${id}?autoplay=0&controls=1&modestbranding=1&rel=0&showinfo=0`;
-      
+
       res.json({
         success: true,
         data: {

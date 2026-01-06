@@ -42,6 +42,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
   const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
   const [trendingArtists, setTrendingArtists] = useState<Artist[]>([]);
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
+  const [userStats, setUserStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   const { user } = useAuth();
@@ -118,10 +119,24 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
           console.warn('User playlists not available:', error);
           setUserPlaylists([]);
         }
+
+        // Load user stats
+        try {
+          const stats = await musicService.getUserStats();
+          setUserStats({
+            songsPlayed: { value: stats.rawValues?.songsPlayed || 0, label: stats.songsPlayed },
+            playlists: { value: stats.rawValues?.playlists || 0, label: stats.playlists },
+            favorites: { value: stats.rawValues?.favorites || 0, label: stats.favorites },
+            hoursListened: { value: stats.rawValues?.hoursListened || 0, label: stats.hoursListened }
+          });
+        } catch (error) {
+          console.warn('User stats not available:', error);
+        }
       } else {
         // Clear user data if logged out
         setRecentlyPlayed([]);
         setUserPlaylists([]);
+        setUserStats(null);
 
         // Load platform stats for anonymous users
         setPlatformStats(musicService.getPlatformStats());
@@ -369,29 +384,29 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
             <EnhancedStatCard
               icon={Headphones}
               label="Songs Played"
-              value={user ? (recentlyPlayed && Array.isArray(recentlyPlayed) ? recentlyPlayed.length.toString() : "0") : (platformStats?.songsPlayed.label || "0")}
-              animateValue={!user && platformStats ? platformStats.songsPlayed.value : undefined}
+              value={user ? (userStats?.songsPlayed.label || "0") : (platformStats?.songsPlayed.label || "0")}
+              animateValue={user ? userStats?.songsPlayed.value : (platformStats?.songsPlayed.value)}
               gradient="from-blue-500 to-blue-600"
             />
             <EnhancedStatCard
               icon={Music}
               label="Playlists"
-              value={user ? (userPlaylists && Array.isArray(userPlaylists) ? userPlaylists.length.toString() : "0") : (platformStats?.playlists.label || "0")}
-              animateValue={!user && platformStats ? platformStats.playlists.value : undefined}
+              value={user ? (userStats?.playlists.label || "0") : (platformStats?.playlists.label || "0")}
+              animateValue={user ? userStats?.playlists.value : (platformStats?.playlists.value)}
               gradient="from-purple-500 to-purple-600"
             />
             <EnhancedStatCard
               icon={Heart}
               label="Favorites"
-              value={user ? "0" : (platformStats?.favorites.label || "0")}
-              animateValue={!user && platformStats ? platformStats.favorites.value : undefined}
+              value={user ? (userStats?.favorites.label || "0") : (platformStats?.favorites.label || "0")}
+              animateValue={user ? userStats?.favorites.value : (platformStats?.favorites.value)}
               gradient="from-pink-500 to-red-500"
             />
             <EnhancedStatCard
               icon={Star}
               label="Hours Listened"
-              value={user ? "0" : (platformStats?.hoursListened.label || "0")}
-              animateValue={!user && platformStats ? platformStats.hoursListened.value : undefined}
+              value={user ? (userStats?.hoursListened.label || "0") : (platformStats?.hoursListened.label || "0")}
+              animateValue={user ? userStats?.hoursListened.value : (platformStats?.hoursListened.value)}
               gradient="from-yellow-500 to-orange-500"
             />
           </div>

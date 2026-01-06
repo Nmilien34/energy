@@ -176,6 +176,75 @@ class MusicService {
     };
   }
 
+  // Real stats for authenticated users
+  async getUserStats(): Promise<{
+    songsPlayed: string;
+    playlists: string;
+    favorites: string;
+    hoursListened: string;
+    rawValues?: {
+      songsPlayed: number;
+      playlists: number;
+      favorites: number;
+      hoursListened: number;
+    }
+  }> {
+    try {
+      const library = await this.getUserLibrary();
+
+      if (!library.success || !library.data) {
+        return {
+          songsPlayed: "0",
+          playlists: "0",
+          favorites: "0",
+          hoursListened: "0"
+        };
+      }
+
+      const data = library.data;
+      const songsPlayedCount = data.recentlyPlayed ? data.recentlyPlayed.length : 0;
+      const playlistsCount = data.playlists ? data.playlists.length : 0;
+      const favoritesCount = data.favorites ? data.favorites.length : 0;
+
+      // Calculate hours listened based on recently played songs (approximate)
+      // In a real app, this would be a dedicated backend stat
+      let totalSeconds = 0;
+      if (data.recentlyPlayed) {
+        data.recentlyPlayed.forEach(song => {
+          if (song.duration) {
+            totalSeconds += song.duration;
+          }
+        });
+      }
+      // If we have play counts on songs, we could multiply, but checking recentlyPlayed 
+      // without deduping is a rough proxy for "songs currently in history"
+
+      const hours = Math.floor(totalSeconds / 3600);
+      const hoursListened = hours > 0 ? (hours > 1000 ? (hours / 1000).toFixed(1) + 'k' : hours.toString()) : "0";
+
+      return {
+        songsPlayed: songsPlayedCount.toString(),
+        playlists: playlistsCount.toString(),
+        favorites: favoritesCount.toString(),
+        hoursListened: hoursListened,
+        rawValues: {
+          songsPlayed: songsPlayedCount,
+          playlists: playlistsCount,
+          favorites: favoritesCount,
+          hoursListened: hours
+        }
+      };
+    } catch (error) {
+      console.warn('Failed to calculate user stats:', error);
+      return {
+        songsPlayed: "0",
+        playlists: "0",
+        favorites: "0",
+        hoursListened: "0"
+      };
+    }
+  }
+
   async incrementPlayCount(songId: string, duration?: number, completed: boolean = true): Promise<ApiResponse<void>> {
     const response = await api.post('/api/music/play', {
       songId,

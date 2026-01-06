@@ -13,6 +13,8 @@ export interface IUser extends Document {
   youtubeChannelId?: string;
   createdAt: Date;
   lastLogin: Date;
+  totalSongsPlayed: number;
+  totalSecondsListened: number;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -53,6 +55,14 @@ const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>({
   lastLogin: {
     type: Date,
     default: Date.now
+  },
+  totalSongsPlayed: {
+    type: Number,
+    default: 0
+  },
+  totalSecondsListened: {
+    type: Number,
+    default: 0
   },
   googleId: {
     type: String,
