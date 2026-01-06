@@ -221,7 +221,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   const autoPlayEnabled = useRef<boolean>(true); // Enable auto-play by default
 
   // Ref to hold the latest next function (for use in event handlers)
-  const nextRef = useRef<() => void>(() => {});
+  const nextRef = useRef<() => void>(() => { });
 
   // iOS YouTube unlock callback - MiniPlayer registers this to prime the player synchronously
   const youtubeUnlockCallbackRef = useRef<(() => void) | null>(null);
@@ -345,7 +345,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       shouldAutoplay: shouldAutoplayNextLoad.current,
       fullSong: currentSong
     });
-    
+
     if (currentSong) {
       // Check if this is a new song - compare by ID if both have IDs, otherwise always load
       const existingSong = state.currentSong;
@@ -353,14 +353,14 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       const isNewSong = hasId && existingSong
         ? currentSong.id !== existingSong.id
         : currentSong !== existingSong; // Fallback to reference comparison
-      
+
       console.log('Is new song?', isNewSong, {
         hasId,
         currentSongId: currentSong.id,
         existingSongId: existingSong?.id,
         songsEqual: currentSong === existingSong
       });
-      
+
       if (isNewSong || !existingSong) {
         console.log('Loading new song:', currentSong.title || 'Unknown');
         dispatch({ type: 'SET_CURRENT_SONG', payload: currentSong });
@@ -586,7 +586,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     const keepAliveInterval = setInterval(() => {
       if (audioRef.current && state.isPlaying && audioRef.current.paused) {
         console.log('[KeepAlive] Audio paused unexpectedly, resuming...');
-        audioRef.current.play().catch(() => {});
+        audioRef.current.play().catch(() => { });
       }
     }, 1000);
 
@@ -621,9 +621,9 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       return;
     }
 
-    console.log('loadSong called:', { 
-      songId: song.id, 
-      songTitle: song.title, 
+    console.log('loadSong called:', {
+      songId: song.id,
+      songTitle: song.title,
       youtubeId: song.youtubeId,
       autoPlay,
       fullSong: song
@@ -657,11 +657,13 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
           // For YouTube embeds, we need to extract the video ID and use YouTube Player API
           // Store the YouTube info in state for the MiniPlayer component to handle
-          dispatch({ type: 'SET_YOUTUBE_MODE', payload: {
-            isYoutube: true,
-            youtubeId: song.youtubeId,
-            embedUrl: audioUrl
-          }});
+          dispatch({
+            type: 'SET_YOUTUBE_MODE', payload: {
+              isYoutube: true,
+              youtubeId: song.youtubeId,
+              embedUrl: audioUrl
+            }
+          });
 
           // Clear any existing audio source and pause to prevent conflicts
           if (audioRef.current.src) {
@@ -696,7 +698,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           retryCount.current = 0;
 
           // Use regular HTML5 audio for direct streams
-          dispatch({ type: 'SET_YOUTUBE_MODE', payload: { isYoutube: false }});
+          dispatch({ type: 'SET_YOUTUBE_MODE', payload: { isYoutube: false } });
           audioRef.current.src = audioUrl;
           audioRef.current.load();
 
@@ -789,7 +791,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           return;
         }
       }
-      
+
       // Add song to queue and play immediately
       const newQueue = [song];
       console.log('Setting queue with song:', {
@@ -1111,16 +1113,16 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
     // Set the shuffle source for continuous shuffle
     dispatch({ type: 'SET_SHUFFLE_SOURCE', payload: songs });
-    
+
     // Start with a random song from the source
     const randomSong = songs[Math.floor(Math.random() * songs.length)];
     const initialQueue = [randomSong];
-    
+
     setQueue(initialQueue, 0);
-    
+
     // Signal that we want to autoplay when the song loads
     shouldAutoplayNextLoad.current = true;
-    
+
     // Also set playing state immediately for YouTube player
     dispatch({ type: 'SET_PLAYING', payload: true });
   };

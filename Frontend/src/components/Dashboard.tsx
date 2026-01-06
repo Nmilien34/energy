@@ -21,6 +21,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import MusicSearch from './MusicSearch';
 import FallbackImage from './FallbackImage';
+import { useAnonymousLandingSession } from '../hooks/useAnonymousLandingSession';
+import AnonymousLimitModal from './AnonymousLimitModal';
+import AuthModal from './AuthModal';
 
 interface DashboardProps {
   className?: string;
@@ -37,51 +40,88 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
   const { play, state } = useAudioPlayer();
   const navigate = useNavigate();
 
-  useEffect(() => {
+  // Anonymous session tracking
+  const { session, trackPlay } = useAnonymousLandingSession();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  // Handle song play with anonymous limits
+  const handlePlaySong = async (song: Song) => {
+    // If user is authenticated, play normally
     if (user) {
-      loadDashboardData();
+      play(song);
+      return;
     }
+
+    // For anonymous users, check and track the play
+    if (!session) {
+      // If session not ready, just play (fail open)
+      play(song);
+      return;
+    }
+
+    if (session.hasReachedLimit) {
+      setIsLimitModalOpen(true);
+      return;
+    }
+
+    const success = await trackPlay(song.id);
+    if (!success) {
+      setIsLimitModalOpen(true);
+      return;
+    }
+
+    play(song);
+  };
+
+  useEffect(() => {
+    loadDashboardData();
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const loadDashboardData = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // Load recently played with error handling
-      try {
-        const recentResponse = await musicService.getRecentlyPlayed(6);
-        if (recentResponse.success && recentResponse.data && Array.isArray(recentResponse.data)) {
-          setRecentlyPlayed(recentResponse.data);
-        } else {
+      // Only load user-specific data if logged in
+      if (user) {
+        // Load recently played with error handling
+        try {
+          const recentResponse = await musicService.getRecentlyPlayed(6);
+          if (recentResponse.success && recentResponse.data && Array.isArray(recentResponse.data)) {
+            setRecentlyPlayed(recentResponse.data);
+          } else {
+            setRecentlyPlayed([]);
+          }
+        } catch (error) {
+          console.warn('Recently played data not available:', error);
           setRecentlyPlayed([]);
         }
-      } catch (error) {
-        console.warn('Recently played data not available:', error);
-        setRecentlyPlayed([]);
-      }
 
-      // Load user playlists with error handling
-      try {
-        const playlistsResponse = await musicService.getUserPlaylists();
-        if (playlistsResponse.success && playlistsResponse.data && Array.isArray(playlistsResponse.data)) {
-          setUserPlaylists(playlistsResponse.data);
-        } else {
+        // Load user playlists with error handling
+        try {
+          const playlistsResponse = await musicService.getUserPlaylists();
+          if (playlistsResponse.success && playlistsResponse.data && Array.isArray(playlistsResponse.data)) {
+            setUserPlaylists(playlistsResponse.data);
+          } else {
+            setUserPlaylists([]);
+          }
+        } catch (error) {
+          console.warn('User playlists not available:', error);
           setUserPlaylists([]);
         }
-      } catch (error) {
-        console.warn('User playlists not available:', error);
+      } else {
+        // Clear user data if logged out
+        setRecentlyPlayed([]);
         setUserPlaylists([]);
       }
 
-      // Load trending music with error handling
+      // ALWAYS Load trending music with error handling (Public Data)
       try {
-        const trendingResponse = await musicService.getTrendingSongs(20);
+        const trendingResponse = user
+          ? await musicService.getTrendingSongs(20)
+          : await musicService.getPublicTrendingSongs(20);
+
         if (trendingResponse.success && trendingResponse.data && Array.isArray(trendingResponse.data.songs)) {
           setTrendingSongs(trendingResponse.data.songs.slice(0, 12));
         } else {
@@ -92,9 +132,12 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
         setTrendingSongs([]);
       }
 
-      // Load trending artists with error handling
+      // ALWAYS Load trending artists with error handling (Public Data)
       try {
-        const trendingArtistsResponse = await musicService.getTrendingArtists(20);
+        const trendingArtistsResponse = user
+          ? await musicService.getTrendingArtists(20)
+          : await musicService.getPublicTrendingArtists(20);
+
         if (trendingArtistsResponse.success && trendingArtistsResponse.data && Array.isArray(trendingArtistsResponse.data.artists)) {
           setTrendingArtists(trendingArtistsResponse.data.artists.slice(0, 12));
         } else {
@@ -135,19 +178,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
     );
   }
 
-  if (!user) {
-    return (
-      <div className={`p-8 ${className}`}>
-        <div className="text-center py-16">
-          <Music className="h-20 w-20 mx-auto mb-6 text-zinc-600" />
-          <h3 className="text-2xl font-bold text-white mb-3">Welcome to NRG Flow</h3>
-          <p className="text-zinc-400 text-lg mb-8 max-w-md mx-auto">
-            Please log in to access your dashboard, playlists, and recently played music.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Removed blocking view for anonymous users
 
   // Quick access items including playlists
   const quickAccessItems = [
@@ -157,7 +188,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
       label: song.title,
       subtitle: song.artist,
       icon: Clock,
-      action: () => play(song),
+      action: () => handlePlaySong(song),
     })),
     ...userPlaylists.slice(0, 3 - Math.min(recentlyPlayed.length, 3)).map(playlist => ({
       type: 'playlist' as const,
@@ -192,7 +223,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
           <MusicSearch
             className=""
             onSongSelect={(song) => {
-              play(song);
+              handlePlaySong(song);
             }}
           />
         </div>
@@ -242,7 +273,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
               <EnhancedSongCard
                 key={song.id}
                 song={song}
-                onPlay={() => play(song)}
+                onPlay={() => handlePlaySong(song)}
                 isCurrentSong={state.currentSong?.id === song.id}
               />
             ))}
@@ -270,7 +301,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
               <EnhancedSongCard
                 key={song.id}
                 song={song}
-                onPlay={() => play(song)}
+                onPlay={() => handlePlaySong(song)}
                 isCurrentSong={state.currentSong?.id === song.id}
                 showTrendingBadge
               />
@@ -374,6 +405,27 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
           </div>
         </section>
       )}
+
+      {/* Modals for Anonymous Users */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      <AnonymousLimitModal
+        isOpen={isLimitModalOpen}
+        onClose={() => setIsLimitModalOpen(false)}
+        onSignup={() => {
+          setIsLimitModalOpen(false);
+          setIsAuthModalOpen(true);
+        }}
+        onLogin={() => {
+          setIsLimitModalOpen(false);
+          setIsAuthModalOpen(true);
+        }}
+        message={`You've reached your 5-song preview limit. Create an account to continue listening!`}
+        title="Create an Account to Continue"
+      />
     </div>
   );
 };
@@ -451,9 +503,8 @@ const EnhancedSongCard: React.FC<EnhancedSongCardProps> = ({ song, onPlay, isCur
         <FallbackImage
           src={song.thumbnail}
           alt={song.title}
-          className={`w-full aspect-square rounded-lg object-cover transition-all duration-300 shadow-lg ${
-            isCurrentSong ? 'ring-2 ring-music-purple' : 'group-hover:shadow-2xl'
-          }`}
+          className={`w-full aspect-square rounded-lg object-cover transition-all duration-300 shadow-lg ${isCurrentSong ? 'ring-2 ring-music-purple' : 'group-hover:shadow-2xl'
+            }`}
         />
         {showTrendingBadge && (
           <div className="absolute top-2 right-2 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">

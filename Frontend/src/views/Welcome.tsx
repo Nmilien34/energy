@@ -131,11 +131,7 @@ const Welcome: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen overflow-hidden transition-colors pb-safe ${
-      isLight
-        ? 'bg-[var(--bg-primary)] text-[var(--text-primary)]'
-        : 'bg-gradient-to-b from-music-black via-music-black-light to-music-black text-white'
-    }`}>
+    <div className="min-h-screen overflow-hidden transition-colors pb-safe bg-[var(--bg-primary)] text-[var(--text-primary)]">
       {/* Gradient blobs for glass effect - smaller on mobile for performance */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className={`absolute -top-20 -left-20 sm:-top-40 sm:-left-40 w-[250px] h-[250px] sm:w-[500px] sm:h-[500px] rounded-full blur-[80px] sm:blur-[120px] ${isLight ? 'bg-purple-400/30' : 'bg-purple-600/20'}`}></div>
@@ -145,11 +141,10 @@ const Welcome: React.FC = () => {
       </div>
 
       {/* Navigation - Glass */}
-      <nav className={`relative z-10 backdrop-blur-2xl border-b shadow-lg transition-colors ${
-        isLight
+      <nav className={`relative z-10 backdrop-blur-2xl border-b shadow-lg transition-colors ${isLight
           ? 'bg-black/5 border-black/10 shadow-black/5'
           : 'bg-white/5 border-white/10 shadow-black/5'
-      }`}>
+        }`}>
         <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-5 flex justify-between items-center">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <img
@@ -173,22 +168,20 @@ const Welcome: React.FC = () => {
                 {/* Mobile: Icon only */}
                 <button
                   onClick={() => setIsAuthModalOpen(true)}
-                  className={`sm:hidden p-2.5 rounded-full backdrop-blur-xl border transition-all ${
-                    isLight
+                  className={`sm:hidden p-2.5 rounded-full backdrop-blur-xl border transition-all ${isLight
                       ? 'bg-black/5 border-black/10 text-[var(--text-primary)] hover:bg-black/10'
                       : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-                  }`}
+                    }`}
                 >
                   <User className="h-4 w-4" />
                 </button>
                 {/* Desktop: Full button */}
                 <button
                   onClick={() => setIsAuthModalOpen(true)}
-                  className={`hidden sm:flex items-center space-x-2 px-4 py-2 rounded-full backdrop-blur-xl font-medium transition-all ${
-                    isLight
+                  className={`hidden sm:flex items-center space-x-2 px-4 py-2 rounded-full backdrop-blur-xl font-medium transition-all ${isLight
                       ? 'bg-black/5 border border-black/10 text-[var(--text-primary)] hover:bg-black/10'
                       : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
-                  }`}
+                    }`}
                 >
                   <User className="h-4 w-4" />
                   <span>Log in</span>
@@ -202,9 +195,8 @@ const Welcome: React.FC = () => {
       {/* Hero Section */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 py-8 sm:py-20">
         <div className="max-w-4xl mx-auto text-center animate-fade-in">
-          <div className={`inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-xl border mb-4 sm:mb-6 ${
-            isLight ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'
-          }`}>
+          <div className={`inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-xl border mb-4 sm:mb-6 ${isLight ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'
+            }`}>
             <span className={`text-[10px] sm:text-xs font-medium tracking-wide uppercase ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/60'}`}>Your Music, Your Way</span>
           </div>
 
@@ -223,46 +215,42 @@ const Welcome: React.FC = () => {
           {/* Search Bar */}
           <div className="relative max-w-2xl mx-auto mb-6 sm:mb-12 px-2 sm:px-4">
             <div className="relative">
-              <Search className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 ${isLight ? 'text-[var(--text-tertiary)]' : 'text-gray-400'}`} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchQuery && setShowSearchResults(true)}
                 placeholder="Search songs, artists..."
-                className={`w-full backdrop-blur-2xl pl-10 pr-10 sm:pl-12 sm:pr-12 py-3 sm:py-4 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 border transition-all text-sm shadow-lg ${
-                  isLight
+                className={`w-full backdrop-blur-2xl pl-10 pr-10 sm:pl-12 sm:pr-12 py-3 sm:py-4 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 border transition-all text-sm shadow-lg ${isLight
                     ? 'bg-black/5 text-[var(--text-primary)] border-black/10 hover:border-black/20 hover:bg-black/10 focus:ring-black/10 placeholder:text-black/30 shadow-black/5'
                     : 'bg-white/5 text-white border-white/10 hover:border-white/20 hover:bg-white/10 focus:ring-white/20 placeholder:text-white/40 shadow-black/10'
-                }`}
+                  }`}
               />
+              <Search className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 pointer-events-none ${isLight ? 'text-[var(--text-tertiary)]' : 'text-gray-400'}`} />
               {searchQuery && (
                 <button
                   onClick={() => {
                     setSearchQuery('');
                     setShowSearchResults(false);
                   }}
-                  className={`absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 transition-colors ${
-                    isLight ? 'text-black/40 hover:text-black/70' : 'text-gray-400 hover:text-white'
-                  }`}
+                  className={`absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 transition-colors ${isLight ? 'text-black/40 hover:text-black/70' : 'text-gray-400 hover:text-white'
+                    }`}
                 >
                   <X className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               )}
               {isSearching && (
                 <div className="absolute right-10 sm:right-12 top-1/2 -translate-y-1/2">
-                  <div className={`animate-spin w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 rounded-full ${
-                    isLight ? 'border-black/20 border-t-black/60' : 'border-white/20 border-t-white/60'
-                  }`}></div>
+                  <div className={`animate-spin w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 rounded-full ${isLight ? 'border-black/20 border-t-black/60' : 'border-white/20 border-t-white/60'
+                    }`}></div>
                 </div>
               )}
             </div>
 
             {/* Search Results Dropdown */}
             {showSearchResults && (searchQuery || searchResults.length > 0) && (
-              <div className={`absolute top-full left-0 right-0 sm:left-4 sm:right-4 mt-2 backdrop-blur-2xl rounded-xl sm:rounded-2xl shadow-2xl border max-h-[50vh] sm:max-h-96 overflow-y-auto z-50 ${
-                isLight ? 'bg-white/90 border-black/10' : 'bg-zinc-900/95 border-white/10'
-              }`}>
+              <div className={`absolute top-full left-0 right-0 sm:left-4 sm:right-4 mt-2 backdrop-blur-2xl rounded-xl sm:rounded-2xl shadow-2xl border max-h-[50vh] sm:max-h-96 overflow-y-auto z-50 ${isLight ? 'bg-white/90 border-black/10' : 'bg-zinc-900/95 border-white/10'
+                }`}>
                 {searchError && (
                   <div className="p-4 text-red-500/80 text-center text-sm">
                     <p>{searchError}</p>
@@ -271,9 +259,8 @@ const Welcome: React.FC = () => {
 
                 {isSearching && (
                   <div className={`p-6 text-center ${isLight ? 'text-black/50' : 'text-white/50'}`}>
-                    <div className={`animate-spin w-5 h-5 border-2 rounded-full mx-auto mb-3 ${
-                      isLight ? 'border-black/20 border-t-black/60' : 'border-white/20 border-t-white/60'
-                    }`}></div>
+                    <div className={`animate-spin w-5 h-5 border-2 rounded-full mx-auto mb-3 ${isLight ? 'border-black/20 border-t-black/60' : 'border-white/20 border-t-white/60'
+                      }`}></div>
                     <p className="text-sm">Searching...</p>
                   </div>
                 )}
@@ -290,9 +277,8 @@ const Welcome: React.FC = () => {
                       <button
                         key={song.id}
                         onClick={() => handlePlaySong(song)}
-                        className={`w-full px-3 py-2.5 transition-colors flex items-center space-x-3 text-left ${
-                          isLight ? 'hover:bg-black/5' : 'hover:bg-white/10'
-                        }`}
+                        className={`w-full px-3 py-2.5 transition-colors flex items-center space-x-3 text-left ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/10'
+                          }`}
                       >
                         <div className={`flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden ${isLight ? 'bg-black/10' : 'bg-white/10'}`}>
                           <FallbackImage
@@ -317,11 +303,10 @@ const Welcome: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-center gap-2.5 sm:gap-4 mb-10 sm:mb-20 px-2 sm:px-4">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className={`group relative px-5 py-2.5 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl font-semibold text-sm active:scale-[0.98] transition-all font-display touch-manipulation shadow-lg ${
-                isLight
+              className={`group relative px-5 py-2.5 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl font-semibold text-sm active:scale-[0.98] transition-all font-display touch-manipulation shadow-lg ${isLight
                   ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-black/80 shadow-black/10'
                   : 'bg-white/90 text-zinc-900 hover:bg-white shadow-white/10'
-              }`}
+                }`}
             >
               <span className="flex items-center justify-center space-x-2">
                 <span>Get Started</span>
@@ -330,11 +315,10 @@ const Welcome: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/platform')}
-              className={`px-5 py-2.5 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl border font-medium text-sm active:scale-[0.98] transition-all font-display touch-manipulation ${
-                isLight
+              className={`px-5 py-2.5 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl border font-medium text-sm active:scale-[0.98] transition-all font-display touch-manipulation ${isLight
                   ? 'bg-black/5 border-black/20 text-[var(--text-primary)] hover:bg-black/10 hover:border-black/30'
                   : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
-              }`}
+                }`}
             >
               Explore Platform
             </button>
@@ -343,15 +327,13 @@ const Welcome: React.FC = () => {
 
         {/* Feature Cards - Glass */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5 max-w-5xl mx-auto animate-slide-up px-2 sm:px-4">
-          <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
-            isLight
+          <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${isLight
               ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
               : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
-          }`}>
+            }`}>
             <div className="flex items-center space-x-3 mb-2 sm:mb-3">
-              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${
-                isLight ? 'bg-purple-500/10 border-purple-500/20' : 'bg-purple-500/20 border-purple-400/20'
-              }`}>
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${isLight ? 'bg-purple-500/10 border-purple-500/20' : 'bg-purple-500/20 border-purple-400/20'
+                }`}>
                 <Download className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isLight ? 'text-purple-600' : 'text-purple-300'}`} />
               </div>
               <h3 className={`text-sm sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>YouTube to MP3</h3>
@@ -361,15 +343,13 @@ const Welcome: React.FC = () => {
             </p>
           </div>
 
-          <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
-            isLight
+          <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${isLight
               ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
               : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
-          }`}>
+            }`}>
             <div className="flex items-center space-x-3 mb-2 sm:mb-3">
-              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${
-                isLight ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-500/20 border-blue-400/20'
-              }`}>
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${isLight ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-500/20 border-blue-400/20'
+                }`}>
                 <Music className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isLight ? 'text-blue-600' : 'text-blue-300'}`} />
               </div>
               <h3 className={`text-sm sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>Song Recognition</h3>
@@ -379,15 +359,13 @@ const Welcome: React.FC = () => {
             </p>
           </div>
 
-          <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${
-            isLight
+          <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${isLight
               ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
               : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
-          }`}>
+            }`}>
             <div className="flex items-center space-x-3 mb-2 sm:mb-3">
-              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${
-                isLight ? 'bg-cyan-500/10 border-cyan-500/20' : 'bg-cyan-500/20 border-cyan-400/20'
-              }`}>
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${isLight ? 'bg-cyan-500/10 border-cyan-500/20' : 'bg-cyan-500/20 border-cyan-400/20'
+                }`}>
                 <Heart className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isLight ? 'text-cyan-600' : 'text-cyan-300'}`} />
               </div>
               <h3 className={`text-sm sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>Personal Library</h3>
