@@ -65,6 +65,27 @@ export const createOrGetSession = async (req: Request, res: Response) => {
       }
     }
 
+    // IP-BASED ENFORCEMENT: Check if this IP already has an active session
+    // This prevents users from simply clearing cookies to reset their limit
+    if (ipAddress) {
+      // Find the most recent active session for this IP
+      const existingIpSession = await AnonymousSession.findOne({
+        ipAddress,
+        sessionType: 'landing',
+        expiresAt: { $gt: new Date() } // Must be not expired
+      }).sort({ updatedAt: -1 }); // Get the most recently used one
+
+      if (existingIpSession) {
+        console.log(`[Anonymous] Found existing active session for IP ${ipAddress} (reusing ${existingIpSession.sessionId.substring(0, 8)}...)`);
+
+        return res.status(200).json({
+          success: true,
+          data: getSessionResponseData(existingIpSession),
+          message: 'Session restored from IP'
+        });
+      }
+    }
+
     // Create new session (expires in 30 days)
     const sessionId = generateSessionId();
     const expiresAt = new Date();

@@ -9,6 +9,7 @@ import { redisService } from '../services/redisService';
 import { s3Service } from '../services/s3Service';
 import { bestMatchService } from '../services/bestMatchService';
 import { User, IUser } from '../models/User';
+import { GlobalPlayLog } from '../models/GlobalPlayLog';
 import { Types } from 'mongoose';
 
 /**
@@ -802,93 +803,9 @@ export const getTrendingArtists = async (req: Request, res: Response) => {
     const { limit = 20 } = req.query;
     const limitNum = parseInt(limit as string);
 
-    // Aggregate songs by channelId/channelTitle to get trending artists
-    // Group by channelId and calculate totals
-    const artists = await Song.aggregate([
-      // Match only songs with channel information
-      {
-        $match: {
-          channelId: { $exists: true, $ne: null },
-          channelTitle: { $exists: true, $ne: null }
-        }
-      },
-      // Group by channelId
-      {
-        $group: {
-          _id: '$channelId',
-          name: { $first: '$channelTitle' }, // Use channelTitle as artist name
-          channelId: { $first: '$channelId' },
-          channelTitle: { $first: '$channelTitle' },
-          // Sum playCount from all songs
-          playCount: { $sum: '$playCount' },
-          // Count number of songs
-          songCount: { $sum: 1 },
-          // Store all thumbnails to pick best one later
-          thumbnails: { $push: { thumbnail: '$thumbnail', thumbnailHd: '$thumbnailHd', playCount: '$playCount' } }
-        }
-      },
-      // Get thumbnail from the most popular song in the group
-      {
-        $lookup: {
-          from: 'songs',
-          let: { channelId: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ['$channelId', '$$channelId'] }
-              }
-            },
-            {
-              $sort: { playCount: -1, viewCount: -1 }
-            },
-            {
-              $limit: 1
-            },
-            {
-              $project: {
-                thumbnail: 1,
-                thumbnailHd: 1
-              }
-            }
-          ],
-          as: 'topSongData'
-        }
-      },
-      // Unwind and set thumbnail
-      {
-        $unwind: {
-          path: '$topSongData',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      // Project final fields
-      {
-        $project: {
-          _id: 0,
-          name: '$name',
-          channelId: '$channelId',
-          channelTitle: '$channelTitle',
-          playCount: { $ifNull: ['$playCount', 0] },
-          songCount: { $ifNull: ['$songCount', 0] },
-          thumbnail: {
-            $ifNull: [
-              '$topSongData.thumbnailHd',
-              { $ifNull: ['$topSongData.thumbnail', null] }
-            ]
-          }
-        }
-      },
-      // Sort by playCount descending
-      {
-        $sort: { playCount: -1, songCount: -1 }
-      },
-      // Limit results
-      {
-        $limit: limitNum
-      }
-    ], {
-      maxTimeMS: 10000 // 10 second timeout for aggregation
-    });
+    // Use aggregated data from GlobalPlayLog (48h window) via trendingService
+    // This gives a truer representation of what's currently popular
+    const artists = await trendingService.getTrendingArtists(limitNum);
 
     // Add cache headers (cache for 1 hour)
     res.set('Cache-Control', 'public, max-age=3600');
@@ -1185,6 +1102,22 @@ export const recordPlay = async (req: Request, res: Response) => {
           totalSecondsListened: Math.max(0, duration || 0)
         }
       });
+    }
+
+    // Record Global Play Log (for trending calculation) independent of user auth
+    // This allows us to track "what's popular right now" across ALL users
+    try {
+      if (song) {
+        // Run in background, don't await
+        new GlobalPlayLog({
+          songId: song.youtubeId,
+          artist: song.artist,
+          channelId: song.channelId,
+          userId: userId ? new Types.ObjectId(userId) : undefined
+        }).save().catch(err => console.error('Failed to save GlobalPlayLog:', err));
+      }
+    } catch (e) {
+      console.error('Error initiating GlobalPlayLog:', e);
     }
 
     res.json({

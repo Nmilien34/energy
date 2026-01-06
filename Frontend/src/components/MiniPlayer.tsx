@@ -566,7 +566,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
             {/* Progress Bar */}
             <div className="w-full max-w-md space-y-2">
-              <div 
+              <div
                 ref={progressBarRef}
                 className="w-full h-2 bg-zinc-800 rounded-full cursor-pointer select-none"
                 onMouseDown={handleProgressMouseDown}
@@ -587,11 +587,10 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
               {/* Shuffle */}
               <button
                 onClick={toggleShuffle}
-                className={`p-3 rounded-full transition-colors ${
-                  state.isShuffled
+                className={`p-3 rounded-full transition-colors ${state.isShuffled
                     ? 'bg-blue-600 text-white'
                     : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'
-                }`}
+                  }`}
               >
                 <Shuffle className="h-5 w-5" />
               </button>
@@ -632,11 +631,10 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
               {/* Repeat */}
               <button
                 onClick={handleRepeatToggle}
-                className={`p-3 rounded-full transition-colors ${
-                  state.repeatMode !== 'none'
+                className={`p-3 rounded-full transition-colors ${state.repeatMode !== 'none'
                     ? 'bg-blue-600 text-white'
                     : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'
-                }`}
+                  }`}
               >
                 {state.repeatMode === 'one' ? (
                   <Repeat1 className="h-5 w-5" />
@@ -736,188 +734,191 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
 
       {/* Mini player view (bottom bar) - hidden when expanded */}
       {!isExpanded && (
-        <div className={`fixed bottom-0 left-0 right-0 bg-music-black-light border-t border-white/10 shadow-lg z-50 ${className}`}>
-      {/* Progress Bar */}
-      <div 
-        ref={miniProgressBarRef}
-        className="w-full h-1 bg-white/10 cursor-pointer select-none touch-none"
-        onMouseDown={(e) => handleProgressMouseDown(e, miniProgressBarRef)}
-        onTouchStart={(e) => {
-          const touch = e.touches[0];
-          const syntheticEvent = {
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-          } as React.MouseEvent<HTMLDivElement>;
-          handleProgressMouseDown(syntheticEvent, miniProgressBarRef);
-        }}
-      >
-        <div
-          className="h-full bg-gradient-to-r from-music-purple to-music-blue transition-all duration-300"
-          style={{ width: `${progressPercentage}%` }}
-        />
-      </div>
-
-      <div className="flex items-center px-3 sm:px-4 py-2.5 sm:py-3">
-        {/* Song Info */}
-        <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
-          <div onClick={onExpand} className="cursor-pointer touch-manipulation">
-            <FallbackImage
-              src={state.currentSong.thumbnail}
-              alt={state.currentSong.title}
-              className="w-10 h-10 sm:w-12 sm:h-12 rounded-md object-cover flex-shrink-0"
+        <div className={`fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ${className}
+          lg:bottom-4 lg:left-4 lg:right-4 lg:w-auto lg:rounded-2xl
+          glass border-t border-white/10 shadow-2xl backdrop-blur-xl
+        `}>
+          {/* Progress Bar */}
+          <div
+            ref={miniProgressBarRef}
+            className="w-full h-1 bg-white/10 cursor-pointer select-none touch-none"
+            onMouseDown={(e) => handleProgressMouseDown(e, miniProgressBarRef)}
+            onTouchStart={(e) => {
+              const touch = e.touches[0];
+              const syntheticEvent = {
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+              } as React.MouseEvent<HTMLDivElement>;
+              handleProgressMouseDown(syntheticEvent, miniProgressBarRef);
+            }}
+          >
+            <div
+              className="h-full bg-gradient-to-r from-music-purple to-music-blue transition-all duration-300"
+              style={{ width: `${progressPercentage}%` }}
             />
           </div>
-          <div className="min-w-0 flex-1 cursor-pointer touch-manipulation" onClick={onExpand}>
-            <div className="flex items-center space-x-1.5 sm:space-x-2">
-              <p className="text-white font-medium truncate text-xs sm:text-sm">{state.currentSong.title}</p>
-              {state.currentSong.isCached && (
-                <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
-                  <Cloud className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-music-blue" />
-                </span>
+
+          <div className="flex items-center px-3 sm:px-4 py-2.5 sm:py-3">
+            {/* Song Info */}
+            <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+              <div onClick={onExpand} className="cursor-pointer touch-manipulation">
+                <FallbackImage
+                  src={state.currentSong.thumbnail}
+                  alt={state.currentSong.title}
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-md object-cover flex-shrink-0"
+                />
+              </div>
+              <div className="min-w-0 flex-1 cursor-pointer touch-manipulation" onClick={onExpand}>
+                <div className="flex items-center space-x-1.5 sm:space-x-2">
+                  <p className="text-white font-medium truncate text-xs sm:text-sm">{state.currentSong.title}</p>
+                  {state.currentSong.isCached && (
+                    <span className="flex items-center flex-shrink-0" title="Cached for faster playback">
+                      <Cloud className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-music-blue" />
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-400 text-xs truncate leading-tight">{state.currentSong.artist}</p>
+              </div>
+            </div>
+
+            {/* Control Buttons */}
+            <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3">
+              <button
+                onClick={previous}
+                className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                disabled={state.queue.length <= 1}
+              >
+                <SkipBack className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-white" />
+              </button>
+
+              <button
+                onClick={handlePlayPause}
+                className="p-2.5 sm:p-2 bg-gradient-to-r from-music-purple to-music-blue hover:from-music-purple-hover hover:to-music-blue-hover active:scale-95 rounded-full transition-all touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                disabled={state.isLoading}
+              >
+                {state.isLoading ? (
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : state.isPlaying ? (
+                  <Pause className="h-5 w-5 sm:h-4 sm:w-4 text-white" />
+                ) : (
+                  <Play className="h-5 w-5 sm:h-4 sm:w-4 text-white fill-white" />
+                )}
+              </button>
+
+              <button
+                onClick={next}
+                className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                disabled={state.queue.length <= 1}
+              >
+                <SkipForward className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-white" />
+              </button>
+            </div>
+
+            {/* Time Display */}
+            <div className="hidden md:flex items-center text-xs text-gray-400 mx-2 lg:mx-4">
+              <span>{formatTime(state.currentTime)}</span>
+              <span className="mx-1">/</span>
+              <span>{formatTime(state.duration)}</span>
+            </div>
+
+            {/* Volume Control */}
+            <div className="relative hidden lg:block">
+              <button
+                onClick={() => setShowVolumeSlider(!showVolumeSlider)}
+                onMouseEnter={() => setShowVolumeSlider(true)}
+                className="p-1.5 hover:bg-zinc-700 rounded-full transition-colors"
+              >
+                {state.volume === 0 ? (
+                  <VolumeX className="h-4 w-4 text-zinc-400 hover:text-white" />
+                ) : (
+                  <Volume2 className="h-4 w-4 text-zinc-400 hover:text-white" />
+                )}
+              </button>
+
+              {/* Volume Slider */}
+              {showVolumeSlider && (
+                <div
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-zinc-700 rounded-lg p-2 shadow-lg"
+                  onMouseLeave={() => setShowVolumeSlider(false)}
+                >
+                  <div className="flex items-center space-x-2">
+                    <VolumeX className="h-3 w-3 text-zinc-400" />
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={state.volume}
+                      onChange={(e) => setVolume(parseFloat(e.target.value))}
+                      className="w-20 accent-blue-500"
+                    />
+                    <Volume2 className="h-3 w-3 text-zinc-400" />
+                  </div>
+                  <div className="text-xs text-zinc-400 text-center mt-1">
+                    {Math.round(state.volume * 100)}%
+                  </div>
+                </div>
               )}
             </div>
-            <p className="text-gray-400 text-xs truncate leading-tight">{state.currentSong.artist}</p>
-          </div>
-        </div>
 
-        {/* Control Buttons */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3">
-          <button
-            onClick={previous}
-            className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
-            disabled={state.queue.length <= 1}
-          >
-            <SkipBack className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-white" />
-          </button>
+            {/* Action Buttons */}
+            <div className="hidden sm:flex items-center space-x-2 ml-2 md:ml-4">
+              <button
+                onClick={handleAddToFavorites}
+                className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
+                title="Add to favorites"
+              >
+                <Heart className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-red-400" />
+              </button>
 
-          <button
-            onClick={handlePlayPause}
-            className="p-2.5 sm:p-2 bg-gradient-to-r from-music-purple to-music-blue hover:from-music-purple-hover hover:to-music-blue-hover active:scale-95 rounded-full transition-all touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
-            disabled={state.isLoading}
-          >
-            {state.isLoading ? (
-              <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : state.isPlaying ? (
-              <Pause className="h-5 w-5 sm:h-4 sm:w-4 text-white" />
-            ) : (
-              <Play className="h-5 w-5 sm:h-4 sm:w-4 text-white fill-white" />
-            )}
-          </button>
-
-          <button
-            onClick={next}
-            className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
-            disabled={state.queue.length <= 1}
-          >
-            <SkipForward className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-white" />
-          </button>
-        </div>
-
-        {/* Time Display */}
-        <div className="hidden md:flex items-center text-xs text-gray-400 mx-2 lg:mx-4">
-          <span>{formatTime(state.currentTime)}</span>
-          <span className="mx-1">/</span>
-          <span>{formatTime(state.duration)}</span>
-        </div>
-
-        {/* Volume Control */}
-        <div className="relative hidden lg:block">
-          <button
-            onClick={() => setShowVolumeSlider(!showVolumeSlider)}
-            onMouseEnter={() => setShowVolumeSlider(true)}
-            className="p-1.5 hover:bg-zinc-700 rounded-full transition-colors"
-          >
-            {state.volume === 0 ? (
-              <VolumeX className="h-4 w-4 text-zinc-400 hover:text-white" />
-            ) : (
-              <Volume2 className="h-4 w-4 text-zinc-400 hover:text-white" />
-            )}
-          </button>
-
-          {/* Volume Slider */}
-          {showVolumeSlider && (
-            <div
-              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-zinc-700 rounded-lg p-2 shadow-lg"
-              onMouseLeave={() => setShowVolumeSlider(false)}
-            >
-              <div className="flex items-center space-x-2">
-                <VolumeX className="h-3 w-3 text-zinc-400" />
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={state.volume}
-                  onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-20 accent-blue-500"
-                />
-                <Volume2 className="h-3 w-3 text-zinc-400" />
+              <div className="relative">
+                <button
+                  onClick={() => setShowPlaylistPicker(!showPlaylistPicker)}
+                  className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
+                  title="Add to playlist"
+                >
+                  <ListPlus className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-white" />
+                </button>
+                {showPlaylistPicker && state.currentSong && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowPlaylistPicker(false)}
+                    />
+                    <PlaylistPicker
+                      song={state.currentSong}
+                      onClose={() => setShowPlaylistPicker(false)}
+                      onSuccess={() => {
+                        // Optional: Show a success message
+                      }}
+                      className="absolute right-0 bottom-full mb-2"
+                    />
+                  </>
+                )}
               </div>
-              <div className="text-xs text-zinc-400 text-center mt-1">
-                {Math.round(state.volume * 100)}%
-              </div>
+
+              {onExpand && (
+                <button
+                  onClick={onExpand}
+                  className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
+                  title="Expand player"
+                >
+                  <Maximize2 className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-white" />
+                </button>
+              )}
+
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
+                  title="Close player"
+                >
+                  <X className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-white" />
+                </button>
+              )}
             </div>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="hidden sm:flex items-center space-x-2 ml-2 md:ml-4">
-          <button
-            onClick={handleAddToFavorites}
-            className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
-            title="Add to favorites"
-          >
-            <Heart className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-red-400" />
-          </button>
-
-          <div className="relative">
-            <button
-              onClick={() => setShowPlaylistPicker(!showPlaylistPicker)}
-              className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
-              title="Add to playlist"
-            >
-              <ListPlus className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-white" />
-            </button>
-            {showPlaylistPicker && state.currentSong && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowPlaylistPicker(false)}
-                />
-                <PlaylistPicker
-                  song={state.currentSong}
-                  onClose={() => setShowPlaylistPicker(false)}
-                  onSuccess={() => {
-                    // Optional: Show a success message
-                  }}
-                  className="absolute right-0 bottom-full mb-2"
-                />
-              </>
-            )}
           </div>
-
-          {onExpand && (
-            <button
-              onClick={onExpand}
-              className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
-              title="Expand player"
-            >
-              <Maximize2 className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-white" />
-            </button>
-          )}
-
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="p-2 sm:p-1.5 hover:bg-white/10 active:bg-white/5 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
-              title="Close player"
-            >
-              <X className="h-5 w-5 sm:h-4 sm:w-4 text-gray-400 hover:text-white" />
-            </button>
-          )}
         </div>
-      </div>
-    </div>
       )}
 
       {/* YouTube Player - small but visible for iOS compatibility */}

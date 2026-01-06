@@ -134,7 +134,7 @@ const MusicPlatform: React.FC = () => {
     <div className="min-h-screen bg-music-black text-white flex">
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-[100] w-64 bg-music-black-light transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-[100] w-64 glass border-r border-white/5 transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0 flex flex-col h-full
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
@@ -169,8 +169,8 @@ const MusicPlatform: React.FC = () => {
               className={`
                 w-full flex items-center space-x-3 sm:space-x-4 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg transition-all font-medium touch-manipulation
                 ${activeView === item.id
-                  ? 'bg-gradient-to-r from-music-purple/20 to-music-blue/20 text-white border-l-4 border-music-purple'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 active:bg-white/10'
+                  ? 'bg-gradient-to-r from-music-purple/20 to-music-blue/20 text-white border-l-4 border-music-purple shadow-[0_0_15px_rgba(139,92,246,0.3)]'
+                  : 'text-gray-400 glass-hover'
                 }
                 ${item.requiresAuth && !user ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
               `}
@@ -185,14 +185,14 @@ const MusicPlatform: React.FC = () => {
         </nav>
 
         {/* User Section */}
-        <div className="flex-shrink-0 p-3 sm:p-4 border-t border-white/10">
+        <div className="flex-shrink-0 p-3 sm:p-4 border-t border-white/5">
           {user ? (
             <UserMenu onNavigateToSettings={() => setActiveView('settings')} />
           ) : (
             <div className="space-y-3">
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-white text-black font-bold rounded-full hover:scale-105 active:scale-95 transition-transform hover:bg-gray-200 touch-manipulation"
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-white text-black font-bold rounded-full hover:scale-105 active:scale-95 transition-transform hover:bg-gray-200 touch-manipulation shadow-lg"
               >
                 <User className="h-5 w-5" />
                 <span>Sign In</span>
@@ -216,9 +216,12 @@ const MusicPlatform: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col bg-gradient-to-b from-music-black-light to-music-black min-w-0">
+      <main className="flex-1 flex flex-col bg-transparent min-w-0 relative">
+        {/* Subtle Overlay to ensure text readability over mesh gradient */}
+        <div className="absolute inset-0 bg-black/30 pointer-events-none" />
+
         {/* Top Navigation */}
-        <header className="bg-music-black-light/80 backdrop-blur-xl border-b border-white/5 p-4 lg:hidden sticky top-0 z-40">
+        <header className="glass border-b border-white/5 p-4 lg:hidden sticky top-0 z-40">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -253,7 +256,7 @@ const MusicPlatform: React.FC = () => {
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto pb-24">
+        <div className="flex-1 overflow-y-auto pb-24 relative z-10">
           <ErrorBoundary>
             {renderActiveView()}
           </ErrorBoundary>
