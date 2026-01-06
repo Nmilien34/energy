@@ -32,7 +32,23 @@ const enhanceThumbnail = (url: string | undefined): string => {
 class MusicService {
   // Music search and streaming
   async searchMusic(query: string, type = 'song', limit = 20): Promise<ApiResponse<SearchResult>> {
-    const response = await api.get(`/api/music/search?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}`);
+    // CRITICAL: Trim the query to handle trailing/leading spaces
+    const trimmedQuery = query.trim();
+
+    // Don't search if query is empty after trimming
+    if (!trimmedQuery) {
+      return {
+        success: true,
+        data: {
+          songs: [],
+          total: 0,
+          query: '',
+          type: type
+        }
+      };
+    }
+
+    const response = await api.get(`/api/music/search?q=${encodeURIComponent(trimmedQuery)}&type=${type}&limit=${limit}`);
 
     // Decode HTML entities in search results (safety measure)
     if (response.data.success && response.data.data?.songs) {
@@ -43,12 +59,9 @@ class MusicService {
         artist: decodeHtmlEntities(song.artist),
         channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
         description: song.description ? decodeHtmlEntities(song.description) : song.description,
-      })).filter((song: Song) => {
-        const lowerQuery = query.toLowerCase().trim();
-        if (!lowerQuery) return true;
-        return song.title.toLowerCase().includes(lowerQuery) ||
-          song.artist.toLowerCase().includes(lowerQuery);
-      });
+      }));
+      // REMOVED: Frontend filtering that was discarding valid backend results
+      // The backend should handle relevance - trust its results
     }
 
     return response.data;

@@ -74,8 +74,8 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
     activeRequestRef.current = trimmedQuery;
 
     try {
-      // Reduced limit to 10 for faster response
-      const response = await musicService.searchMusic(trimmedQuery, 'song', 10);
+      // Request 20 results to increase chance of finding exact matches
+      const response = await musicService.searchMusic(trimmedQuery, 'song', 20);
 
       // Prevent race conditions - only update if this is still the active request
       if (activeRequestRef.current === trimmedQuery) {
