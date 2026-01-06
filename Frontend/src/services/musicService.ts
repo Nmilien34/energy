@@ -467,34 +467,67 @@ class MusicService {
 
   // Song Recognition
   async recognizeSong(audioData: string, isHumming: boolean = false): Promise<ApiResponse<{
-    recognized: {
+    recognized?: {
       title: string;
       artist: string;
       album?: string;
       confidence?: number;
     };
-    song: Song;
-    youtubeId: string;
+    song?: Song;
+    youtubeId?: string;
+    matches?: Array<{
+      recognized: any;
+      song: Song;
+      youtubeId: string;
+    }>;
   }>> {
-    const response = await api.post('/api/music/recognize', {
-      audioData,
-      isHumming
-    });
+    try {
+      const response = await api.post('/api/music/recognize', {
+        audioData,
+        isHumming
+      });
 
-    // Decode HTML entities in results
-    if (response.data.success && response.data.data?.song) {
-      const song = response.data.data.song;
-      response.data.data.song = {
-        ...song,
-        title: decodeHtmlEntities(song.title),
-        thumbnail: enhanceThumbnail(song.thumbnail),
-        artist: decodeHtmlEntities(song.artist),
-        channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
-        description: song.description ? decodeHtmlEntities(song.description) : song.description,
-      };
+      // Decode HTML entities and enhance thumbnails for all matches
+      if (response.data.success && response.data.data) {
+        const data = response.data.data;
+
+        // Process single result if present
+        if (data.song) {
+          data.song = {
+            ...data.song,
+            title: decodeHtmlEntities(data.song.title),
+            thumbnail: enhanceThumbnail(data.song.thumbnail),
+            artist: decodeHtmlEntities(data.song.artist),
+            channelTitle: data.song.channelTitle ? decodeHtmlEntities(data.song.channelTitle) : data.song.channelTitle,
+          };
+        }
+
+        // Process multiple matches if present
+        if (data.matches && Array.isArray(data.matches)) {
+          data.matches = data.matches.map((m: any) => ({
+            ...m,
+            song: {
+              ...m.song,
+              title: decodeHtmlEntities(m.song.title),
+              thumbnail: enhanceThumbnail(m.song.thumbnail),
+              artist: decodeHtmlEntities(m.song.artist),
+              channelTitle: m.song.channelTitle ? decodeHtmlEntities(m.song.channelTitle) : m.song.channelTitle,
+            }
+          }));
+        }
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Song recognition API error:', error);
+      // Log more details about the error to help debug 404
+      if (error.response) {
+        console.error('Data:', error.response.data);
+        console.error('Status:', error.response.status);
+        console.error('Headers:', error.response.headers);
+      }
+      throw error;
     }
-
-    return response.data;
   }
 
   // ============================================================

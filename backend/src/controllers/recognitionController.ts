@@ -39,70 +39,84 @@ export const recognizeSong = async (req: Request, res: Response) => {
             isHumming
         });
 
-        if (!result.success || !result.song) {
+        if (!result.success || !result.songs || result.songs.length === 0) {
             return res.status(404).json({
                 success: false,
                 error: result.message || 'Song not recognized'
             });
         }
 
-        // Try to find or create the song in our database
-        let youtubeId = result.song.externalIds?.youtube;
+        // Limit results for humming vs regular
+        const maxResults = isHumming ? 5 : 1;
+        const topMatches = result.songs.slice(0, maxResults);
 
-        // If no YouTube ID from ACRCloud, search for it
-        if (!youtubeId) {
-            try {
-                console.log(`[RecognizeSong] Searching YouTube for: ${result.song.title} - ${result.song.artist}`);
-                const searchResults = await youtubeService.searchSongs(
-                    `${result.song.title} ${result.song.artist}`,
-                    1
-                );
+        // Enrich matches with YouTube data and database presence
+        const enrichedMatches = await Promise.all(topMatches.map(async (match) => {
+            let youtubeId = match.externalIds?.youtube;
 
-                if (searchResults.length > 0) {
-                    youtubeId = searchResults[0].id;
+            // If no YouTube ID from ACRCloud, search for it
+            if (!youtubeId) {
+                try {
+                    console.log(`[RecognizeSong] Searching YouTube for: ${match.title} - ${match.artist}`);
+                    const searchResults = await youtubeService.searchSongs(
+                        `${match.title} ${match.artist}`,
+                        1
+                    );
+
+                    if (searchResults.length > 0) {
+                        youtubeId = searchResults[0].id;
+                    }
+                } catch (searchError) {
+                    console.error('[RecognizeSong] YouTube search failed:', searchError);
                 }
-            } catch (searchError) {
-                console.error('[RecognizeSong] YouTube search failed:', searchError);
             }
-        }
 
-        // Find or create song in database
-        let song = null;
-        if (youtubeId) {
-            song = await Song.findOne({ youtubeId });
+            // Find or create song in database if we have a YouTube ID
+            let dbSong = null;
+            if (youtubeId) {
+                dbSong = await Song.findOne({ youtubeId });
 
-            if (!song) {
-                // Create new song entry
-                song = new Song({
-                    youtubeId,
-                    title: result.song.title,
-                    artist: result.song.artist,
-                    duration: result.song.duration,
-                    publishedAt: result.song.releaseDate ? new Date(result.song.releaseDate) : undefined
-                });
-                await song.save();
+                if (!dbSong) {
+                    // Create new song entry
+                    dbSong = new Song({
+                        youtubeId,
+                        title: match.title,
+                        artist: match.artist,
+                        duration: match.duration,
+                        publishedAt: match.releaseDate ? new Date(match.releaseDate) : undefined
+                    });
+                    await dbSong.save();
+                }
             }
-        }
+
+            return {
+                recognized: {
+                    title: match.title,
+                    artist: match.artist,
+                    album: match.album,
+                    confidence: match.confidence
+                },
+                song: dbSong ? {
+                    id: dbSong.youtubeId,
+                    youtubeId: dbSong.youtubeId,
+                    title: dbSong.title,
+                    artist: dbSong.artist,
+                    duration: dbSong.duration,
+                    thumbnail: dbSong.thumbnail,
+                    thumbnailHd: dbSong.thumbnailHd
+                } : null,
+                youtubeId
+            };
+        }));
 
         res.json({
             success: true,
             data: {
-                recognized: {
-                    title: result.song.title,
-                    artist: result.song.artist,
-                    album: result.song.album,
-                    confidence: result.confidence
-                },
-                song: song ? {
-                    id: song.youtubeId,
-                    youtubeId: song.youtubeId,
-                    title: song.title,
-                    artist: song.artist,
-                    duration: song.duration,
-                    thumbnail: song.thumbnail,
-                    thumbnailHd: song.thumbnailHd
-                } : null,
-                youtubeId
+                matches: enrichedMatches,
+                // For backward compatibility or simpler frontend handling
+                recognized: enrichedMatches[0].recognized,
+                song: enrichedMatches[0].song,
+                youtubeId: enrichedMatches[0].youtubeId
             }
         });
     } catch (error) {

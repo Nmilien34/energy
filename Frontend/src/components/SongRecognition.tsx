@@ -14,6 +14,7 @@ const SongRecognition: React.FC = () => {
     const [isHumming, setIsHumming] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [result, setResult] = useState<Song | null>(null);
+    const [matches, setMatches] = useState<Array<{ song: Song; confidence: number }> | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [confidence, setConfidence] = useState<number | null>(null);
 
@@ -55,11 +56,9 @@ const SongRecognition: React.FC = () => {
             animationRef.current = requestAnimationFrame(draw);
             analyser.getByteTimeDomainData(dataArray);
 
-            ctx.fillStyle = 'transparent';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.lineWidth = 3;
-            ctx.strokeStyle = 'rgb(139, 92, 246)'; // Purple gradient color
+            ctx.strokeStyle = 'rgb(139, 92, 246)';
             ctx.beginPath();
 
             const sliceWidth = (canvas.width * 1.0) / bufferLength;
@@ -89,12 +88,12 @@ const SongRecognition: React.FC = () => {
         try {
             setError(null);
             setResult(null);
+            setMatches(null);
             setRecordingTime(0);
             audioChunks.current = [];
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-            // Setup audio visualization
             audioContextRef.current = new AudioContext();
             const source = audioContextRef.current.createMediaStreamSource(stream);
             analyserRef.current = audioContextRef.current.createAnalyser();
@@ -104,7 +103,6 @@ const SongRecognition: React.FC = () => {
             drawWaveform();
 
             mediaRecorder.current = new MediaRecorder(stream);
-
             mediaRecorder.current.ondataavailable = (event) => {
                 if (event.data.size > 0) {
                     audioChunks.current.push(event.data);
@@ -113,7 +111,7 @@ const SongRecognition: React.FC = () => {
 
             mediaRecorder.current.onstop = async () => {
                 const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-                await recognizeSong(audioBlob);
+                await recognizeSongAsync(audioBlob);
 
                 // Stop all tracks
                 stream.getTracks().forEach(track => track.stop());
@@ -125,7 +123,6 @@ const SongRecognition: React.FC = () => {
             mediaRecorder.current.start();
             setMode('recording');
 
-            // Timer
             timerRef.current = setInterval(() => {
                 setRecordingTime(prev => {
                     if (prev >= 10) {
@@ -135,13 +132,6 @@ const SongRecognition: React.FC = () => {
                     return prev + 1;
                 });
             }, 1000);
-
-            // Auto-stop after 10 seconds
-            setTimeout(() => {
-                if (mediaRecorder.current && mediaRecorder.current.state === 'recording') {
-                    stopRecording();
-                }
-            }, 10000);
 
         } catch (err) {
             console.error('Microphone access error:', err);
@@ -159,7 +149,7 @@ const SongRecognition: React.FC = () => {
         }
     };
 
-    const recognizeSong = async (audioBlob: Blob) => {
+    const recognizeSongAsync = async (audioBlob: Blob) => {
         setMode('processing');
 
         try {
@@ -167,25 +157,40 @@ const SongRecognition: React.FC = () => {
             reader.readAsDataURL(audioBlob);
 
             reader.onloadend = async () => {
-                const base64Audio = reader.result as string;
+                try {
+                    const base64Audio = reader.result as string;
+                    const response = await musicService.recognizeSong(base64Audio, isHumming);
 
-                const response = await musicService.recognizeSong(base64Audio, isHumming);
+                    if (response.success && response.data) {
+                        const { song, recognized, matches: multiMatches } = response.data;
 
-                if (response.success && response.data) {
-                    setResult(response.data.song);
-                    setConfidence(response.data.recognized?.confidence || null);
-                    setMode('result');
-                } else {
-                    setError(isHumming
-                        ? 'Could not identify song from humming. Try humming more clearly or for longer.'
-                        : 'Could not identify song. Try playing it louder or in a quieter environment.'
-                    );
+                        if (isHumming && multiMatches && multiMatches.length > 0) {
+                            setMatches(multiMatches.map(m => ({
+                                song: m.song,
+                                confidence: m.recognized?.confidence || 0
+                            })));
+                            setMode('result');
+                        } else if (song) {
+                            setResult(song);
+                            setConfidence(recognized?.confidence || null);
+                            setMode('result');
+                        } else {
+                            setError('No song identified. Try recording for longer or humming more clearly.');
+                            setMode('idle');
+                        }
+                    } else {
+                        setError(response.data?.message || 'Recognition failed. Please try again.');
+                        setMode('idle');
+                    }
+                } catch (apiErr: any) {
+                    console.error('Recognition API Error:', apiErr);
+                    setError('Connection to identification service failed. Please check your internet and try again.');
                     setMode('idle');
                 }
             };
         } catch (err: any) {
-            console.error('Recognition error:', err);
-            setError(err.message || 'Recognition failed. Please try again.');
+            console.error('Processing error:', err);
+            setError('Failed to process recording.');
             setMode('idle');
         }
     };
@@ -193,38 +198,21 @@ const SongRecognition: React.FC = () => {
     const reset = () => {
         setMode('idle');
         setResult(null);
+        setMatches(null);
         setError(null);
         setConfidence(null);
         setRecordingTime(0);
     };
 
-    const handlePlay = () => {
-        if (result) {
-            play(result);
-        }
-    };
-
-    const handleAddToQueue = () => {
-        if (result) {
-            addToQueue(result);
-        }
-    };
-
-    const handleAddToFavorites = async () => {
-        if (result) {
-            try {
-                await musicService.addToFavorites(result.id);
-            } catch (err) {
-                console.warn('Could not add to favorites');
-            }
-        }
+    const handlePlaySong = (song: Song) => {
+        play(song);
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="w-full max-w-md my-auto flex flex-col min-h-0">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center justify-between mb-8 flex-shrink-0">
                     <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
                         <Music2 className="h-7 w-7 md:h-8 md:w-8 text-music-purple" />
                         Song Recognition
@@ -238,18 +226,17 @@ const SongRecognition: React.FC = () => {
                 </div>
 
                 {/* Main Content */}
-                <div className="glass rounded-3xl p-6 md:p-8 space-y-6">
+                <div className="glass rounded-3xl p-6 md:p-8 space-y-6 overflow-hidden flex flex-col">
 
                     {/* Idle State */}
                     {mode === 'idle' && (
                         <>
-                            {/* Mode Toggle */}
-                            <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
+                            <div className="flex gap-2 p-1 bg-white/5 rounded-xl flex-shrink-0">
                                 <button
                                     onClick={() => setIsHumming(false)}
                                     className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${!isHumming
-                                            ? 'bg-gradient-to-r from-music-purple to-music-blue text-white shadow-lg'
-                                            : 'text-gray-400 hover:text-white'
+                                        ? 'bg-gradient-to-r from-music-purple to-music-blue text-white shadow-lg'
+                                        : 'text-gray-400 hover:text-white'
                                         }`}
                                 >
                                     <Mic className="h-5 w-5 mx-auto mb-1" />
@@ -258,8 +245,8 @@ const SongRecognition: React.FC = () => {
                                 <button
                                     onClick={() => setIsHumming(true)}
                                     className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${isHumming
-                                            ? 'bg-gradient-to-r from-music-purple to-music-blue text-white shadow-lg'
-                                            : 'text-gray-400 hover:text-white'
+                                        ? 'bg-gradient-to-r from-music-purple to-music-blue text-white shadow-lg'
+                                        : 'text-gray-400 hover:text-white'
                                         }`}
                                 >
                                     <Music2 className="h-5 w-5 mx-auto mb-1" />
@@ -267,8 +254,7 @@ const SongRecognition: React.FC = () => {
                                 </button>
                             </div>
 
-                            {/* Instructions */}
-                            <div className="text-center space-y-3 py-8">
+                            <div className="text-center space-y-3 py-8 overflow-y-auto">
                                 <div className="w-24 h-24 mx-auto bg-gradient-to-br from-music-purple/20 to-music-blue/20 rounded-full flex items-center justify-center">
                                     {isHumming ? (
                                         <Music2 className="h-12 w-12 text-music-purple" />
@@ -288,17 +274,15 @@ const SongRecognition: React.FC = () => {
                                 </p>
                             </div>
 
-                            {/* Error Display */}
                             {error && (
-                                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+                                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex-shrink-0">
                                     <p className="text-red-400 text-sm text-center">{error}</p>
                                 </div>
                             )}
 
-                            {/* Start Button */}
                             <button
                                 onClick={startRecording}
-                                className="w-full py-4 bg-gradient-to-r from-music-purple to-music-blue text-white font-bold rounded-xl hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] transition-all transform hover:scale-105 active:scale-95"
+                                className="w-full py-4 bg-gradient-to-r from-music-purple to-music-blue text-white font-bold rounded-xl hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] transition-all transform hover:scale-105 active:scale-95 flex-shrink-0"
                             >
                                 Start {isHumming ? 'Humming' : 'Recording'}
                             </button>
@@ -315,27 +299,22 @@ const SongRecognition: React.FC = () => {
                                         <Mic className="h-12 w-12 text-white animate-pulse" />
                                     </div>
                                 </div>
-
                                 <div className="text-4xl font-bold text-white font-mono">
                                     {recordingTime}s / 10s
                                 </div>
-
-                                {/* Waveform Canvas */}
                                 <canvas
                                     ref={canvasRef}
                                     width={300}
                                     height={80}
                                     className="w-full rounded-lg"
                                 />
-
                                 <p className="text-gray-300">
                                     {isHumming ? 'Listening to your melody...' : 'Listening...'}
                                 </p>
                             </div>
-
                             <button
                                 onClick={stopRecording}
-                                className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 flex-shrink-0"
                             >
                                 <Square className="h-5 w-5 fill-white" />
                                 Stop Recording
@@ -357,83 +336,106 @@ const SongRecognition: React.FC = () => {
                     )}
 
                     {/* Result State */}
-                    {mode === 'result' && result && (
-                        <>
-                            <div className="text-center space-y-4 py-4">
-                                <div className="w-16 h-16 mx-auto bg-green-500/20 rounded-full flex items-center justify-center">
-                                    <Music2 className="h-8 w-8 text-green-400" />
+                    {mode === 'result' && (
+                        <div className="flex flex-col min-h-0 space-y-6">
+                            <div className="text-center space-y-2 flex-shrink-0">
+                                <div className="w-12 h-12 mx-auto bg-green-500/20 rounded-full flex items-center justify-center mb-2">
+                                    <Music2 className="h-6 w-6 text-green-400" />
                                 </div>
-                                <div>
-                                    <p className="text-green-400 font-semibold">Song Identified!</p>
-                                    {confidence && (
-                                        <p className="text-sm text-gray-500">{confidence}% confident</p>
-                                    )}
-                                </div>
+                                <p className="text-green-400 font-semibold text-lg">
+                                    {matches ? 'Found Multiple Matches!' : 'Song Identified!'}
+                                </p>
+                                {!matches && confidence && (
+                                    <p className="text-xs text-gray-500">{confidence}% confident</p>
+                                )}
                             </div>
 
-                            {/* Song Card */}
-                            <div className="glass rounded-2xl overflow-hidden">
-                                <div className="flex gap-4 p-4">
-                                    <FallbackImage
-                                        src={result.thumbnail}
-                                        alt={result.title}
-                                        className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-white font-semibold text-lg truncate">
-                                            {result.title}
-                                        </h3>
-                                        <p className="text-gray-400 text-sm truncate">{result.artist}</p>
-                                        <p className="text-gray-500 text-xs mt-1">
-                                            {musicService.formatDuration(result.duration)}
-                                        </p>
+                            {matches ? (
+                                <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar min-h-0 flex-1">
+                                    {matches.map((match) => (
+                                        <div key={match.song.id} className="glass rounded-xl overflow-hidden hover:bg-white/5 transition-colors group">
+                                            <div className="flex gap-3 p-3 items-center">
+                                                <FallbackImage
+                                                    src={match.song.thumbnail}
+                                                    alt={match.song.title}
+                                                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="text-white font-medium text-sm truncate group-hover:text-music-purple transition-colors">
+                                                        {match.song.title}
+                                                    </h3>
+                                                    <p className="text-gray-400 text-xs truncate">{match.song.artist}</p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <div className="h-1 flex-1 bg-white/10 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-music-purple" style={{ width: `${match.confidence}%` }} />
+                                                        </div>
+                                                        <span className="text-[10px] text-gray-500">{match.confidence}%</span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handlePlaySong(match.song)}
+                                                    className="p-2 bg-music-purple/20 hover:bg-music-purple text-music-purple hover:text-white rounded-full transition-all"
+                                                >
+                                                    <Play className="h-4 w-4 fill-current" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : result && (
+                                <div className="glass rounded-2xl overflow-hidden flex-shrink-0">
+                                    <div className="flex gap-4 p-4">
+                                        <FallbackImage
+                                            src={result.thumbnail}
+                                            alt={result.title}
+                                            className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-white font-semibold text-lg truncate">{result.title}</h3>
+                                            <p className="text-gray-400 text-sm truncate">{result.artist}</p>
+                                            <p className="text-gray-500 text-xs mt-1">{musicService.formatDuration(result.duration)}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 p-4 pt-0">
+                                        <button
+                                            onClick={() => handlePlaySong(result)}
+                                            className="flex-1 py-3 bg-gradient-to-r from-music-purple to-music-blue text-white font-semibold rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Play className="h-5 w-5 fill-white" />
+                                            Play Now
+                                        </button>
+                                        <button
+                                            onClick={() => addToQueue(result)}
+                                            className="p-3 glass-hover rounded-lg text-gray-400 hover:text-white transition-colors"
+                                        >
+                                            <Plus className="h-5 w-5" />
+                                        </button>
+                                        <button
+                                            onClick={() => musicService.addToFavorites(result.id)}
+                                            className="p-3 glass-hover rounded-lg text-gray-400 hover:text-red-400 transition-colors"
+                                        >
+                                            <Heart className="h-5 w-5" />
+                                        </button>
                                     </div>
                                 </div>
+                            )}
 
-                                {/* Action Buttons */}
-                                <div className="flex gap-2 p-4 pt-0">
-                                    <button
-                                        onClick={handlePlay}
-                                        className="flex-1 py-3 bg-gradient-to-r from-music-purple to-music-blue text-white font-semibold rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Play className="h-5 w-5 fill-white" />
-                                        Play Now
-                                    </button>
-                                    <button
-                                        onClick={handleAddToQueue}
-                                        className="p-3 glass-hover rounded-lg transition-colors"
-                                        title="Add to queue"
-                                    >
-                                        <Plus className="h-5 w-5 text-gray-400 hover:text-white" />
-                                    </button>
-                                    <button
-                                        onClick={handleAddToFavorites}
-                                        className="p-3 glass-hover rounded-lg transition-colors"
-                                        title="Add to favorites"
-                                    >
-                                        <Heart className="h-5 w-5 text-gray-400 hover:text-red-400" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Try Another Button */}
                             <button
                                 onClick={reset}
-                                className="w-full py-3 text-gray-400 hover:text-white font-medium transition-colors"
+                                className="w-full py-3 text-gray-400 hover:text-white font-medium transition-colors border-t border-white/5 pt-4 flex-shrink-0"
                             >
-                                🔄 Try Another Song
+                                🔄 Try Another
                             </button>
-                        </>
+                        </div>
                     )}
                 </div>
 
-                {/* Tips */}
                 {mode === 'idle' && (
-                    <div className="mt-6 text-center">
+                    <div className="mt-6 text-center flex-shrink-0">
                         <p className="text-gray-500 text-sm">
                             💡 Tip: {isHumming
                                 ? 'Hum clearly for 5-10 seconds for best results'
-                                : 'Make sure the music is loud enough and there\'s minimal background noise'
+                                : 'Make sure the music is loud enough'
                             }
                         </p>
                     </div>

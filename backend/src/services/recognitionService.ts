@@ -9,19 +9,19 @@ interface RecognitionOptions {
 
 interface RecognitionResult {
     success: boolean;
-    song?: {
+    songs?: {
         title: string;
         artist: string;
         album?: string;
         releaseDate?: string;
         duration?: number;
+        confidence?: number;
         externalIds?: {
             youtube?: string;
             spotify?: string;
             isrc?: string;
         };
-    };
-    confidence?: number;
+    }[];
     message?: string;
 }
 
@@ -112,36 +112,40 @@ class RecognitionService {
                 };
             }
 
-            // Extract song metadata
-            const music = result.metadata?.music?.[0];
-            if (!music) {
+            // Extract all matches
+            const musicResults = result.metadata?.music || [];
+            if (musicResults.length === 0) {
                 return {
                     success: false,
                     message: 'No match found'
                 };
             }
 
-            // Extract external IDs
-            const externalIds: any = {};
-            if (music.external_ids) {
-                externalIds.youtube = music.external_ids.youtube?.vid;
-                externalIds.spotify = music.external_ids.spotify?.track?.id;
-            }
-            if (music.external_metadata?.youtube) {
-                externalIds.youtube = music.external_metadata.youtube.vid;
-            }
+            const songs = musicResults.map((music: any) => {
+                // Extract external IDs
+                const externalIds: any = {};
+                if (music.external_ids) {
+                    externalIds.youtube = music.external_ids.youtube?.vid;
+                    externalIds.spotify = music.external_ids.spotify?.track?.id;
+                }
+                if (music.external_metadata?.youtube) {
+                    externalIds.youtube = music.external_metadata.youtube.vid;
+                }
 
-            return {
-                success: true,
-                song: {
+                return {
                     title: music.title,
                     artist: music.artists?.[0]?.name || 'Unknown Artist',
                     album: music.album?.name,
                     releaseDate: music.release_date,
                     duration: music.duration_ms ? Math.floor(music.duration_ms / 1000) : undefined,
+                    confidence: music.score || 100,
                     externalIds
-                },
-                confidence: music.score || 100
+                };
+            });
+
+            return {
+                success: true,
+                songs
             };
         } catch (error) {
             console.error('[RecognitionService] Error parsing response:', error);
