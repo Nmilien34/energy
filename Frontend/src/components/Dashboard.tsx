@@ -165,7 +165,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
           : await musicService.getPublicTrendingArtists(20);
 
         if (trendingArtistsResponse.success && trendingArtistsResponse.data && Array.isArray(trendingArtistsResponse.data.artists)) {
-          setTrendingArtists(trendingArtistsResponse.data.artists.slice(0, 16));
+          setTrendingArtists(trendingArtistsResponse.data.artists.slice(0, 20));
         } else {
           setTrendingArtists([]);
         }
