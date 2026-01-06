@@ -16,6 +16,19 @@ import {
 import { decodeHtmlEntities } from '../utils/htmlEntities';
 import { publicApi, searchMusicPublic } from './anonymousSessionService';
 
+const enhanceThumbnail = (url: string | undefined): string => {
+  if (!url) return '';
+  // Check for common YouTube thumbnail patterns
+  if (url.includes('i.ytimg.com/vi/')) {
+    // Upgrading to hqdefault (480x360) - safe and clear
+    // Avoid maxresdefault as it might be missing for some videos
+    return url.replace('/default.jpg', '/hqdefault.jpg')
+      .replace('/mqdefault.jpg', '/hqdefault.jpg');
+  }
+  return url;
+};
+
+
 class MusicService {
   // Music search and streaming
   async searchMusic(query: string, type = 'song', limit = 20): Promise<ApiResponse<SearchResult>> {
@@ -26,6 +39,7 @@ class MusicService {
       response.data.data.songs = response.data.data.songs.map((song: Song) => ({
         ...song,
         title: decodeHtmlEntities(song.title),
+        thumbnail: enhanceThumbnail(song.thumbnail),
         artist: decodeHtmlEntities(song.artist),
         channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
         description: song.description ? decodeHtmlEntities(song.description) : song.description,
@@ -49,6 +63,7 @@ class MusicService {
       response.data.data = {
         ...song,
         title: decodeHtmlEntities(song.title),
+        thumbnail: enhanceThumbnail(song.thumbnail),
         artist: decodeHtmlEntities(song.artist),
         channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
         description: song.description ? decodeHtmlEntities(song.description) : song.description,
@@ -93,6 +108,7 @@ class MusicService {
       response.data.data.songs = response.data.data.songs.map((song: Song) => ({
         ...song,
         title: decodeHtmlEntities(song.title),
+        thumbnail: enhanceThumbnail(song.thumbnail),
         artist: decodeHtmlEntities(song.artist),
         channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
         description: song.description ? decodeHtmlEntities(song.description) : song.description,
@@ -127,6 +143,7 @@ class MusicService {
         response.data.data.songs = response.data.data.songs.map((song: Song) => ({
           ...song,
           title: decodeHtmlEntities(song.title),
+          thumbnail: enhanceThumbnail(song.thumbnail),
           artist: decodeHtmlEntities(song.artist),
           channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
           description: song.description ? decodeHtmlEntities(song.description) : song.description,
@@ -272,6 +289,7 @@ class MusicService {
         songs: playlist.songs ? playlist.songs.map((song: Song) => ({
           ...song,
           title: decodeHtmlEntities(song.title),
+          thumbnail: enhanceThumbnail(song.thumbnail),
           artist: decodeHtmlEntities(song.artist),
           channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
           description: song.description ? decodeHtmlEntities(song.description) : song.description,
@@ -300,6 +318,7 @@ class MusicService {
         songs: playlist.songs ? playlist.songs.map((song: Song) => ({
           ...song,
           title: decodeHtmlEntities(song.title),
+          thumbnail: enhanceThumbnail(song.thumbnail),
           artist: decodeHtmlEntities(song.artist),
           channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
           description: song.description ? decodeHtmlEntities(song.description) : song.description,
@@ -349,6 +368,7 @@ class MusicService {
         songs: playlist.songs ? playlist.songs.map((song: Song) => ({
           ...song,
           title: decodeHtmlEntities(song.title),
+          thumbnail: enhanceThumbnail(song.thumbnail),
           artist: decodeHtmlEntities(song.artist),
           channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
           description: song.description ? decodeHtmlEntities(song.description) : song.description,
@@ -374,6 +394,7 @@ class MusicService {
       const decodeSongs = (songs: Song[]) => songs.map((song: Song) => ({
         ...song,
         title: decodeHtmlEntities(song.title),
+        thumbnail: enhanceThumbnail(song.thumbnail),
         artist: decodeHtmlEntities(song.artist),
         channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
         description: song.description ? decodeHtmlEntities(song.description) : song.description,
@@ -408,6 +429,7 @@ class MusicService {
       response.data.data = response.data.data.map((song: Song) => ({
         ...song,
         title: decodeHtmlEntities(song.title),
+        thumbnail: enhanceThumbnail(song.thumbnail),
         artist: decodeHtmlEntities(song.artist),
         channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
         description: song.description ? decodeHtmlEntities(song.description) : song.description,
@@ -481,6 +503,7 @@ class MusicService {
         data.nextTrack = {
           ...data.nextTrack,
           title: decodeHtmlEntities(data.nextTrack.title),
+          thumbnail: enhanceThumbnail(data.nextTrack.thumbnail),
           artist: decodeHtmlEntities(data.nextTrack.artist),
         };
       }
@@ -488,6 +511,7 @@ class MusicService {
         data.alternatives = data.alternatives.map((song: Song) => ({
           ...song,
           title: decodeHtmlEntities(song.title),
+          thumbnail: enhanceThumbnail(song.thumbnail),
           artist: decodeHtmlEntities(song.artist),
         }));
       }
@@ -542,6 +566,7 @@ class MusicService {
         data.seedTrack = {
           ...data.seedTrack,
           title: decodeHtmlEntities(data.seedTrack.title),
+          thumbnail: enhanceThumbnail(data.seedTrack.thumbnail),
           artist: decodeHtmlEntities(data.seedTrack.artist),
         };
       }
@@ -549,6 +574,7 @@ class MusicService {
         data.queue = data.queue.map((song: Song) => ({
           ...song,
           title: decodeHtmlEntities(song.title),
+          thumbnail: enhanceThumbnail(song.thumbnail),
           artist: decodeHtmlEntities(song.artist),
         }));
       }
@@ -571,6 +597,7 @@ class MusicService {
       response.data.data.tracks = response.data.data.tracks.map((song: Song) => ({
         ...song,
         title: decodeHtmlEntities(song.title),
+        thumbnail: enhanceThumbnail(song.thumbnail),
         artist: decodeHtmlEntities(song.artist),
       }));
     }
