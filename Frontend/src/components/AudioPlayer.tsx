@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAudioPlayer } from '../contexts/AudioPlayerContext';
 import { musicService } from '../services/musicService';
+import { useToast } from '../contexts/ToastContext';
 import FallbackImage from './FallbackImage';
 
 interface AudioPlayerProps {
@@ -35,6 +36,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
     toggleShuffle,
     setRepeatMode,
   } = useAudioPlayer();
+  const { showToast } = useToast();
 
   const [isMuted, setIsMuted] = useState(false);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
@@ -42,6 +44,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
   const [isFavorite, setIsFavorite] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragTime, setDragTime] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const progressRef = useRef<HTMLDivElement>(null);
   const volumeRef = useRef<HTMLDivElement>(null);
@@ -142,19 +145,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
     }
   };
 
-  // Removed unused handleMuteToggle function
-  // Volume is now controlled directly through handleVolumeClick
-  // const handleMuteToggle = () => {
-  //   if (isMuted) {
-  //     setVolume(previousVolume);
-  //     setIsMuted(false);
-  //   } else {
-  //     setPreviousVolume(state.volume);
-  //     setVolume(0);
-  //     setIsMuted(true);
-  //   }
-  // };
-
   const handleRepeatToggle = () => {
     const modes: Array<'none' | 'one' | 'all'> = ['none', 'one', 'all'];
     const currentIndex = modes.indexOf(state.repeatMode);
@@ -165,17 +155,27 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
   const handleToggleFavorite = async () => {
     if (!state.currentSong) return;
 
+    // Trigger animation
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 400);
+
     try {
       if (isFavorite) {
         await musicService.removeFromFavorites(state.currentSong.id);
+        showToast('Removed from your library', 'info');
       } else {
         await musicService.addToFavorites(state.currentSong.id);
+        showToast('Added to your library', 'success');
       }
       setIsFavorite(!isFavorite);
     } catch (error) {
       console.warn('Toggle favorite not available:', error);
+      showToast('Action failed', 'error');
     }
   };
+
+
+  // ... (existing code being kept)
 
   const formatTime = (seconds: number) => {
     if (!isFinite(seconds)) return '0:00';
@@ -300,13 +300,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
             </div>
             <button
               onClick={handleToggleFavorite}
-              className={`p-3 rounded-full transition-colors ${
-                isFavorite
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'hover:bg-zinc-700 text-zinc-400 hover:text-red-400'
-              }`}
+              className={`p-3 rounded-full transition-colors ${isFavorite
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'hover:bg-zinc-700 text-zinc-400 hover:text-red-400'
+                }`}
             >
-              <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
+              <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''} ${isAnimating ? 'animate-heartbeat' : ''}`} />
             </button>
           </div>
         </div>
@@ -342,21 +341,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
           <div className="flex items-center space-x-3">
             <button
               onClick={toggleShuffle}
-              className={`p-2 rounded-full transition-colors ${
-                state.isShuffled
-                  ? 'bg-blue-600 text-white'
-                  : 'hover:bg-zinc-700 text-zinc-400 hover:text-white'
-              }`}
+              className={`p-2 rounded-full transition-colors ${state.isShuffled
+                ? 'bg-blue-600 text-white'
+                : 'hover:bg-zinc-700 text-zinc-400 hover:text-white'
+                }`}
             >
               <Shuffle className="h-4 w-4" />
             </button>
             <button
               onClick={handleRepeatToggle}
-              className={`p-2 rounded-full transition-colors ${
-                state.repeatMode !== 'none'
-                  ? 'bg-blue-600 text-white'
-                  : 'hover:bg-zinc-700 text-zinc-400 hover:text-white'
-              }`}
+              className={`p-2 rounded-full transition-colors ${state.repeatMode !== 'none'
+                ? 'bg-blue-600 text-white'
+                : 'hover:bg-zinc-700 text-zinc-400 hover:text-white'
+                }`}
             >
               {state.repeatMode === 'one' ? (
                 <Repeat1 className="h-4 w-4" />

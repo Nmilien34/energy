@@ -4,6 +4,7 @@ import AppRoutes from './routes/AppRoutes';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { AudioPlayerProvider, useAudioPlayer } from './contexts/AudioPlayerContext';
+import { ToastProvider } from './contexts/ToastContext';
 import MiniPlayer from './components/MiniPlayer';
 import './App.css';
 
@@ -31,11 +32,13 @@ const App: React.FC = () => {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AudioPlayerProvider>
-          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <AppContent />
-          </Router>
-        </AudioPlayerProvider>
+        <ToastProvider>
+          <AudioPlayerProvider>
+            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <AppContent />
+            </Router>
+          </AudioPlayerProvider>
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   );

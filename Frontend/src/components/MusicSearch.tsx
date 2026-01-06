@@ -10,12 +10,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAnonymousLandingSession } from '../hooks/useAnonymousLandingSession';
 import AnonymousLimitModal from './AnonymousLimitModal';
 import AuthModal from './AuthModal';
+import { useToast } from '../contexts/ToastContext';
 
 interface MusicSearchProps {
   onSongSelect?: (song: Song) => void;
   className?: string;
 }
-
 
 const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' }) => {
   const [searchParams] = useSearchParams();
@@ -25,12 +25,13 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  // Removed local showSuccessMessage state
   const { play, addToQueue, state } = useAudioPlayer();
   const { user } = useAuth();
   const { session, trackPlay } = useAnonymousLandingSession();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const { showToast } = useToast(); // Add toast hook
 
   // Load liked songs from library on mount
   useEffect(() => {
@@ -38,7 +39,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
       try {
         const response = await musicService.getUserLibrary();
         if (response.success && response.data?.favorites) {
-          const favoriteIds = new Set(response.data.favorites.map(song => song.id));
+          const favoriteIds = new Set(response.data.favorites.map((song: Song) => song.id));
           setLikedSongs(favoriteIds);
         }
       } catch (err) {
@@ -125,8 +126,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
     // Optimistic update
     if (!isLiked) {
       setLikedSongs(prev => new Set(prev).add(song.id));
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 3000);
+      showToast('Added to your library', 'success');
     }
 
     try {
@@ -137,6 +137,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
           newSet.delete(song.id);
           return newSet;
         });
+        showToast('Removed from your library', 'info');
       } else {
         await musicService.addToFavorites(song.id);
       }
@@ -149,12 +150,10 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
           newSet.delete(song.id);
           return newSet;
         });
-        setShowSuccessMessage(false);
+        showToast('Failed to add to library', 'error');
       }
     }
   };
-
-  // Removed duplicate utility functions - already defined in SearchResults component
 
   return (
     <div className={`relative ${className}`}>
@@ -246,14 +245,6 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
         />
       )}
 
-      {/* Success Message */}
-      {showSuccessMessage && (
-        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-music-purple text-white px-6 py-3 rounded-full shadow-lg z-50 animate-fade-in flex items-center space-x-2">
-          <Heart className="h-5 w-5 fill-white" />
-          <span className="font-semibold">Added to Liked Songs</span>
-        </div>
-      )}
-
       {/* Modals for Anonymous Users */}
       <AuthModal
         isOpen={isAuthModalOpen}
@@ -297,6 +288,14 @@ const SongItem: React.FC<SongItemProps> = ({
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false); // Add animation state
+
+  const handleLikeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 400);
+    onAddToFavorites();
+  };
 
   const formatDuration = (seconds: number | undefined | null) => {
     if (!seconds || isNaN(seconds)) return '0:00';
@@ -377,14 +376,11 @@ const SongItem: React.FC<SongItemProps> = ({
       {/* Action Buttons */}
       <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddToFavorites();
-          }}
+          onClick={handleLikeClick}
           className="p-2 hover:bg-zinc-600 rounded-full transition-colors"
           title={isLiked ? "Remove from favorites" : "Add to favorites"}
         >
-          <Heart className={`h-4 w-4 ${isLiked ? 'text-red-400 fill-red-400' : 'text-zinc-400 hover:text-red-400'}`} />
+          <Heart className={`h-4 w-4 ${isLiked ? 'text-red-400 fill-red-400' : 'text-zinc-400 hover:text-red-400'} ${isAnimating ? 'animate-heartbeat' : ''}`} />
         </button>
         <div className="relative">
           <button
