@@ -465,6 +465,38 @@ class MusicService {
     return response.data;
   }
 
+  // Song Recognition
+  async recognizeSong(audioData: string, isHumming: boolean = false): Promise<ApiResponse<{
+    recognized: {
+      title: string;
+      artist: string;
+      album?: string;
+      confidence?: number;
+    };
+    song: Song;
+    youtubeId: string;
+  }>> {
+    const response = await api.post('/api/music/recognize', {
+      audioData,
+      isHumming
+    });
+
+    // Decode HTML entities in results
+    if (response.data.success && response.data.data?.song) {
+      const song = response.data.data.song;
+      response.data.data.song = {
+        ...song,
+        title: decodeHtmlEntities(song.title),
+        thumbnail: enhanceThumbnail(song.thumbnail),
+        artist: decodeHtmlEntities(song.artist),
+        channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
+        description: song.description ? decodeHtmlEntities(song.description) : song.description,
+      };
+    }
+
+    return response.data;
+  }
+
   // ============================================================
   // RECOMMENDATION API (Infinite Context Shuffle)
   // ============================================================

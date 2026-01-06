@@ -142,8 +142,8 @@ const Welcome: React.FC = () => {
 
       {/* Navigation - Glass */}
       <nav className={`relative z-10 backdrop-blur-2xl border-b shadow-lg transition-colors ${isLight
-          ? 'bg-black/5 border-black/10 shadow-black/5'
-          : 'bg-white/5 border-white/10 shadow-black/5'
+        ? 'bg-black/5 border-black/10 shadow-black/5'
+        : 'bg-white/5 border-white/10 shadow-black/5'
         }`}>
         <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-5 flex justify-between items-center">
           <div className="flex items-center space-x-2 sm:space-x-3">
@@ -169,8 +169,8 @@ const Welcome: React.FC = () => {
                 <button
                   onClick={() => setIsAuthModalOpen(true)}
                   className={`sm:hidden p-2.5 rounded-full backdrop-blur-xl border transition-all ${isLight
-                      ? 'bg-black/5 border-black/10 text-[var(--text-primary)] hover:bg-black/10'
-                      : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                    ? 'bg-black/5 border-black/10 text-[var(--text-primary)] hover:bg-black/10'
+                    : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
                     }`}
                 >
                   <User className="h-4 w-4" />
@@ -179,8 +179,8 @@ const Welcome: React.FC = () => {
                 <button
                   onClick={() => setIsAuthModalOpen(true)}
                   className={`hidden sm:flex items-center space-x-2 px-4 py-2 rounded-full backdrop-blur-xl font-medium transition-all ${isLight
-                      ? 'bg-black/5 border border-black/10 text-[var(--text-primary)] hover:bg-black/10'
-                      : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
+                    ? 'bg-black/5 border border-black/10 text-[var(--text-primary)] hover:bg-black/10'
+                    : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
                     }`}
                 >
                   <User className="h-4 w-4" />
@@ -222,8 +222,8 @@ const Welcome: React.FC = () => {
                 onFocus={() => searchQuery && setShowSearchResults(true)}
                 placeholder="Search songs, artists..."
                 className={`w-full backdrop-blur-2xl pl-10 pr-10 sm:pl-12 sm:pr-12 py-3 sm:py-4 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 border transition-all text-sm shadow-lg ${isLight
-                    ? 'bg-black/5 text-[var(--text-primary)] border-black/10 hover:border-black/20 hover:bg-black/10 focus:ring-black/10 placeholder:text-black/30 shadow-black/5'
-                    : 'bg-white/5 text-white border-white/10 hover:border-white/20 hover:bg-white/10 focus:ring-white/20 placeholder:text-white/40 shadow-black/10'
+                  ? 'bg-black/5 text-[var(--text-primary)] border-black/10 hover:border-black/20 hover:bg-black/10 focus:ring-black/10 placeholder:text-black/30 shadow-black/5'
+                  : 'bg-white/5 text-white border-white/10 hover:border-white/20 hover:bg-white/10 focus:ring-white/20 placeholder:text-white/40 shadow-black/10'
                   }`}
               />
               <Search className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 pointer-events-none ${isLight ? 'text-[var(--text-tertiary)]' : 'text-gray-400'}`} />
@@ -304,8 +304,8 @@ const Welcome: React.FC = () => {
             <button
               onClick={() => setIsAuthModalOpen(true)}
               className={`group relative px-5 py-2.5 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl font-semibold text-sm active:scale-[0.98] transition-all font-display touch-manipulation shadow-lg ${isLight
-                  ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-black/80 shadow-black/10'
-                  : 'bg-white/90 text-zinc-900 hover:bg-white shadow-white/10'
+                ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] hover:bg-black/80 shadow-black/10'
+                : 'bg-white/90 text-zinc-900 hover:bg-white shadow-white/10'
                 }`}
             >
               <span className="flex items-center justify-center space-x-2">
@@ -316,8 +316,8 @@ const Welcome: React.FC = () => {
             <button
               onClick={() => navigate('/platform')}
               className={`px-5 py-2.5 sm:px-7 sm:py-3.5 rounded-full backdrop-blur-xl border font-medium text-sm active:scale-[0.98] transition-all font-display touch-manipulation ${isLight
-                  ? 'bg-black/5 border-black/20 text-[var(--text-primary)] hover:bg-black/10 hover:border-black/30'
-                  : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
+                ? 'bg-black/5 border-black/20 text-[var(--text-primary)] hover:bg-black/10 hover:border-black/30'
+                : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
                 }`}
             >
               Explore Platform
@@ -328,8 +328,8 @@ const Welcome: React.FC = () => {
         {/* Feature Cards - Glass */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5 max-w-5xl mx-auto animate-slide-up px-2 sm:px-4">
           <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${isLight
-              ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
-              : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
+            ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
+            : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
             }`}>
             <div className="flex items-center space-x-3 mb-2 sm:mb-3">
               <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${isLight ? 'bg-purple-500/10 border-purple-500/20' : 'bg-purple-500/20 border-purple-400/20'
@@ -343,10 +343,13 @@ const Welcome: React.FC = () => {
             </p>
           </div>
 
-          <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${isLight
+          <div
+            onClick={() => navigate('/recognize')}
+            className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg cursor-pointer ${isLight
               ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
               : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
-            }`}>
+              }`}
+          >
             <div className="flex items-center space-x-3 mb-2 sm:mb-3">
               <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${isLight ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-500/20 border-blue-400/20'
                 }`}>
@@ -355,13 +358,13 @@ const Welcome: React.FC = () => {
               <h3 className={`text-sm sm:text-lg font-semibold ${isLight ? 'text-[var(--text-primary)]' : 'text-white'}`}>Song Recognition</h3>
             </div>
             <p className={`text-xs sm:text-sm leading-relaxed ${isLight ? 'text-[var(--text-secondary)]' : 'text-white/50'}`}>
-              Identify any song instantly by uploading a short clip.
+              Shazam-like recognition. Record audio or hum a melody!
             </p>
           </div>
 
           <div className={`group backdrop-blur-2xl p-4 sm:p-6 rounded-xl sm:rounded-2xl border transition-all active:scale-[0.98] touch-manipulation shadow-lg ${isLight
-              ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
-              : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
+            ? 'bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10 shadow-black/5'
+            : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 shadow-black/5'
             }`}>
             <div className="flex items-center space-x-3 mb-2 sm:mb-3">
               <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl backdrop-blur-xl border flex items-center justify-center ${isLight ? 'bg-cyan-500/10 border-cyan-500/20' : 'bg-cyan-500/20 border-cyan-400/20'

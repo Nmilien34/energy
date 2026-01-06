@@ -5,6 +5,7 @@ import Welcome from '../views/Welcome';
 import MusicPlatform from '../views/MusicPlatform';
 import PlaylistDetail from '../components/PlaylistDetail';
 import SharedContent from '../views/SharedContent';
+import SongRecognition from '../components/SongRecognition';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -13,6 +14,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/platform/*" element={<MusicPlatform />} />
       <Route path="/playlist/:id" element={<PlaylistDetail />} />
       <Route path="/share/:shareId" element={<SharedContent />} />
+      <Route path="/recognize" element={<SongRecognition />} />
       <Route path="/auth/success" element={<AuthSuccess />} />
     </Routes>
   );

@@ -16,7 +16,9 @@ import {
   getYouTubeEmbedUrl,
   getAudioStreamWithFallback,
   streamAudioProxy,
-  getQuotaStatus
+  getQuotaStatus,
+  recognizeSong,
+  getRecognitionStatus
 } from '../controllers/musicController';
 import { auth } from '../middleware/auth';
 import { validateRequest, validateQuery } from '../middleware/validation';
@@ -68,5 +70,9 @@ router.post('/play', validateRequest(recordPlaySchema), recordPlay); // Optional
 
 // Admin/monitoring routes
 router.get('/quota-status', getQuotaStatus); // Monitor YouTube API quota usage
+
+// Song Recognition (ACRCloud)
+router.post('/recognize', recognizeSong); // Recognize song from audio
+router.get('/recognize/status', getRecognitionStatus); // Check if recognition is available
 
 export default router;

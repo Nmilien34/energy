@@ -12,6 +12,10 @@ import { User, IUser } from '../models/User';
 import { GlobalPlayLog } from '../models/GlobalPlayLog';
 import { Types } from 'mongoose';
 
+// Export recognition functions
+export { recognizeSong, getRecognitionStatus } from './recognitionController';
+
+
 /**
  * Decode HTML entities (e.g., &#39; -> ', &amp; -> &)
  * Handles data from YouTube API that may contain encoded entities
