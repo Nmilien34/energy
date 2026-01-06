@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { ApiResponse, AnonymousSession, SearchResult } from '../types/models';
+import { ApiResponse, AnonymousSession, SearchResult, Song } from '../types/models';
+import { decodeHtmlEntities } from '../utils/htmlEntities';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5003';
 
@@ -87,6 +88,23 @@ export const searchMusicPublic = async (
   const response = await publicApi.get<ApiResponse<SearchResult>>(
     `/api/music/search/public?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}`
   );
+
+  // Decode and filter
+  if (response.data.success && response.data.data?.songs) {
+    const lowerQuery = query.toLowerCase().trim();
+    response.data.data.songs = response.data.data.songs.map((song: Song) => ({
+      ...song,
+      title: decodeHtmlEntities(song.title),
+      artist: decodeHtmlEntities(song.artist),
+      channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
+      description: song.description ? decodeHtmlEntities(song.description) : song.description,
+    })).filter((song: Song) => {
+      if (!lowerQuery) return true;
+      return song.title.toLowerCase().includes(lowerQuery) ||
+        song.artist.toLowerCase().includes(lowerQuery);
+    });
+  }
+
   return response.data;
 };
 

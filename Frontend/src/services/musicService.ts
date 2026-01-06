@@ -29,7 +29,12 @@ class MusicService {
         artist: decodeHtmlEntities(song.artist),
         channelTitle: song.channelTitle ? decodeHtmlEntities(song.channelTitle) : song.channelTitle,
         description: song.description ? decodeHtmlEntities(song.description) : song.description,
-      }));
+      })).filter((song: Song) => {
+        const lowerQuery = query.toLowerCase().trim();
+        if (!lowerQuery) return true;
+        return song.title.toLowerCase().includes(lowerQuery) ||
+          song.artist.toLowerCase().includes(lowerQuery);
+      });
     }
 
     return response.data;
