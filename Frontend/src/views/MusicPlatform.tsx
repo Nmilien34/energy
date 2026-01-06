@@ -134,7 +134,7 @@ const MusicPlatform: React.FC = () => {
     <div className="min-h-screen bg-music-black text-white flex">
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-music-black-light transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-[100] w-64 bg-music-black-light transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0 flex flex-col h-full
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
@@ -265,7 +265,7 @@ const MusicPlatform: React.FC = () => {
       {
         isSidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )

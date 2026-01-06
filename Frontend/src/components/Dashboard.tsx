@@ -227,7 +227,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
   ];
 
   return (
-    <div className={`px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-12 space-y-8 sm:space-y-12 lg:space-y-16 ${className}`}>
+    <div className={`px-4 sm:px-6 lg:px-8 xl:px-12 py-4 sm:py-8 lg:py-12 space-y-6 sm:space-y-8 lg:space-y-12 ${className}`}>
       {/* Dynamic Greeting Section */}
       <section className="space-y-6 sm:space-y-8">
         <div className="space-y-2 sm:space-y-3">

@@ -177,7 +177,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
 
       {/* Search Results Dropdown */}
       {showResults && (query || songs.length > 0) && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-music-black-light rounded-lg shadow-xl border border-white/10 max-h-[60vh] sm:max-h-96 overflow-y-auto z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-music-black-light rounded-lg shadow-xl border border-white/10 max-h-[60vh] sm:max-h-96 overflow-y-auto z-[60]">
           {error && (
             <div className="p-4 text-red-400 text-center">
               <Music className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -374,7 +374,7 @@ const SongItem: React.FC<SongItemProps> = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center space-x-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
         <button
           onClick={handleLikeClick}
           className="p-2 hover:bg-zinc-600 rounded-full transition-colors"
