@@ -424,8 +424,18 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
     // Play handler
     navigator.mediaSession.setActionHandler('play', () => {
+      console.log('[MediaSession] Play action detected');
       if (state.youtubeMode?.isYoutube) {
+        // For YouTube, we need to signal the player to resume
+        if (youtubeResumeCallbackRef.current) {
+          youtubeResumeCallbackRef.current();
+        }
         dispatch({ type: 'SET_PLAYING', payload: true });
+
+        // Ensure the silent audio track is also playing to maintain the session
+        if (audioRef.current && audioRef.current.paused) {
+          audioRef.current.play().catch(() => { });
+        }
       } else if (audioRef.current) {
         audioRef.current.play();
       }
@@ -433,8 +443,10 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
     // Pause handler
     navigator.mediaSession.setActionHandler('pause', () => {
+      console.log('[MediaSession] Pause action detected');
       if (state.youtubeMode?.isYoutube) {
         dispatch({ type: 'SET_PLAYING', payload: false });
+        // YouTube synchronization will handle the actual pause via state effect
       } else if (audioRef.current) {
         audioRef.current.pause();
       }
@@ -581,14 +593,22 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
   // Keep audio alive with periodic check (helps on some mobile browsers)
   useEffect(() => {
-    if (!state.isPlaying || state.youtubeMode?.isYoutube) return;
+    if (!state.isPlaying) return;
 
     const keepAliveInterval = setInterval(() => {
-      if (audioRef.current && state.isPlaying && audioRef.current.paused) {
-        console.log('[KeepAlive] Audio paused unexpectedly, resuming...');
-        audioRef.current.play().catch(() => { });
+      // Periodic check to ensure audio session remains active
+      if (audioRef.current && state.isPlaying) {
+        if (audioRef.current.paused) {
+          console.log('[KeepAlive] Audio session slipped, attempting to resume...');
+          audioRef.current.play().catch(() => { });
+        }
+
+        // For YouTube mode, we also want to ensure the metadata is fresh
+        if (state.youtubeMode?.isYoutube && 'mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'playing';
+        }
       }
-    }, 1000);
+    }, 2000);
 
     return () => clearInterval(keepAliveInterval);
   }, [state.isPlaying, state.youtubeMode?.isYoutube]);

@@ -588,8 +588,8 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
               <button
                 onClick={toggleShuffle}
                 className={`p-3 rounded-full transition-colors ${state.isShuffled
-                    ? 'bg-blue-600 text-white'
-                    : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'
+                  ? 'bg-blue-600 text-white'
+                  : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'
                   }`}
               >
                 <Shuffle className="h-5 w-5" />
@@ -632,8 +632,8 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
               <button
                 onClick={handleRepeatToggle}
                 className={`p-3 rounded-full transition-colors ${state.repeatMode !== 'none'
-                    ? 'bg-blue-600 text-white'
-                    : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'
+                  ? 'bg-blue-600 text-white'
+                  : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'
                   }`}
               >
                 {state.repeatMode === 'one' ? (
@@ -930,28 +930,17 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
           style={{
             position: 'fixed',
             bottom: isExpanded ? '20px' : '80px',
-            right: '20px',
-            width: '100px',
-            height: '56px',
-            zIndex: 40,
+            right: isMobile ? '-1000px' : '20px', // Move off-screen on mobile to avoid "video" behavior
+            width: isMobile ? '1px' : '100px',
+            height: isMobile ? '1px' : '56px',
+            zIndex: isMobile ? -1 : 40,
+            opacity: isMobile ? 0.01 : 1, // Stay technically visible for API functionality
             borderRadius: '8px',
             overflow: 'hidden',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
+            pointerEvents: isMobile ? 'none' : 'auto',
+            boxShadow: isMobile ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.3)'
           }}
         >
-          {/* Mobile Tap to Play Overlay */}
-          {showMobileTapToPlay && (
-            <button
-              onClick={handleMobileTapToPlay}
-              className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center cursor-pointer"
-              style={{ borderRadius: '8px' }}
-            >
-              <div className="flex flex-col items-center">
-                <Play className="h-8 w-8 text-white fill-white animate-pulse" />
-                <span className="text-[10px] text-white mt-1">Tap</span>
-              </div>
-            </button>
-          )}
           <YouTubePlayer
             ref={youtubePlayerRef}
             videoId={state.youtubeMode.youtubeId}
