@@ -351,7 +351,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
               <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
-          <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3 sm:gap-4">
+          <div className="grid grid-cols-3 min-[480px]:grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-10 gap-3 sm:gap-4">
             {trendingArtists.map((artist, index) => (
               <ArtistCard
                 key={artist.name || index}
