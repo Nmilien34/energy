@@ -96,7 +96,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
       if (user) {
         // Load recently played with error handling
         try {
-          const recentResponse = await musicService.getRecentlyPlayed(6);
+          const recentResponse = await musicService.getRecentlyPlayed(16);
           if (recentResponse.success && recentResponse.data && Array.isArray(recentResponse.data)) {
             setRecentlyPlayed(recentResponse.data);
           } else {
@@ -149,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
           : await musicService.getPublicTrendingSongs(20);
 
         if (trendingResponse.success && trendingResponse.data && Array.isArray(trendingResponse.data.songs)) {
-          setTrendingSongs(trendingResponse.data.songs.slice(0, 12));
+          setTrendingSongs(trendingResponse.data.songs.slice(0, 16));
         } else {
           setTrendingSongs([]);
         }
@@ -165,7 +165,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
           : await musicService.getPublicTrendingArtists(20);
 
         if (trendingArtistsResponse.success && trendingArtistsResponse.data && Array.isArray(trendingArtistsResponse.data.artists)) {
-          setTrendingArtists(trendingArtistsResponse.data.artists.slice(0, 12));
+          setTrendingArtists(trendingArtistsResponse.data.artists.slice(0, 16));
         } else {
           setTrendingArtists([]);
         }
@@ -274,7 +274,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
             </button>
           </div>
           <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3 sm:gap-4">
-            {userPlaylists.slice(0, 6).map((playlist) => (
+            {userPlaylists.slice(0, 16).map((playlist) => (
               <EnhancedPlaylistCard
                 key={playlist.id}
                 playlist={playlist}
