@@ -631,12 +631,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
-      console.log('[LoadSong] Fetching audio stream for song:', song.id);
-      console.log('[LoadSong] User agent:', navigator.userAgent);
-      console.log('[LoadSong] Is mobile:', /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
-
       const streamResponse = await musicService.getSongAudioStream(song.id);
-      console.log('[LoadSong] Stream response received:', streamResponse);
 
       // Defensive extraction of possible URL fields from backend
       const data = streamResponse?.data as any;
@@ -644,14 +639,10 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       const audioUrl = typeof candidateUrl === 'string' ? candidateUrl : undefined;
 
       if (streamResponse.success && audioUrl) {
-        console.log('Audio URL:', audioUrl);
-
         // Check if this is a YouTube embed URL
         const isYouTubeEmbed = audioUrl.includes('youtube.com/embed') || audioUrl.includes('youtu.be');
-        console.log('Is YouTube embed?', isYouTubeEmbed);
 
         if (isYouTubeEmbed) {
-          console.log('Using YouTube mode for:', song.youtubeId, 'autoPlay:', autoPlay);
           // Reset retry count on successful YouTube mode switch
           retryCount.current = 0;
 
@@ -667,8 +658,6 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
           // For iOS Background Playback: Play silent audio in the background
           if (audioRef.current) {
-            console.log('Starting silent audio keeper for YouTube background playback');
-
             // Only reset if not already playing the silent track
             if (audioRef.current.src !== SILENT_AUDIO_URI) {
               audioRef.current.src = SILENT_AUDIO_URI;
@@ -687,27 +676,18 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           }
 
           if (autoPlay) {
-            console.log('Setting YouTube mode to autoplay');
             // YouTube player will handle autoplay
             dispatch({ type: 'SET_PLAYING', payload: true });
           }
 
           dispatch({ type: 'SET_LOADING', payload: false });
 
-          // Increment play count after a delay to ensure YouTube player is ready
-          setTimeout(async () => {
-            try {
-              // Prefer youtubeId for more reliable lookup
-              const trackId = song.youtubeId || song.id;
-              await musicService.incrementPlayCount(trackId, song.duration);
-            } catch (error) {
-              // Non-critical - don't log errors for play count
-            }
-          }, 1000);
+          // Increment play count (non-blocking, fire-and-forget)
+          const trackId = song.youtubeId || song.id;
+          musicService.incrementPlayCount(trackId, song.duration).catch(() => { });
 
           return;
         } else {
-          console.log('Using HTML5 audio for:', audioUrl);
           // Reset retry count on successful HTML5 audio load
           retryCount.current = 0;
 
@@ -736,11 +716,10 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           }
         }
 
-        // Increment play count (prefer youtubeId for reliable lookup)
+        // Increment play count (non-blocking, fire-and-forget)
         const trackId = song.youtubeId || song.id;
-        await musicService.incrementPlayCount(trackId, song.duration).catch(() => {
-          // Non-critical - silently ignore errors
-        });
+        musicService.incrementPlayCount(trackId, song.duration).catch(() => { });
+
         dispatch({ type: 'SET_LOADING', payload: false });
       } else {
         console.error('Failed to get stream data - missing audio URL. Response:', streamResponse);
