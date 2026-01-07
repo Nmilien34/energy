@@ -136,13 +136,12 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
         const playerState = ytPlayer.getPlayerState();
         console.log('[Resume] YouTube player state:', playerState);
 
-        // If player is not playing (state !== 1) and not buffering (state !== 3), resume
-        if (playerState !== 1 && playerState !== 3) {
-          ytPlayer.playVideo();
-          ytPlayer.unMute();
-          ytPlayer.setVolume(100);
-          console.log('[Resume] Playback resumed');
-        }
+        // ALWAYS attempt to play and unmute when resuming from background
+        // Force state if we expect to be playing
+        ytPlayer.playVideo();
+        ytPlayer.unMute();
+        ytPlayer.setVolume(100);
+        console.log('[Resume] Playback resume signals sent');
       } else {
         // Player not ready, retry in a moment
         setTimeout(() => {
@@ -150,6 +149,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
           if (player?.isReady()) {
             player.playVideo();
             player.unMute();
+            player.setVolume(100);
           }
         }, 500);
       }
@@ -288,6 +288,17 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
               if (state.duration !== duration) {
                 updateDuration(duration);
               }
+            }
+
+            // [RESILIENCE] If we should be playing but YouTube is paused/stopped, try to resume
+            // This handles background pauses by the system
+            const playerState = ytPlayer.getPlayerState();
+            if (state.isPlaying && playerState !== 1 && playerState !== 3 && playerState !== -1) {
+              // 1=playing, 3=buffering, -1=unstarted (wait for it)
+              // If it's 2 (paused), 0 (ended), or 5 (cued), try to play
+              console.log('[Resilience] YouTube paused externally, resuming. State:', playerState);
+              ytPlayer.playVideo();
+              ytPlayer.unMute();
             }
           } catch (err) {
             // Ignore errors when player isn't ready
@@ -921,32 +932,31 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand, onCollapse, onClose, 
         </div>
       )}
 
-      {/* YouTube Player - small but visible for iOS compatibility */}
-      {/* iOS Safari requires visible players for autoplay to work */}
-      {state.youtubeMode?.isYoutube && state.youtubeMode.youtubeId && (
+      {/* YouTube Player - always mounted on mobile to ensure synchronous priming and session capture */}
+      {((state.youtubeMode?.isYoutube && state.youtubeMode.youtubeId) || isMobile) && (
         <div
           ref={youtubeWrapperRef}
           data-mini-player="true"
           style={{
             position: 'fixed',
-            bottom: isExpanded ? '20px' : '80px',
-            right: isMobile ? '-1000px' : '20px', // Move off-screen on mobile to avoid "video" behavior
-            width: isMobile ? '1px' : '100px',
-            height: isMobile ? '1px' : '56px',
+            top: 0,
+            left: 0,
+            width: isMobile ? '100vw' : '100px',
+            height: isMobile ? '100vh' : '56px',
             zIndex: isMobile ? -1 : 40,
-            opacity: isMobile ? 0.01 : 1, // Stay technically visible for API functionality
-            borderRadius: '8px',
+            opacity: isMobile ? 0.01 : 1,
+            pointerEvents: 'none',
             overflow: 'hidden',
-            pointerEvents: isMobile ? 'none' : 'auto',
             boxShadow: isMobile ? 'none' : '0 4px 6px rgba(0, 0, 0, 0.3)'
           }}
         >
           <YouTubePlayer
             ref={youtubePlayerRef}
-            videoId={state.youtubeMode.youtubeId}
+            // Use a 1-second silent video to prime the player
+            videoId={state.youtubeMode?.youtubeId || 'w7S6O08S_b0'}
             autoplay={state.isPlaying} // Auto-play if music should be playing
-            width={100}
-            height={56}
+            width={isMobile ? 1 : 100}
+            height={isMobile ? 1 : 56}
             onReady={() => {
               console.log('YouTube player ready in MiniPlayer, isPlaying:', state.isPlaying);
 

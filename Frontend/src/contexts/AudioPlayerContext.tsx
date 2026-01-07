@@ -249,6 +249,43 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     youtubeModeRef.current = state.youtubeMode || { isYoutube: false };
   }, [state.youtubeMode]);
 
+  // Mobile: Unlock audio and YouTube session on first interaction
+  useEffect(() => {
+    if (!isMobileDevice()) return;
+
+    const handleFirstInteraction = () => {
+      console.log('[Mobile] First interaction, priming audio sessions');
+
+      // 1. Prime HTML5 Audio
+      if (audioRef.current) {
+        audioRef.current.play().then(() => {
+          // Stay on silent track but pause it for now
+          // We keep the source as SILENT_AUDIO_URI to hold the session
+          audioRef.current?.pause();
+          console.log('[Mobile] HTML5 Audio session primed');
+        }).catch(err => console.warn('[Mobile] Audio prime failed:', err));
+      }
+
+      // 2. Prime YouTube session synchronously
+      if (youtubeUnlockCallbackRef.current) {
+        youtubeUnlockCallbackRef.current();
+        console.log('[Mobile] YouTube session primed');
+      }
+
+      // Cleanup listeners once primed
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('click', handleFirstInteraction);
+    };
+
+    window.addEventListener('touchstart', handleFirstInteraction, { passive: true });
+    window.addEventListener('click', handleFirstInteraction);
+
+    return () => {
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('click', handleFirstInteraction);
+    };
+  }, []);
+
   // Keep a ref of shuffle source for continuous shuffle
   useEffect(() => {
     shuffleSourceRef.current = state.shuffleSource;
