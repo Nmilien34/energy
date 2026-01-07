@@ -46,7 +46,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
   const [loading, setLoading] = useState(true);
 
   const { user } = useAuth();
-  const { play, state } = useAudioPlayer();
+  const { play, stop, state } = useAudioPlayer();
   const navigate = useNavigate();
 
   // Anonymous session tracking

@@ -26,7 +26,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
   const [showResults, setShowResults] = useState(false);
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
   // Removed local showSuccessMessage state
-  const { play, addToQueue, state } = useAudioPlayer();
+  const { play, stop, addToQueue, state } = useAudioPlayer();
   const { user } = useAuth();
   const { session, trackPlay } = useAnonymousLandingSession();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
