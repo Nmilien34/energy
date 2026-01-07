@@ -65,27 +65,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ className = '', variant = 'fu
 
   const seekToTime = (time: number) => {
     if (!state.duration || state.duration === 0) return;
-
-    // For YouTube videos, we need to seek using the YouTube player API
-    if (state.youtubeMode?.isYoutube) {
-      // Find the YouTube player in the MiniPlayer component
-      const miniPlayer = document.querySelector('[data-mini-player="true"]');
-      const wrapper = miniPlayer?.querySelector('[data-yt-wrapper="true"]') as any;
-      const container = miniPlayer?.querySelector('[data-yt-container="true"]') as any;
-      const ytPlayer = wrapper?._ytPlayer || container?._ytPlayer;
-
-      if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
-        try {
-          console.log('Seeking YouTube video to:', time);
-          ytPlayer.seekTo(time, true); // true = allowSeekAhead
-        } catch (error) {
-          console.warn('Failed to seek YouTube video:', error);
-        }
-      }
-    } else {
-      // For regular audio, use the context seek function
-      seek(time);
-    }
+    seek(time);
   };
 
   const getTimeFromEvent = (e: React.MouseEvent<HTMLDivElement> | MouseEvent) => {
