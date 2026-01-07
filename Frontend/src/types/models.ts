@@ -153,12 +153,6 @@ export interface UserLibrary {
   playlists: Playlist[];
 }
 
-// Player state types
-export interface YouTubeMode {
-  isYoutube: boolean;
-  youtubeId?: string;
-  embedUrl?: string;
-}
 
 export interface PlayerState {
   currentSong: Song | null;
@@ -173,7 +167,6 @@ export interface PlayerState {
   isShuffled: boolean;
   repeatMode: 'none' | 'one' | 'all';
   shuffleSource: Song[];
-  youtubeMode?: YouTubeMode;
 }
 
 // Share types

@@ -646,18 +646,33 @@ export const getAudioStream = async (req: Request, res: Response) => {
     }
 
     // Map to frontend expected shape
+    // PURE AUDIO ARCHITECTURE REFACTOR:
+    // If the source is YouTube, we now provide a proxy URL instead of the direct YouTube URL
+    // This ensures the frontend gets a CORS-friendly stream that supports Range requests via our backend.
+    const isYouTubeSource = audioResponse.format === 'embed' || !song?.hasS3Audio();
+    let finalAudioUrl = audioResponse.url;
+
+    if (isYouTubeSource) {
+      // Use the internal proxy URL
+      const protocol = req.protocol;
+      const host = req.get('host');
+      finalAudioUrl = `${protocol}://${host}/api/music/song/${youtubeId}/proxy`;
+    }
+
+    // Map to frontend expected shape
     res.json({
       success: true,
       data: {
-        audioUrl: audioResponse.url,
+        audioUrl: finalAudioUrl,
         expiresAt: audioResponse.expires?.toISOString?.() || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         format: audioResponse.format as any,
-        isEmbed: (audioResponse.format as any) === 'embed',
+        isEmbed: false, // Embeds are now deprecated in favor of pure audio
         youtubeId,
         // Add audio source information for frontend
-        audioSource: song?.audioSource || 'youtube',
+        audioSource: song?.audioSource || (isYouTubeSource ? 'youtube' : 's3'),
         isCached: song?.hasS3Audio() || false,
-        quality: audioResponse.quality
+        quality: audioResponse.quality,
+        duration: song?.duration || 0
       }
     });
   } catch (error) {
@@ -1293,70 +1308,76 @@ export const streamAudioProxy = async (req: Request, res: Response) => {
         mobile: mobile === 'true'
       });
 
-      // Set CORS headers
+      if (!audioResponse || !audioResponse.url) {
+        return res.status(404).json({
+          success: false,
+          error: 'Streaming URL not found'
+        });
+      }
+
+      const fetchOptions: any = {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
+        }
+      };
+
+      // Handle range requests for audio streaming
+      const range = req.headers.range;
+      if (range) {
+        fetchOptions.headers['Range'] = range;
+      }
+
+      // Use dynamic import for node-fetch to ensure it behaves as a Node stream
+      const fetch = (await import('node-fetch')).default as any;
+      const response = await fetch(audioResponse.url, fetchOptions);
+
+      // Set baseline headers
       res.set({
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
         'Access-Control-Allow-Headers': 'Range, Content-Type',
         'Access-Control-Expose-Headers': 'Content-Length, Content-Range',
-        'Content-Type': 'audio/webm',
         'Accept-Ranges': 'bytes',
-        'Cache-Control': 'no-cache'
+        'Cache-Control': 'public, max-age=3600',
+        'Content-Type': `audio/${audioResponse.format || 'webm'}`
       });
 
-      // Handle range requests for audio streaming
-      const range = req.headers.range;
-      if (range) {
-        // Forward range request to YouTube
-        const response = await fetch(audioResponse.url, {
-          headers: {
-            'Range': range,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        });
+      // Pass through specific headers from the source response
+      const contentRange = response.headers.get('content-range');
+      const contentLength = response.headers.get('content-length');
+      const contentType = response.headers.get('content-type');
 
-        if (response.status === 206) {
-          // Partial content response
-          const contentLength = response.headers.get('content-length');
-          const contentRange = response.headers.get('content-range');
+      if (contentRange) res.set('Content-Range', contentRange);
+      if (contentLength) res.set('Content-Length', contentLength);
+      if (contentType) res.set('Content-Type', contentType);
 
-          if (contentLength) res.set('Content-Length', contentLength);
-          if (contentRange) res.set('Content-Range', contentRange);
+      // Set status from source (206 for partial, 200 for full)
+      res.status(response.status);
 
-          res.status(206);
-          response.body?.pipeTo(res as any);
-        } else {
-          // Full content response
-          res.status(200);
-          response.body?.pipeTo(res as any);
-        }
+      // Pipe the stream to the response
+      if (response.body) {
+        response.body.pipe(res);
+
+        // On successful completion of a full or nearly full stream, we could increment count,
+        // but it's safer to do it on request start or when getAudioStream is called.
+        // For now, we'll keep the increment in getAudioStream.
       } else {
-        // Stream full audio file
-        const response = await fetch(audioResponse.url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        });
-
-        const contentLength = response.headers.get('content-length');
-        if (contentLength) res.set('Content-Length', contentLength);
-
-        res.status(200);
-        response.body?.pipeTo(res as any);
+        res.status(500).send('Stream error');
       }
 
-      // Increment play count
-      await song.incrementPlayCount();
+      // Handle client disconnect to prevent memory leaks/zombie connections
+      req.on('close', () => {
+        if (response.body && typeof (response.body as any).destroy === 'function') {
+          (response.body as any).destroy();
+        }
+      });
 
     } catch (audioError) {
       console.error(`Audio proxy failed for ${id}:`, audioError);
       res.status(500).json({
         success: false,
-        error: 'Failed to stream audio',
-        fallback: {
-          embedUrl: `https://www.youtube.com/embed/${id}?autoplay=0&controls=1&modestbranding=1&rel=0&showinfo=0`,
-          playerType: 'youtube_embed'
-        }
+        error: 'Failed to stream audio'
       });
     }
   } catch (error) {

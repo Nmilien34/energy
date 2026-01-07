@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useRef, useEffect, useCallback } from 'react';
-import { Song, PlayerState, YouTubeMode } from '../types/models';
+import { Song, PlayerState } from '../types/models';
 import { musicService } from '../services/musicService';
 
 // Generate a unique session ID for recommendation tracking
@@ -95,10 +95,6 @@ interface AudioPlayerContextType {
   playShuffleMode: (songs: Song[]) => void;
   updateCurrentTime: (time: number) => void;
   updateDuration: (duration: number) => void;
-  // iOS audio unlock mechanism - MiniPlayer registers a callback to unlock YouTube player
-  registerYouTubeUnlock: (callback: () => void) => void;
-  // YouTube resume mechanism - MiniPlayer registers a callback to resume after background
-  registerYouTubeResume: (callback: () => void) => void;
 }
 
 type AudioPlayerAction =
@@ -118,7 +114,6 @@ type AudioPlayerAction =
   | { type: 'CLEAR_QUEUE' }
   | { type: 'NEXT_SONG' }
   | { type: 'PREVIOUS_SONG' }
-  | { type: 'SET_YOUTUBE_MODE'; payload: YouTubeMode }
   | { type: 'SET_SHUFFLE_SOURCE'; payload: Song[] };
 
 const initialState: PlayerState = {
@@ -134,7 +129,6 @@ const initialState: PlayerState = {
   isShuffled: false,
   repeatMode: 'none',
   shuffleSource: [],
-  youtubeMode: { isYoutube: false },
 };
 
 function audioPlayerReducer(state: PlayerState, action: AudioPlayerAction): PlayerState {
@@ -185,8 +179,6 @@ function audioPlayerReducer(state: PlayerState, action: AudioPlayerAction): Play
         prevIndex = state.repeatMode === 'all' ? state.queue.length - 1 : 0;
       }
       return { ...state, currentIndex: prevIndex };
-    case 'SET_YOUTUBE_MODE':
-      return { ...state, youtubeMode: action.payload };
     case 'SET_SHUFFLE_SOURCE':
       return { ...state, shuffleSource: action.payload };
     default:
@@ -213,7 +205,6 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timeUpdateInterval = useRef<NodeJS.Timeout | null>(null);
   const shouldAutoplayNextLoad = useRef<boolean>(false);
-  const youtubeModeRef = useRef<{ isYoutube: boolean } | null>(null);
   const retryCount = useRef<number>(0);
   const maxRetries = 3;
   const shuffleSourceRef = useRef<Song[]>([]);
@@ -227,49 +218,23 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   // Ref to hold the latest next function (for use in event handlers)
   const nextRef = useRef<() => void>(() => { });
 
-  // iOS YouTube unlock callback - MiniPlayer registers this to prime the player synchronously
-  const youtubeUnlockCallbackRef = useRef<(() => void) | null>(null);
-
-  // YouTube resume callback - MiniPlayer registers this to resume after background
-  const youtubeResumeCallbackRef = useRef<(() => void) | null>(null);
-
-  // Track if we were playing before going to background (for YouTube resume)
+  // Track if we were playing before going to background
   const wasPlayingBeforeBackgroundRef = useRef<boolean>(false);
 
-  const registerYouTubeUnlock = useCallback((callback: () => void) => {
-    youtubeUnlockCallbackRef.current = callback;
-  }, []);
 
-  const registerYouTubeResume = useCallback((callback: () => void) => {
-    youtubeResumeCallbackRef.current = callback;
-  }, []);
-
-  // Keep a ref of latest YouTube mode for event handlers
-  useEffect(() => {
-    youtubeModeRef.current = state.youtubeMode || { isYoutube: false };
-  }, [state.youtubeMode]);
-
-  // Mobile: Unlock audio and YouTube session on first interaction
+  // Mobile: Unlock audio session on first interaction
   useEffect(() => {
     if (!isMobileDevice()) return;
 
     const handleFirstInteraction = () => {
-      console.log('[Mobile] First interaction, priming audio sessions');
+      console.log('[Mobile] First interaction, priming audio session');
 
-      // 1. Prime HTML5 Audio
+      // Prime HTML5 Audio
       if (audioRef.current) {
         audioRef.current.play().then(() => {
-          // Stay on silent track but pause it for now
-          // We keep the source as SILENT_AUDIO_URI to hold the session
           audioRef.current?.pause();
-          console.log('[Mobile] HTML5 Audio session primed');
+          console.log('[Mobile] Audio session primed');
         }).catch(err => console.warn('[Mobile] Audio prime failed:', err));
-      }
-
-      // 2. Prime YouTube session synchronously
-      if (youtubeUnlockCallbackRef.current) {
-        youtubeUnlockCallbackRef.current();
-        console.log('[Mobile] YouTube session primed');
       }
 
       // Cleanup listeners once primed
@@ -326,28 +291,16 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
 
     const handleEnded = () => {
       if (state.repeatMode === 'one') {
-        if (state.youtubeMode?.isYoutube) {
-          // For YouTube mode, restart playback using the YouTube player
-          dispatch({ type: 'SET_PLAYING', payload: true });
-        } else {
-          // For regular audio, restart playback
-          audio.currentTime = 0;
-          audio.play();
-        }
+        audio.currentTime = 0;
+        audio.play();
       } else {
-        // Use nextRef to always call the latest version of next()
-        // This is important because next() may be async and fetch recommendations
         nextRef.current();
       }
     };
 
     const handleError = (event: Event) => {
       dispatch({ type: 'SET_LOADING', payload: false });
-      // Ignore audio errors when using YouTube mode or when no audio src is set
-      if (youtubeModeRef.current?.isYoutube || !audio.src) {
-        return;
-      }
-      // Only log actual errors, not expected ones when switching to YouTube mode
+      if (!audio.src) return;
       const audioElement = event.target as HTMLAudioElement;
       if (audioElement.src && audioElement.src !== '' && !audioElement.src.includes('blob:')) {
         console.error('Audio playback error for:', audioElement.src);
@@ -462,18 +415,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     // Play handler
     navigator.mediaSession.setActionHandler('play', () => {
       console.log('[MediaSession] Play action detected');
-      if (state.youtubeMode?.isYoutube) {
-        // For YouTube, we need to signal the player to resume
-        if (youtubeResumeCallbackRef.current) {
-          youtubeResumeCallbackRef.current();
-        }
-        dispatch({ type: 'SET_PLAYING', payload: true });
-
-        // Ensure the silent audio track is also playing to maintain the session
-        if (audioRef.current && audioRef.current.paused) {
-          audioRef.current.play().catch(() => { });
-        }
-      } else if (audioRef.current) {
+      if (audioRef.current) {
         audioRef.current.play();
       }
     });
@@ -481,10 +423,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     // Pause handler
     navigator.mediaSession.setActionHandler('pause', () => {
       console.log('[MediaSession] Pause action detected');
-      if (state.youtubeMode?.isYoutube) {
-        dispatch({ type: 'SET_PLAYING', payload: false });
-        // YouTube synchronization will handle the actual pause via state effect
-      } else if (audioRef.current) {
+      if (audioRef.current) {
         audioRef.current.pause();
       }
     });
@@ -544,7 +483,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.youtubeMode]);
+  }, []);
 
   // Update Media Session position state for scrubber
   useEffect(() => {
@@ -575,12 +514,12 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     const handleVisibilityChange = () => {
       // When page becomes hidden (minimized, tab switch, phone locked)
       if (document.hidden) {
-        console.log('[Background] Page hidden, isPlaying:', state.isPlaying, 'youtubeMode:', state.youtubeMode?.isYoutube);
+        console.log('[Background] Page hidden, isPlaying:', state.isPlaying);
 
-        // Track if we were playing before going to background (for YouTube resume)
+        // Track if we were playing before going to background
         wasPlayingBeforeBackgroundRef.current = state.isPlaying;
 
-        // Ensure audio keeper stays alive (for both HTML5 and YouTube/Silent mode)
+        // Ensure audio element stays alive
         if (state.isPlaying && audioRef.current) {
           // Check if audio was paused by the browser
           if (audioRef.current.paused) {
@@ -597,36 +536,17 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
         // Resume audio if we were playing
         if (wasPlayingBeforeBackgroundRef.current && audioRef.current) {
           if (audioRef.current.paused) {
-            console.log('[Background] Resuming audio keeper');
+            console.log('[Background] Resuming audio');
             audioRef.current.play().catch(e => console.warn('Audio resume failed:', e));
           }
-        }
-
-        // For YouTube mode, try to resume playback if we were playing before
-        if (state.youtubeMode?.isYoutube && wasPlayingBeforeBackgroundRef.current) {
-          console.log('[Background] Resuming YouTube playback after returning to foreground');
-
-          // Call the YouTube resume callback (registered by MiniPlayer)
-          if (youtubeResumeCallbackRef.current) {
-            // Small delay to let the page fully restore
-            setTimeout(() => {
-              console.log('[Background] Calling YouTube resume callback');
-              youtubeResumeCallbackRef.current?.();
-            }, 300);
-          }
-
-          // Also ensure state is set to playing
-          dispatch({ type: 'SET_PLAYING', payload: true });
         }
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [state.isPlaying, state.youtubeMode?.isYoutube]);
+  }, [state.isPlaying]);
 
   // Keep audio alive with periodic check (helps on some mobile browsers)
   useEffect(() => {
@@ -639,16 +559,11 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
           console.log('[KeepAlive] Audio session slipped, attempting to resume...');
           audioRef.current.play().catch(() => { });
         }
-
-        // For YouTube mode, we also want to ensure the metadata is fresh
-        if (state.youtubeMode?.isYoutube && 'mediaSession' in navigator) {
-          navigator.mediaSession.playbackState = 'playing';
-        }
       }
     }, 2000);
 
     return () => clearInterval(keepAliveInterval);
-  }, [state.isPlaying, state.youtubeMode?.isYoutube]);
+  }, [state.isPlaying]);
 
   const startTimeUpdateInterval = () => {
     if (timeUpdateInterval.current) return;
@@ -678,134 +593,47 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       return;
     }
 
-    console.log('loadSong called:', {
-      songId: song.id,
-      songTitle: song.title,
-      youtubeId: song.youtubeId,
-      autoPlay,
-      fullSong: song
-    });
+    console.log('loadSong called:', { songId: song.id, title: song.title, autoPlay });
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
       const streamResponse = await musicService.getSongAudioStream(song.id);
-
-      // Defensive extraction of possible URL fields from backend
       const data = streamResponse?.data as any;
-      const candidateUrl: unknown = data?.audioUrl ?? data?.url ?? data?.streamUrl ?? data?.embedUrl;
-      const audioUrl = typeof candidateUrl === 'string' ? candidateUrl : undefined;
+      const audioUrl = data?.audioUrl || data?.url || data?.streamUrl;
 
       if (streamResponse.success && audioUrl) {
-        // Check if this is a YouTube embed URL
-        const isYouTubeEmbed = audioUrl.includes('youtube.com/embed') || audioUrl.includes('youtu.be');
+        retryCount.current = 0;
+        audioRef.current.src = audioUrl;
+        audioRef.current.load();
 
-        if (isYouTubeEmbed) {
-          // Reset retry count on successful YouTube mode switch
-          retryCount.current = 0;
-
-          // For YouTube embeds, we need to extract the video ID and use YouTube Player API
-          // Store the YouTube info in state for the MiniPlayer component to handle
-          dispatch({
-            type: 'SET_YOUTUBE_MODE', payload: {
-              isYoutube: true,
-              youtubeId: song.youtubeId,
-              embedUrl: audioUrl
-            }
-          });
-
-          // For iOS Background Playback: Play silent audio in the background
-          if (audioRef.current) {
-            // Only reset if not already playing the silent track
-            if (audioRef.current.src !== SILENT_AUDIO_URI) {
-              audioRef.current.src = SILENT_AUDIO_URI;
-              audioRef.current.loop = true;
-              audioRef.current.volume = 0; // Silent
-              // Essential for iOS: maintain playback rate
-              if ('webkitPreservesPitch' in audioRef.current) {
-                // @ts-ignore
-                audioRef.current.webkitPreservesPitch = true;
+        if (autoPlay) {
+          const playWhenReady = () => {
+            audioRef.current?.play().catch(error => {
+              console.error('Failed to play audio:', error);
+              if (retryCount.current < maxRetries) {
+                retryCount.current++;
+                setTimeout(() => next(), 1000);
               }
-            }
-
-            if (autoPlay) {
-              audioRef.current.play().catch(e => console.warn('Silent audio play failed:', e));
-            }
-          }
-
-          if (autoPlay) {
-            // YouTube player will handle autoplay
-            dispatch({ type: 'SET_PLAYING', payload: true });
-          }
-
-          dispatch({ type: 'SET_LOADING', payload: false });
-
-          // Increment play count (non-blocking, fire-and-forget)
-          const trackId = song.youtubeId || song.id;
-          musicService.incrementPlayCount(trackId, song.duration).catch(() => { });
-
-          return;
-        } else {
-          // Reset retry count on successful HTML5 audio load
-          retryCount.current = 0;
-
-          // Use regular HTML5 audio for direct streams
-          dispatch({ type: 'SET_YOUTUBE_MODE', payload: { isYoutube: false } });
-          audioRef.current.src = audioUrl;
-          audioRef.current.load();
-
-          // If autoPlay is true, start playing when the audio is ready
-          if (autoPlay) {
-            const playWhenReady = () => {
-              audioRef.current?.play().catch(error => {
-                console.error('Failed to play audio:', error);
-                // Try next song if playback fails
-                if (retryCount.current < maxRetries) {
-                  retryCount.current++;
-                  setTimeout(() => next(), 1000);
-                } else {
-                  console.error('Max retries reached, stopping playback');
-                  retryCount.current = 0;
-                }
-              });
-              audioRef.current?.removeEventListener('canplay', playWhenReady);
-            };
-            audioRef.current.addEventListener('canplay', playWhenReady);
-          }
+            });
+            audioRef.current?.removeEventListener('canplay', playWhenReady);
+          };
+          audioRef.current.addEventListener('canplay', playWhenReady);
         }
 
-        // Increment play count (non-blocking, fire-and-forget)
+        // Increment play count
         const trackId = song.youtubeId || song.id;
         musicService.incrementPlayCount(trackId, song.duration).catch(() => { });
 
         dispatch({ type: 'SET_LOADING', payload: false });
       } else {
-        console.error('Failed to get stream data - missing audio URL. Response:', streamResponse);
-        console.error('Response data:', streamResponse?.data);
-        console.error('Success flag:', streamResponse?.success);
-        // Reset any YouTube mode to avoid inconsistent state
-        dispatch({ type: 'SET_YOUTUBE_MODE', payload: { isYoutube: false } });
-        dispatch({ type: 'SET_LOADING', payload: false });
-
-        // Try next song if current song fails to load
-        if (retryCount.current < maxRetries && state.queue.length > 1) {
-          retryCount.current++;
-          console.log(`Retrying with next song (attempt ${retryCount.current}/${maxRetries})`);
-          setTimeout(() => next(), 1000);
-        } else {
-          retryCount.current = 0;
-        }
+        throw new Error('No audio URL found in stream response');
       }
     } catch (error) {
       console.error('Failed to load song:', error);
       dispatch({ type: 'SET_LOADING', payload: false });
-
-      // Try next song if current song fails to load
       if (retryCount.current < maxRetries && state.queue.length > 1) {
         retryCount.current++;
-        console.log(`Retrying with next song (attempt ${retryCount.current}/${maxRetries})`);
         setTimeout(() => next(), 1000);
-      } else {
-        retryCount.current = 0;
       }
     }
   };
@@ -816,96 +644,30 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       return;
     }
 
-    // CRITICAL for iOS Safari: Call YouTube unlock callback SYNCHRONOUSLY before any async work
-    // This must happen in the same call stack as the user gesture
-    if (isIOSDevice() && youtubeUnlockCallbackRef.current) {
-      console.log('[iOS] Calling YouTube unlock callback synchronously');
-      youtubeUnlockCallbackRef.current();
-    }
-
-    // Instant unlock for iOS - Execute IMMEDIATELY on user gesture
-    // This is critical: we must start playback synchronously before any async operations
-    if (audioRef.current) {
-      if (song) {
-        // For new songs, start playing silence immediately to capture the Audio Session
-        // This bridges the gap while the async fetch happens
-        audioRef.current.src = SILENT_AUDIO_URI;
-        audioRef.current.loop = true;
-        audioRef.current.volume = 0;
-        // @ts-ignore
-        if ('webkitPreservesPitch' in audioRef.current) audioRef.current.webkitPreservesPitch = true;
-
-        audioRef.current.play().catch(err => console.warn('Instant unlock failed:', err));
-        audioUnlocked = true;
-      } else {
-        // For resume, ensure we try to play immediately
-        audioRef.current.play().catch(() => { });
-        audioUnlocked = true;
-      }
-    }
-
-    console.log('Play called with song:', song?.title || 'current song', 'YouTube mode:', state.youtubeMode?.isYoutube);
-
     if (song) {
-      // Validate song has required properties
-      if (!song.id) {
-        console.error('Song missing ID:', song);
-        // Try to use youtubeId as fallback ID
-        if (song.youtubeId) {
-          song.id = song.youtubeId;
-          console.log('Using youtubeId as ID:', song.id);
-        } else {
-          console.error('Song has no ID or youtubeId, cannot play');
-          return;
-        }
+      // For a new song, start playing silence immediately to capture the Audio Session on iOS
+      if (isMobileDevice()) {
+        audioRef.current.src = SILENT_AUDIO_URI;
+        audioRef.current.play().catch(() => { });
       }
 
-      // Add song to queue and play immediately
+      // Add song to queue and signal loadSong to autoplay
       const newQueue = [song];
-      console.log('Setting queue with song:', {
-        id: song.id,
-        title: song.title,
-        youtubeId: song.youtubeId,
-        fullSong: song
-      });
       dispatch({ type: 'SET_QUEUE', payload: newQueue });
       dispatch({ type: 'SET_CURRENT_INDEX', payload: 0 });
-      // Signal the effect to autoplay when it loads the song
       shouldAutoplayNextLoad.current = true;
-      console.log('New song queued, will autoplay when loaded');
     } else if (state.currentSong) {
-      // Resume current song - check if it's YouTube mode
-      if (state.youtubeMode?.isYoutube) {
-        console.log('Resuming YouTube playback');
-        // Resume silent audio keeper if it exists
-        if (audioRef.current && audioRef.current.src === SILENT_AUDIO_URI) {
-          audioRef.current.play().catch(e => console.warn('Silent audio resume failed:', e));
-        }
-        // For YouTube mode, we'll let the MiniPlayer handle it
-        dispatch({ type: 'SET_PLAYING', payload: true });
-      } else {
-        console.log('Resuming HTML5 audio playback');
-        // Regular HTML5 audio
-        try {
-          await audioRef.current.play();
-        } catch (error) {
-          console.error('Failed to play audio:', error);
-        }
-      }
+      // Resume current song
+      audioRef.current.play().catch(() => { });
+      dispatch({ type: 'SET_PLAYING', payload: true });
     }
   };
 
   const pause = () => {
-    if (state.youtubeMode?.isYoutube) {
-      // Pause silent audio keeper
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      // For YouTube mode, we'll let the MiniPlayer handle it
-      dispatch({ type: 'SET_PLAYING', payload: false });
-    } else if (audioRef.current) {
+    if (audioRef.current) {
       audioRef.current.pause();
     }
+    dispatch({ type: 'SET_PLAYING', payload: false });
   };
 
   const stop = () => {
@@ -914,6 +676,8 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       audioRef.current.currentTime = 0;
     }
     dispatch({ type: 'SET_CURRENT_TIME', payload: 0 });
+    dispatch({ type: 'SET_PLAYING', payload: false });
+    dispatch({ type: 'SET_CURRENT_SONG', payload: null });
   };
 
   // Fallback: fetch a random trending song when recommendation fails
@@ -1230,8 +994,6 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     playShuffleMode,
     updateCurrentTime,
     updateDuration,
-    registerYouTubeUnlock,
-    registerYouTubeResume,
   };
 
   return (
