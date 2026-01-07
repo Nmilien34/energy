@@ -117,7 +117,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
       return;
     }
 
-    // If no parent handler, we must enforce limits internally
+    // Enforce limits for anonymous users
     if (user) {
       play(song);
       return;
@@ -133,13 +133,15 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ onSongSelect, className = '' 
       return;
     }
 
+    // CRITICAL: Initiate play BEFORE the await to capture mobile user gesture
+    play(song);
+
     const success = await trackPlay(song.id);
     if (!success) {
+      // If limit check failed after starting, stop playback
+      stop();
       setIsLimitModalOpen(true);
-      return;
     }
-
-    play(song);
   };
 
   const handleAddToQueue = (song: Song) => {

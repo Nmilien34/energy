@@ -13,7 +13,7 @@ const isMobileDevice = (): boolean => {
 };
 
 // Silent audio track (1 second of silence) to keep iOS Audio Session active
-const SILENT_AUDIO_URI = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAgZGF0YQQAAAAAAA==';
+const SILENT_AUDIO_URI = 'data:audio/wav;base64,UklGRowAAABXQVZFZm10IBIAAAABAAEAIlYAAESsAAACABAAZGF0YVAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
 
 // Track if audio has been unlocked (required for iOS Safari)
@@ -543,6 +543,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       }
     };
 
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -593,7 +594,7 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       return;
     }
 
-    console.log('loadSong called:', { songId: song.id, title: song.title, autoPlay });
+    console.log('loadSong starting:', { songId: song.id, title: song.title, autoPlay });
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
@@ -602,22 +603,42 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       const audioUrl = data?.audioUrl || data?.url || data?.streamUrl;
 
       if (streamResponse.success && audioUrl) {
+        console.log('Got audio URL:', audioUrl.substring(0, 50) + '...');
         retryCount.current = 0;
+
+        // CRITICAL for mobile: set src and play() immediately while the user gesture is still active
+        // Awaiting the stream response consumes part of the user gesture window.
         audioRef.current.src = audioUrl;
-        audioRef.current.load();
 
         if (autoPlay) {
-          const playWhenReady = () => {
-            audioRef.current?.play().catch(error => {
-              console.error('Failed to play audio:', error);
-              if (retryCount.current < maxRetries) {
-                retryCount.current++;
-                setTimeout(() => next(), 1000);
-              }
+          console.log('[Audio] Attempting immediate play...');
+          const playPromise = audioRef.current.play();
+
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              console.log('[Audio] Playback started successfully');
+            }).catch(error => {
+              console.warn('[Audio] Immediate play failed, waiting for canplay:', error.name, error.message);
+
+              // Fallback: wait for browser to be ready
+              const playWhenReady = () => {
+                console.log('[Audio] canplay reached, retrying play...');
+                audioRef.current?.play().then(() => {
+                  console.log('[Audio] Playback started after buffering');
+                }).catch(e => {
+                  console.error('[Audio] playWhenReady failed:', e.name, e.message);
+                  if (retryCount.current < maxRetries) {
+                    retryCount.current++;
+                    setTimeout(() => next(), 1000);
+                  }
+                });
+                audioRef.current?.removeEventListener('canplay', playWhenReady);
+              };
+              audioRef.current?.addEventListener('canplay', playWhenReady);
             });
-            audioRef.current?.removeEventListener('canplay', playWhenReady);
-          };
-          audioRef.current.addEventListener('canplay', playWhenReady);
+          }
+        } else {
+          audioRef.current.load();
         }
 
         // Increment play count
@@ -644,13 +665,12 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       return;
     }
 
-    if (song) {
-      // For a new song, start playing silence immediately to capture the Audio Session on iOS
-      if (isMobileDevice()) {
-        audioRef.current.src = SILENT_AUDIO_URI;
-        audioRef.current.play().catch(() => { });
-      }
+    // Capture the Audio Session on iOS/Mobile as soon as user clicks
+    if (isMobileDevice()) {
+      primeAudio(!!song);
+    }
 
+    if (song) {
       // Add song to queue and signal loadSong to autoplay
       const newQueue = [song];
       dispatch({ type: 'SET_QUEUE', payload: newQueue });
@@ -658,8 +678,14 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
       shouldAutoplayNextLoad.current = true;
     } else if (state.currentSong) {
       // Resume current song
-      audioRef.current.play().catch(() => { });
-      dispatch({ type: 'SET_PLAYING', payload: true });
+      const resumePromise = audioRef.current.play();
+      if (resumePromise !== undefined) {
+        resumePromise.then(() => {
+          dispatch({ type: 'SET_PLAYING', payload: true });
+        }).catch(e => console.warn('Resume failed:', e));
+      } else {
+        dispatch({ type: 'SET_PLAYING', payload: true });
+      }
     }
   };
 
@@ -944,12 +970,23 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
   const playPlaylist = (songs: Song[], startIndex = 0) => {
     if (songs.length === 0) return;
 
+    // Capture session on mobile
+    if (isMobileDevice()) {
+      primeAudio(true);
+    }
+
     const shuffledSongs = state.isShuffled ? [...songs].sort(() => Math.random() - 0.5) : songs;
+    shouldAutoplayNextLoad.current = true;
     setQueue(shuffledSongs, startIndex);
   };
 
-  const playShuffleMode = (songs: Song[]) => {
+  const playShuffleMode = (songs: Array<Song>) => {
     if (songs.length === 0) return;
+
+    // Capture session on mobile
+    if (isMobileDevice()) {
+      primeAudio(true);
+    }
 
     // Set the shuffle source for continuous shuffle
     dispatch({ type: 'SET_SHUFFLE_SOURCE', payload: songs });
@@ -958,13 +995,30 @@ export const AudioPlayerProvider: React.FC<AudioPlayerProviderProps> = ({ childr
     const randomSong = songs[Math.floor(Math.random() * songs.length)];
     const initialQueue = [randomSong];
 
-    setQueue(initialQueue, 0);
-
-    // Signal that we want to autoplay when the song loads
     shouldAutoplayNextLoad.current = true;
+    dispatch({ type: 'SET_QUEUE', payload: initialQueue });
+    dispatch({ type: 'SET_CURRENT_INDEX', payload: 0 });
 
     // Also set playing state immediately for YouTube player
     dispatch({ type: 'SET_PLAYING', payload: true });
+  };
+
+  // Helper to prime audio element on mobile user gesture
+  const primeAudio = (forceSilence = false) => {
+    if (!audioRef.current) return;
+    console.log('[Mobile] Priming audio session, forceSilence:', forceSilence);
+
+    // If loading or playing a new thing, set to silence first 
+    // to capture the session while we fetch the real URL
+    if (forceSilence || !audioRef.current.src || audioRef.current.src === '' || audioRef.current.src.startsWith('data:')) {
+      audioRef.current.src = SILENT_AUDIO_URI;
+    }
+
+    const p = audioRef.current.play();
+    if (p !== undefined) {
+      p.then(() => console.log('[Mobile] Audio primed successfully'))
+        .catch(err => console.warn('[Mobile] Prime playback failed:', err.name));
+    }
   };
 
   const updateCurrentTime = (time: number) => {

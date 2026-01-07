@@ -62,24 +62,28 @@ const Dashboard: React.FC<DashboardProps> = ({ className = '' }) => {
       return;
     }
 
-    // For anonymous users, check and track the play
-    if (!session) {
-      // If session not ready, just play (fail open)
+    // For anonymous users, we MUST initiate play(song) immediately to capture 
+    // the user gesture on mobile, even while we check limits asynchronously.
+    if (session) {
+      if (session.hasReachedLimit) {
+        setIsLimitModalOpen(true);
+        return;
+      }
+
+      // Start the playback process (primes silence on mobile)
       play(song);
+
+      // Verify the play count limit in the background
+      const success = await trackPlay(song.id);
+      if (!success) {
+        // If limit was actually reached, stop playback
+        stop();
+        setIsLimitModalOpen(true);
+      }
       return;
     }
 
-    if (session.hasReachedLimit) {
-      setIsLimitModalOpen(true);
-      return;
-    }
-
-    const success = await trackPlay(song.id);
-    if (!success) {
-      setIsLimitModalOpen(true);
-      return;
-    }
-
+    // Fallback/Fail-open if session is not ready
     play(song);
   };
 
